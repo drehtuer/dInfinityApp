@@ -50,11 +50,11 @@ import de.drehtuer.dinfinity.simulation.api.ThrowSpec
  *   file's `edge_rounding` would give, or null for the default every die has
  *   when nothing says otherwise (`docs/architecture.md`, decision 94). What
  *   lets a run measure a rounder die than the built-in set has.
- * @param releaseMmPerSecond how fast a hand lets the dice go, for a run of
- *   throws released when the shake is over (decision 103), or null for the
- *   grid throw the harness has always made. Each roll's direction comes from
- *   its own seed ([Release] with no direction of its own), so a run is thrown
- *   every way across the tray.
+ * @param releaseMmPerSecond how fast a hand tosses the dice, for a run of
+ *   throws shaken and then tossed (decision 103), or null for the grid throw
+ *   the harness has always made. Each roll is shaken by [HandStroke] — four
+ *   strokes, the last one the way its own seed says — and tossed when it goes
+ *   quiet, through the same `ShakeDriver` a live shake does.
  */
 data class HarnessRequest(
   val label: String,
@@ -106,7 +106,7 @@ data class HarnessRequest(
       geometry = geometry,
       table = table,
       seed = seed,
-      release = releaseMmPerSecond?.let { Release(direction = null, speedMmPerSecond = it) },
+      tossMmPerSecond = releaseMmPerSecond,
     )
   }
 
@@ -304,7 +304,8 @@ data class HarnessRequest(
  * @param geometry the tray they are thrown in.
  * @param table its friction and restitution.
  * @param seed the run's base seed.
- * @param release how a hand lets every throw go, or null for the grid throw.
+ * @param tossMmPerSecond how fast a hand tosses every throw after shaking
+ *   it ([HandStroke]), or null for the grid throw.
  */
 data class HarnessPlan(
   val dice: List<DieInstance>,
@@ -312,7 +313,7 @@ data class HarnessPlan(
   val geometry: TableGeometry,
   val table: TableLook,
   val seed: Long,
-  val release: Release? = null,
+  val tossMmPerSecond: Double? = null,
 ) {
   /**
    * The throw for roll [index].
@@ -330,6 +331,7 @@ data class HarnessPlan(
       table = table,
       seed = Seeds.derived(seed, index),
       dieScale = dieScale,
-      release = release,
+      shake = tossMmPerSecond?.let { HandStroke.of(it, Seeds.derived(seed, index)) } ?: emptyList(),
+      toss = tossMmPerSecond != null,
     )
 }

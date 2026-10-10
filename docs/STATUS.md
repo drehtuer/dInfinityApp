@@ -65,10 +65,11 @@ This is a snapshot, not a changelog — git history is the changelog.
   `translucency` the menu sets (decision 102); seen on the Pixel 10a.
   It reaches `main` when the owner likes it on the phone.
 - **Experiment:** `feature/throw-release` (decision 103, `docs/TODO.md` 5.8)
-  — the dice are in the hand while the phone is shaken and thrown when it
-  stops, after a comparison with slow-motion film of real dice. It stays on
-  its branch until the owner finds it better on the phone; the constants wait
-  for the owner's recordings of real throws.
+  — the dice are shaken in sight as before, and the hand tosses them when it
+  stops, after a comparison with slow-motion film of real dice. First verdict
+  on the phone: the tumbling looks much better. It stays on its branch until
+  the owner finds it better overall; the constants wait for the owner's
+  recordings of real throws.
 
 ## Done
 

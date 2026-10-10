@@ -206,7 +206,8 @@ class HarnessRequestTest {
     assertEquals(1_200.0, request.releaseMmPerSecond)
     assertEquals("20d20-release1200", request.label)
     val spec = request.plan().specFor(0)
-    assertEquals(Release(direction = null, speedMmPerSecond = 1_200.0), spec.release)
+    assertTrue(spec.toss)
+    assertEquals(HandStroke.of(1_200.0, spec.seed), spec.shake)
   }
 
   @Test
@@ -214,7 +215,14 @@ class HarnessRequestTest {
     val request = requireNotNull(HarnessRequest.from(arguments("3")))
 
     assertNull(request.releaseMmPerSecond)
-    assertNull(request.plan().specFor(0).release)
+    assertFalse(request.plan().specFor(0).toss)
+    assertTrue(
+      request
+        .plan()
+        .specFor(0)
+        .shake
+        .isEmpty(),
+    )
   }
 
   @Test

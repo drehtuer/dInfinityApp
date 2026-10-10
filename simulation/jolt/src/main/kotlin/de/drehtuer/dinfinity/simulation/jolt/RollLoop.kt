@@ -7,6 +7,7 @@ import de.drehtuer.dinfinity.simulation.api.DieDiagnostic
 import de.drehtuer.dinfinity.simulation.api.FaceReader
 import de.drehtuer.dinfinity.simulation.api.Impact
 import de.drehtuer.dinfinity.simulation.api.Reading
+import de.drehtuer.dinfinity.simulation.api.Release
 import de.drehtuer.dinfinity.simulation.api.RestTracker
 import de.drehtuer.dinfinity.simulation.api.RestingPlace
 import de.drehtuer.dinfinity.simulation.api.RollDiagnostics
@@ -331,6 +332,13 @@ class RollLoop(
 
     val step = tracker.stepsTaken
     shake.advance(step)
+    // The hand lets go: every die is tossed from where the shake left it
+    // ([Toss.from]). Every die, because every die is still in the hand — none
+    // is read before the table has settled and the hand is off it ([count]).
+    if (shake.lettingGo(step)) {
+      Toss.from(world, states, Release.of(shake.recordedUpTo(step)), spec.seed)
+      tossed++
+    }
     world.setGravity(shake.gravity)
     world.step(SettleRule.TIMESTEP_SECONDS)
 
@@ -349,6 +357,10 @@ class RollLoop(
     }
     return true
   }
+
+  /** How many times the hand has let go of these dice: a reading, for tests and the harness. */
+  var tossed: Int = 0
+    private set
 
   /**
    * Gives the roll up, and says there is nothing more to step.

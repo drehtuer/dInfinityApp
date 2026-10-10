@@ -30,7 +30,6 @@ import de.drehtuer.dinfinity.simulation.api.CapacityVerdict
 import de.drehtuer.dinfinity.simulation.api.ClearSpace
 import de.drehtuer.dinfinity.simulation.api.DieAtRest
 import de.drehtuer.dinfinity.simulation.api.Passes
-import de.drehtuer.dinfinity.simulation.api.Release
 import de.drehtuer.dinfinity.simulation.api.Seeds
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
@@ -400,13 +399,8 @@ class RollMachine(
    * rather than a hang (`docs/tables.md`).
    *
    * @param shake the recorded motion of the phone, or empty for a tap.
-   * @param release how the hand let the dice go, which goes into the record
-   *   with the throw so the record replays it (decision 103).
    */
-  fun throwDice(
-    shake: List<ShakeSample> = emptyList(),
-    release: Release? = null,
-  ): ThrowSpec? {
+  fun throwDice(shake: List<ShakeSample> = emptyList()): ThrowSpec? {
     val ready = prepared ?: return null
     prepared = null
     // A new throw is not the continuation of the last one's chain. The dice a
@@ -421,7 +415,8 @@ class RollMachine(
         seed = seeds(),
         dieScale = ready.scale,
         shake = shake,
-        release = release,
+        // Thrown by a shake, so tossed when the hand lets go (decision 103).
+        toss = true,
       )
     inFlight = InFlight(ready, spec).also { it.rounding = defaultRounding }
     state = RollState.Rolling(ready.diceCount)
@@ -864,6 +859,7 @@ class RollMachine(
         dieScale = flight.prepared.scale,
         shake = shake,
         among = flight.down.toList(),
+        toss = true,
       )
     flight.picking = indices
     flight.round = Passes(spec)
@@ -962,6 +958,7 @@ class RollMachine(
         seed = Seeds.derived(flight.spec.seed, flight.added.size + 1),
         dieScale = flight.prepared.scale,
         among = flight.down.toList(),
+        toss = true,
       )
     flight.adding = spec.dice
     // The round is this throw from the moment it is owed, so whatever lands

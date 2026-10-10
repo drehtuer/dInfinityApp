@@ -18,7 +18,6 @@ import de.drehtuer.dinfinity.render.headless.Rolls
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
 import de.drehtuer.dinfinity.simulation.api.Impact
 import de.drehtuer.dinfinity.simulation.api.Quaternion
-import de.drehtuer.dinfinity.simulation.api.Release
 import de.drehtuer.dinfinity.simulation.api.RestingPlace
 import de.drehtuer.dinfinity.simulation.api.SettleRule
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
@@ -607,10 +606,11 @@ class RollPresenterTest {
   }
 
   @Test
-  fun `the hand's release goes with the throw, ready to replay it`() {
-    // The dice leave the hand when the shake is over (decision 103), so what
-    // rolls them again is the release the throw went out with — and nothing
-    // the sensors said afterwards, which reaches no die.
+  fun `the shake that threw the dice goes with the throw, ready to replay it`() {
+    // The throw went out with an empty shake — the dice are spawned when the
+    // shake is confirmed — and the sensors reported into it while it ran. What
+    // is handed over has to be the two joined back together, because only that
+    // rolls these dice again (`docs/physics-and-rendering.md`, "Shake input").
     val written = mutableListOf<FinishedThrow>()
     val rolls = RecordingRolls(faces = mapOf(0 to 5))
     val hand = hand(3)
@@ -618,14 +618,17 @@ class RollPresenterTest {
     presenter = presenter(rolls, { written += it }, DirectTray { hand.forEach(presenter::shaking) })
 
     presenter.type("1d6")
-    assertTrue(presenter.hold())
-    hand.forEach(presenter::shaking)
-    assertTrue(presenter.release())
+    presenter.roll()
 
-    val thrown = rolls.started.single()
-    assertEquals(Release.of(hand), thrown.release)
-    assertTrue("the throw was driven by a shake", thrown.shake.isEmpty())
-    assertEquals(thrown, written.single().thrown)
+    assertTrue(
+      "the throw went out already knowing its shake",
+      rolls.started
+        .single()
+        .shake
+        .isEmpty(),
+    )
+    assertEquals(hand, written.single().thrown.shake)
+    assertEquals(rolls.started.single().copy(shake = hand), written.single().thrown)
   }
 
   @Test

@@ -319,6 +319,87 @@ class ShakeDriverTest {
     assertTrue("a sample that drives nothing still counted as a shake", driver.isStill)
   }
 
+  @Test
+  fun `a hand that does not toss never lets go`() {
+    val driver = ShakeDriver(hard(0 until 10) + quiet(10 until 80))
+
+    assertTrue((0 until 80).none { step -> driver.advance(step).let { driver.lettingGo(step) } })
+  }
+
+  @Test
+  fun `a tossing hand lets go once, a moment after its last hard stroke`() {
+    val driver = ShakeDriver(hard(0 until 10) + quiet(10 until 80), tosses = true)
+
+    val letGo = (0 until 80).filter { step -> driver.advance(step).let { driver.lettingGo(step) } }
+
+    assertEquals(listOf(9 + ShakeDriver.LET_GO_STEPS), letGo)
+  }
+
+  @Test
+  fun `the still moment at the turn of a stroke is not letting go`() {
+    val pause = ShakeDriver.LET_GO_STEPS - 1
+    val driver =
+      ShakeDriver(
+        hard(0 until 10) + quiet(10 until 10 + pause) + hard(10 + pause until 20 + pause) + quiet(20 + pause until 100),
+        tosses = true,
+      )
+
+    val letGo = (0 until 100).filter { step -> driver.advance(step).let { driver.lettingGo(step) } }
+
+    assertEquals(listOf(19 + pause + ShakeDriver.LET_GO_STEPS), letGo)
+  }
+
+  @Test
+  fun `a hand that has let go drives nothing and is no longer shaking`() {
+    val driver = ShakeDriver(hard(0 until 10) + quiet(10 until 80), tosses = true)
+    val letGo = 9 + ShakeDriver.LET_GO_STEPS
+    for (step in 0..letGo) {
+      driver.advance(step)
+      driver.lettingGo(step)
+    }
+
+    driver.advance(letGo + 1)
+
+    assertEquals(ShakeDriver.DEFAULT_GRAVITY, driver.gravity)
+    assertFalse("the dice left the hand and the roll still waits on it", driver.stillShaking(letGo + 1))
+  }
+
+  @Test
+  fun `a hand that shakes hard again drives again, and lets go again`() {
+    val driver =
+      ShakeDriver(hard(0 until 10) + quiet(10 until 40) + hard(40 until 50) + quiet(50 until 100), tosses = true)
+
+    val letGo = (0 until 100).filter { step -> driver.advance(step).let { driver.lettingGo(step) } }
+    driver.advance(45)
+
+    assertEquals(listOf(9 + ShakeDriver.LET_GO_STEPS, 49 + ShakeDriver.LET_GO_STEPS), letGo)
+  }
+
+  @Test
+  fun `the hand drives again the moment it shakes hard after letting go`() {
+    val driver = ShakeDriver(hard(0 until 10) + quiet(10 until 40) + hard(40 until 50), tosses = true)
+    for (step in 0 until 40) {
+      driver.advance(step)
+      driver.lettingGo(step)
+    }
+
+    driver.advance(40)
+
+    assertTrue(driver.gravity.x < 0.0)
+    assertTrue(driver.stillShaking(40))
+  }
+
+  @Test
+  fun `a hand letting go has felt only what came before`() {
+    val driver = ShakeDriver(hard(0 until 10) + quiet(10 until 80), tosses = true)
+
+    assertEquals((0..20).toList(), driver.recordedUpTo(20).map(ShakeSample::stepIndex))
+  }
+
+  private fun hard(steps: IntRange): List<ShakeSample> = steps.map { sample(it, HARD) }
+
+  private fun quiet(steps: IntRange): List<ShakeSample> = steps.map { sample(it, QUIET) }
+
   private fun sample(
     step: Int,
     x: Double,
@@ -330,6 +411,12 @@ class ShakeDriverTest {
     )
 
   private companion object {
+    /** A hand shaking: over the detector's threshold. */
+    const val HARD = 9_000.0
+
+    /** And one coming to a stop: under it. */
+    const val QUIET = 500.0
+
     /** Long enough to be past the roll's own cap several times over. */
     const val THIRTY_SECONDS_OF_STEPS = 3_600
 

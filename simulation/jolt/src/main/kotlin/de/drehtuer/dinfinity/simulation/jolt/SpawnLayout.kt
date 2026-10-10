@@ -4,7 +4,6 @@ import de.drehtuer.dinfinity.simulation.api.ClearSpace
 import de.drehtuer.dinfinity.simulation.api.Exact
 import de.drehtuer.dinfinity.simulation.api.Placement
 import de.drehtuer.dinfinity.simulation.api.Quaternion
-import de.drehtuer.dinfinity.simulation.api.Release
 import de.drehtuer.dinfinity.simulation.api.Seeds
 import de.drehtuer.dinfinity.simulation.api.TableCapacity
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
@@ -12,7 +11,6 @@ import de.drehtuer.dinfinity.simulation.api.Vector3
 import kotlin.math.PI
 import kotlin.math.ceil
 import kotlin.math.max
-import kotlin.math.min
 import kotlin.math.sqrt
 import kotlin.random.Random
 
@@ -45,7 +43,6 @@ class SpawnLayout(
   private val dieRadiusMm: Double,
   private val seed: Long,
   private val among: List<Vector3> = emptyList(),
-  private val release: Release? = null,
 ) {
   /** Where die [index] of [count] starts, and how hard it is thrown. */
   fun placementOf(
@@ -54,7 +51,6 @@ class SpawnLayout(
   ): Placement {
     require(index in 0 until count) { "die $index is not one of $count" }
     if (among.isNotEmpty()) return addedPlacement(index)
-    if (release != null) return releasedPlacement(index, count, release)
     val random = randomFor(index, Seeds.SPAWN)
     val grid = Grid.covering(count, geometry, dieRadiusMm)
     val cell = grid.cellOf(index)
@@ -103,80 +99,6 @@ class SpawnLayout(
   private fun lateralFor(count: Int): Double {
     val full = (count.toDouble() / TableCapacity.MAX_DICE).coerceIn(0.0, 1.0)
     return THROW_LATERAL_MM_PER_SECOND * (1.0 - (1.0 - CROWDED_SHARE) * full)
-  }
-
-  /**
-   * Where die [index] of [count] leaves a hand that let go of the dice with
-   * [release] (`docs/physics-and-rendering.md`, "Starting a roll").
-   *
-   * **Together, from one side, all one way.** A hand holds its dice in a
-   * clump, so they start in one ([Hand]) on the side of the tray the throw
-   * comes from, [RELEASE_HEIGHT_MM] up — high enough that the landing is a
-   * bounce rather than a drop. Each is thrown along the release's direction
-   * turned by up to [AIM_SPREAD_RADIANS] and at its speed give or take
-   * [SPEED_SPREAD], tapered for a crowded tray as the grid throw is
-   * ([lateralFor]), with the same spin a throw has always had. A tray too
-   * full for a clump deals the dice onto the grid instead, all thrown the
-   * same way.
-   */
-  private fun releasedPlacement(
-    index: Int,
-    count: Int,
-    release: Release,
-  ): Placement {
-    val random = randomFor(index, Seeds.SPAWN)
-    val direction = release.direction ?: aimless()
-    val hand = Hand.of(count, geometry, dieRadiusMm, direction)
-    val spot = hand?.spotOf(index) ?: Grid.covering(count, geometry, dieRadiusMm).cellOf(index)
-    val speed =
-      release.speedMmPerSecond * lateralFor(count) / THROW_LATERAL_MM_PER_SECOND *
-        random.nextDouble(1 - SPEED_SPREAD, 1 + SPEED_SPREAD)
-    val heading = turned(direction, random.nextDouble(-AIM_SPREAD_RADIANS, AIM_SPREAD_RADIANS))
-    return Placement(
-      position =
-        Vector3(
-          x = spot.centreX + jitter(random, spot.jitterX),
-          y = spot.centreY + jitter(random, spot.jitterY),
-          z = releaseHeightMm(spot.layer, stacked = hand == null) + random.nextDouble(0.0, HEIGHT_JITTER_MM),
-        ),
-      rotation = randomRotation(random),
-      linearVelocity =
-        heading * speed +
-          Vector3(0.0, 0.0, -random.nextDouble(RELEASE_DOWN_MIN_MM_PER_SECOND, RELEASE_DOWN_MAX_MM_PER_SECOND)),
-      angularVelocity = randomSpin(random, SPAWN_SPIN_RADIANS_PER_SECOND),
-    )
-  }
-
-  /** The way a hand with no direction of its own throws: one for the whole throw, from the seed. */
-  private fun aimless(): Vector3 {
-    val angle = randomFor(0, Seeds.RELEASE).nextDouble() * 2 * PI
-    return Vector3(Exact.cos(angle), Exact.sin(angle), 0.0)
-  }
-
-  private fun turned(
-    direction: Vector3,
-    radians: Double,
-  ): Vector3 {
-    val cos = Exact.cos(radians)
-    val sin = Exact.sin(radians)
-    return Vector3(direction.x * cos - direction.y * sin, direction.x * sin + direction.y * cos, 0.0)
-  }
-
-  /**
-   * How high a die leaves the hand: [RELEASE_HEIGHT_MM] over its own radius,
-   * under the lid. A tray too full for a clump deals the dice onto the grid in
-   * [layer]s ([stacked]), and then the whole stack is lowered — not squashed —
-   * until its top band fits, because two bands pressed to one height are dice
-   * started inside each other.
-   */
-  private fun releaseHeightMm(
-    layer: Int,
-    stacked: Boolean,
-  ): Double {
-    val highest = geometry.ceilingHeightMm - dieRadiusMm - HEIGHT_JITTER_MM - ClearSpace.CLEARANCE_MM
-    if (!stacked) return min(RELEASE_HEIGHT_MM + dieRadiusMm, highest)
-    val band = 2 * dieRadiusMm + LAYER_GAP_MM
-    return min(RELEASE_HEIGHT_MM + dieRadiusMm, highest - (HEIGHT_BANDS - 1) * band) + layer * band
   }
 
   /** Where each die of an added round was put, filled in as they are asked for. */
@@ -304,66 +226,6 @@ class SpawnLayout(
     return Vector3(ring * Exact.cos(angle), ring * Exact.sin(angle), z)
   }
 
-  /**
-   * The clump a hand holds its dice in: cells [HAND_GAP_MM] apart at the
-   * edge, as square as the tray's short side allows, pushed back from the
-   * middle of the tray against the throw so the dice have the floor to cross.
-   */
-  internal data class Hand(
-    val columns: Int,
-    val spacing: Double,
-    val originX: Double,
-    val originY: Double,
-    val radiusMm: Double,
-  ) {
-    fun spotOf(index: Int): Cell {
-      val column = index % columns
-      val row = index / columns
-      return Cell(
-        centreX = originX + (column + HALF) * spacing,
-        centreY = originY + (row + HALF) * spacing,
-        jitterX = spacing / 2 - radiusMm,
-        jitterY = spacing / 2 - radiusMm,
-        // One height: the cells are a whole die apart already, and a hand
-        // lets its dice go together rather than in tiers.
-        layer = 0,
-      )
-    }
-
-    companion object {
-      /** The clump for [count] dice thrown along [direction], or null when the tray cannot hold one. */
-      fun of(
-        count: Int,
-        geometry: TableGeometry,
-        radiusMm: Double,
-        direction: Vector3,
-      ): Hand? {
-        val spacing = 2 * radiusMm + HAND_GAP_MM
-        // As square as it can be, and longer along the tray once the short
-        // side has no room for another row.
-        val across = ((geometry.shortSideMm - 2 * WALL_CLEARANCE_MM) / spacing).toInt()
-        if (across < 1) return null
-        val rows = min(ceil(sqrt(count.toDouble())).toInt(), across)
-        val columns = ceil(count.toDouble() / rows).toInt()
-        val width = columns * spacing
-        val height = rows * spacing
-        val margin = WALL_CLEARANCE_MM
-        val roomX = geometry.longSideMm / 2 - margin - width / 2
-        val roomY = geometry.shortSideMm / 2 - margin - height / 2
-        if (roomX < 0 || roomY < 0) return null
-        val centreX = -direction.x * roomX
-        val centreY = -direction.y * roomY
-        return Hand(
-          columns = columns,
-          spacing = spacing,
-          originX = centreX - width / 2,
-          originY = centreY - height / 2,
-          radiusMm = radiusMm,
-        )
-      }
-    }
-  }
-
   /** One die's share of the floor, and which height band it starts in. */
   internal data class Cell(
     val centreX: Double,
@@ -440,30 +302,6 @@ class SpawnLayout(
      * (`Tumble`, `docs/physics-and-rendering.md`).
      */
     const val DROP_HEIGHT_MM: Double = 60.0
-
-    /**
-     * How high above the floor a die leaves the hand (over its own radius),
-     * for a throw released when the shake is over ([Release]). Twice the grid
-     * throw's: a hand lets go of dice well above a table, and the landing is
-     * then fast enough to bounce. A first guess, to be set from the owner's
-     * recorded throws (`docs/TODO.md`, Step 5.8).
-     */
-    const val RELEASE_HEIGHT_MM: Double = 120.0
-
-    /** How far apart the dice in a hand are, past touching. */
-    const val HAND_GAP_MM: Double = 6.0
-
-    /** How far either side of the release's direction a die may be thrown, in radians (about 17°). */
-    const val AIM_SPREAD_RADIANS: Double = 0.3
-
-    /** How much faster or slower than the release a die may leave, as a share of it. */
-    const val SPEED_SPREAD: Double = 0.15
-
-    /** The least a released die is thrown down: a hand throws dice down onto a table, not up. */
-    const val RELEASE_DOWN_MIN_MM_PER_SECOND: Double = 100.0
-
-    /** And the most. */
-    const val RELEASE_DOWN_MAX_MM_PER_SECOND: Double = 400.0
 
     /**
      * And how much higher each band above it is — enough that two dice in

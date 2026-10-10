@@ -1,22 +1,20 @@
 package de.drehtuer.dinfinity.simulation.api
 
 import kotlin.math.abs
-import kotlin.math.hypot
 
 /**
  * How the hand let the dice go: which way across the tray, and how fast
- * (`docs/physics-and-rendering.md`, "Starting a roll"; `docs/architecture.md`,
+ * (`docs/physics-and-rendering.md`, "The hand lets go"; `docs/architecture.md`,
  * decision 103).
  *
- * The dice are not in the tray while the phone is being shaken: they are in
- * the hand, and the throw is what happens when the hand stops. Everything
- * after that is the solver's — flight, landing, bounces, the tumble — with
- * nothing but gravity on the dice, which is what a real throw is and what the
- * harness has always measured. Before this, the dice were spawned when the
- * shake began and hauled about by it, and stopped almost as the hand did.
+ * The dice are shaken in the tray, in sight, as they always were; when the
+ * hand stops, it tosses them the way its last stroke went. Everything after
+ * that is the solver's — flight, landing, bounces, the tumble — with nothing
+ * but gravity on the dice. Before the toss, a shake's last stroke braked the
+ * dice into a wall or each other and they stopped almost as the hand did.
  *
- * It says nothing about a face. It decides where the dice start and how hard
- * they are thrown, the way a hand does, and the physics decides the rest.
+ * It says nothing about a face. It decides how hard and which way the dice
+ * are thrown, the way a hand does, and the physics decides the rest.
  *
  * @param direction which way the dice are thrown, a unit vector along the
  *   floor; null when the hand moved no way in particular, and the throw's own
@@ -111,11 +109,9 @@ data class Release(
 
     /** The last moment the hand was still shaking rather than coming to a stop. */
     private fun lastActive(moments: List<ShakeSample>): Int {
-      val active = moments.indexOfLast { it.accelerationMmPerSecond2.horizontal() >= ACTIVE_MM_PER_SECOND2 }
+      val active = moments.indexOfLast { it.accelerationMmPerSecond2.length >= ACTIVE_MM_PER_SECOND2 }
       return if (active >= 0) active else moments.lastIndex
     }
-
-    private fun Vector3.horizontal(): Double = hypot(x, y)
 
     /** The simulation's steps per second, which is what a sample's step counts in. */
     private const val STEPS_PER_SECOND: Int = 120
@@ -128,9 +124,9 @@ data class Release(
     const val LAST_STROKE_SECONDS: Double = 0.35
 
     /**
-     * How hard a moment along the floor has to be to count as shaking — the
-     * shake detector's own start threshold (`ShakeThresholds`, 0.6 g), so the
-     * end of the shake here is where the detector heard one.
+     * How hard a moment has to be to count as shaking — the shake detector's
+     * own start threshold (`ShakeThresholds`, 0.6 g), so the end of the shake
+     * here is where the detector heard one.
      */
     const val ACTIVE_MM_PER_SECOND2: Double = 6_000.0
 
