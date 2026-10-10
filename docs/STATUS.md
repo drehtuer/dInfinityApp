@@ -57,7 +57,10 @@ This is a snapshot, not a changelog — git history is the changelog.
   Four sample sets to install — marble (artwork on every face, numbers cut
   in by the app's own printing), steel, green resin and red glass — are in
   `sample-sets/`, as folders and zips, each installed by a test on every
-  build.
+  build. The designer's ink now reaches the tray in its own colour: the
+  dice material multiplied artwork by the body colour and read the atlas as
+  linear, so yellow pips on a black die were black (decision 101; a device
+  test fails by 127 levels without the fix).
   It reaches `main` when the owner likes it on the phone.
 
 ## Done
@@ -129,6 +132,10 @@ of it in `docs/TODO.md` (4.1 and 5.6). The most useful three:
   to the worst-face bound (0.389 % against 1 %).
 - **The capacity rule barely bites**: the 100-body cap refuses long before the
   table's floor would (~241 dice).
+- **The emulator can no longer read a frame back.** Every
+  `render/filament` test that reads pixels aborts there with Filament's
+  `blitLow` program failing to compile (seen 2026-10-10); the phone runs them.
+  `docs/TODO.md`, Step 2.
 - Determinism holds across both ABIs; unproven across devices of one ABI.
 - **Coverage:** branch ~75.4 % against a floor of 62, function ~92.8 % against
   85, after a pass that pruned about forty redundant tests and added two

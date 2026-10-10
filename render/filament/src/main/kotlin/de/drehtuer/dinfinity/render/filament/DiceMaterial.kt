@@ -35,9 +35,14 @@ object DiceMaterial {
    * left out of the number field ([PrintedDice]; `docs/dice-sets.md`,
    * "Labels, and the artwork over them").
    *
-   * Where the artwork *is* opaque the result is the old one exactly —
-   * `baseColor * atlas` — which is what keeps a table's floor texture tinted
-   * by its floor colour (`docs/tables.md`, "Table looks").
+   * **Where the artwork is opaque it is the artwork's colour, not a tint of
+   * the body.** It used to be `baseColor * atlas`, from when a table's floor
+   * picture went through this material and had to be tinted by its floor
+   * colour; tables have their own material now ([TABLE_SOURCE]), and on a die
+   * the multiply turned yellow pips on a black die black and red numbers on
+   * a blue die nearly so — the face designer's colour never reached the tray
+   * (`docs/face-designer.md`, "Material, colour and edges"). The atlas is
+   * uploaded as sRGB, so `art.rgb` is linear here, as `base.rgb` is.
    */
   private const val SURFACE: String = """
         void material(inout MaterialInputs material) {
@@ -65,7 +70,7 @@ object DiceMaterial {
                 // Straight alpha, uploaded unpremultiplied on purpose: a cell
                 // an author left clear is a cell the label shows through.
                 vec4 art = texture(materialParams_atlas, getUV0());
-                colour = mix(body, base.rgb * art.rgb, art.a);
+                colour = mix(body, art.rgb, art.a);
                 printed = max(printed, art.a);
             }
             material.baseColor = vec4(colour, 1.0);

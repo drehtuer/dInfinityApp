@@ -887,6 +887,18 @@ built-in near-black on a light body and white on a dark one (`PaperInk`) —
 because a black die printed in black is a die nobody can read. The guide under
 the drawing follows the same rule ("The guide").
 
+**The ink reaches the tray as it was drawn.** Pips, numerals, strokes and
+fills are painted into the atlas in their own colours and the tray lays them
+over the body in those colours: yellow eyes on a black die are yellow on the
+tray. They used to be multiplied by the body colour on the way and read as if
+they were linear light, so on a black die every mark came out black and on any
+die every colour came out paler than chosen (`docs/physics-and-rendering.md`,
+"Rendering (normal mode)"; decision 101). Two tests now hold the path:
+`DesignedColoursReachThePackageTest` follows an ink from the drawing through
+the painter, the package and the validator to the decoded pixels and the die's
+colour, and `AtlasTextureTest` holds what the renderer then draws to a die of
+that ink's colour, on a device.
+
 **Edges** is a slider from 1.5 % to 6 % of the die's size in steps of half a
 per cent — the range a set file may ask for, measured on the Pixel 10a: past
 6 % a coin starts to roll on its rim and throws stop settling

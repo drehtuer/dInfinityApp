@@ -467,7 +467,10 @@ software backend (SwiftShader, feature level 1) that blit never reaches a
 readable headless swap chain: every pixel comes back opaque black while the
 same scene draws correctly on the Pixel 10a. Reading the frame before the post
 pass asks the question the test is for — was anything drawn — on both tiers
-rather than on one. A headless swap chain also has to be created with
+rather than on one. **As of 2026-10-10 that is the phone's alone again:** on
+the emulator the readback now aborts the test process, Filament's `blitLow`
+program failing to compile on SwiftShader, so run the pixel tests on the phone
+until `docs/TODO.md` (Step 2) is done. A headless swap chain also has to be created with
 `CONFIG_READABLE`; without it a real driver may hand the pixels over anyway,
 which is how that would have shipped unnoticed.
 

@@ -2428,12 +2428,18 @@ impact sounds rather than a crash in the middle of a roll.
   "Table looks"; `docs/TODO.md`, After v1).
 - **The artwork is composited, not multiplied.** The body colour is worked out
   first, with the die's printed label mixed into it, and the atlas is then laid
-  over that by its own alpha. Where the artwork is opaque the result is
-  `baseColor × atlas`, which is what it always was and what keeps a table's
-  floor tinted by its floor colour; where the author left the cell clear the
-  body shows through. A multiply could not do the second half — multiplying by
-  a transparent pixel gives black, not the die (`docs/dice-sets.md`,
-  "Textures").
+  over that by its own alpha. Where the artwork is opaque the face is **the
+  artwork's colour**; where the author left the cell clear the body shows
+  through (`docs/dice-sets.md`, "Textures"). Until decision 101 an opaque pixel
+  came out as `baseColor × atlas`, kept from when a table's floor picture went
+  through this material; tables have their own now, and on a die the multiply
+  drew yellow pips on a black die black — the face designer's ink never
+  reached the tray. `AtlasTextureTest` holds a black die wearing an opaque red
+  atlas to the frame a red die draws.
+- **The atlas is uploaded as sRGB**, like a table's colour picture and for the
+  same reason: its pixels are sRGB, and the body colour they are mixed with
+  has already been made linear. Read as linear, an ink of `#C01010` was 75 %
+  red rather than 52 % and every drawing came to the tray paler than drawn.
 - **A die's artwork is decoded once per package and destroyed with the
   engine**, not with a surface or a throw. Filament hands out native handles,
   so an atlas re-uploaded on every rotation is a leak the JVM cannot see. Which

@@ -21,6 +21,13 @@ Done apart from boxes that wait on other projects; none blocks anything.
 - [ ] *Optional:* a `DEPENDABOT_METADATA_TOKEN` secret, so the metadata commit
       starts the checks without the *Approve workflows to run* banner
       (`docs/build-setup.md`)
+- [ ] **The emulator's readback aborts.** Every `render/filament` device test
+  that reads a frame back (`AtlasTextureTest`, `PrintedNumbersDeviceTest`, …)
+  kills the test process on the container's emulator: Filament's `blitLow`
+  program does not compile on SwiftShader (`cannot convert from 'float' to
+  'out mediump 4-component vector'`). The Pixel 10a passes them. Find which
+  change brought it (Filament 1.76.1, the emulator image, or the room light)
+  and either fix it or skip those tests on the emulator by name.
 - [ ] Drop `VerifyDeviceTestResultsTask` and `ignoreFailures` on
       `connectedDebugAndroidTest` once AGP stops failing runs on devices whose
       adb serial contains a colon (`docs/build-setup.md`)
