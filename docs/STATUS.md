@@ -4,7 +4,7 @@ Current state of the project in a few lines. Update it when a milestone moves, a
 decision is taken or something is blocked; prune anything no longer current.
 This is a snapshot, not a changelog — git history is the changelog.
 
-**Last updated:** 2026-10-10
+**Last updated:** 2026-10-11
 
 ## Where we are
 
@@ -63,6 +63,10 @@ This is a snapshot, not a changelog — git history is the changelog.
   test fails by 127 levels without the fix). The Material step has an
   Opacity slider, glass to solid in five per cents, over the same
   `translucency` the menu sets (decision 102); seen on the Pixel 10a.
+  Dice no longer blink at some angles: the lacquer mirrored the sizeless
+  key light over a whole face for a frame, and is rougher now (0.4, decision
+  103; a device test fails by 50 % of a face at the old 0.12) — the owner
+  to judge whether they still look varnished.
   It reaches `main` when the owner likes it on the phone.
 
 ## Done
