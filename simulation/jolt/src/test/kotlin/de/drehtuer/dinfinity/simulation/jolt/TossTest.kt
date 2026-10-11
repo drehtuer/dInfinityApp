@@ -2,6 +2,7 @@ package de.drehtuer.dinfinity.simulation.jolt
 
 import de.drehtuer.dinfinity.simulation.api.Release
 import de.drehtuer.dinfinity.simulation.api.TableCapacity
+import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.Vector3
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
@@ -67,6 +68,67 @@ class TossTest {
   fun `the same release, seed and die toss the same way`() {
     assertEquals(Toss.of(ALONG, SEED, 2, COUNT), Toss.of(ALONG, SEED, 2, COUNT))
     assertNotEquals(Toss.of(ALONG, SEED, 2, COUNT), Toss.of(ALONG, SEED + 1, 2, COUNT))
+  }
+
+  @Test
+  fun `a die already sliding is tossed on the way it is going, not turned round`() {
+    val sliding = Vector3(0.0, -1_500.0, 0.0)
+
+    val (linear, _) = Toss.of(ALONG, SEED, 0, COUNT, sliding)
+
+    val along = Vector3(linear.x, linear.y, 0.0)
+    assertTrue(
+      "a sliding die was turned to the hand's stroke",
+      along.normalised() dot Vector3(0.0, -1.0, 0.0) >= cos(Toss.AIM_SPREAD_RADIANS) - 1e-9,
+    )
+    assertTrue("a toss slowed a die down", along.length >= sliding.length * (1 - Toss.SPEED_SPREAD) - 1e-9)
+  }
+
+  @Test
+  fun `a die barely moving takes the hand's direction`() {
+    val (linear, _) = Toss.of(ALONG, SEED, 0, COUNT, Vector3(0.0, Toss.ONWARD_MM_PER_SECOND / 2, 0.0))
+
+    assertTrue(linear.x / Vector3(linear.x, linear.y, 0.0).length >= cos(Toss.AIM_SPREAD_RADIANS) - 1e-9)
+  }
+
+  @Test
+  fun `a die against a wall is never tossed into it`() {
+    val tray = TableGeometry.referenceDevice()
+    val atTheEnd = Vector3(tray.longSideMm / 2 - 10.0, 0.0, 8.0)
+
+    repeat(COUNT) { index ->
+      val (linear, _) = Toss.of(ALONG, SEED, index, COUNT, position = atTheEnd, tray = tray)
+      assertTrue("die $index was tossed into the end wall it lay against", linear.x < 0.0)
+    }
+  }
+
+  @Test
+  fun `a die in the open is tossed the way the hand went, walls or no walls`() {
+    val tray = TableGeometry.referenceDevice()
+
+    val (inTheOpen, _) = Toss.of(ALONG, SEED, 0, COUNT, position = Vector3(0.0, 0.0, 8.0), tray = tray)
+
+    assertEquals(Toss.of(ALONG, SEED, 0, COUNT).first, inTheOpen)
+  }
+
+  @Test
+  fun `off the walls turns back only what points at a wall that is near`() {
+    val tray = TableGeometry.referenceDevice()
+    val corner = Vector3(tray.longSideMm / 2 - 5.0, tray.shortSideMm / 2 - 5.0, 8.0)
+
+    assertEquals(Vector3(-0.6, -0.8, 0.0), Toss.offTheWalls(Vector3(0.6, 0.8, 0.0), corner, tray))
+    val nearTheBottom = Vector3(0.0, -tray.shortSideMm / 2 + 5.0, 8.0)
+    assertEquals(Vector3(0.6, 0.8, 0.0), Toss.offTheWalls(Vector3(0.6, -0.8, 0.0), nearTheBottom, tray))
+    assertEquals(Vector3(0.6, 0.8, 0.0), Toss.offTheWalls(Vector3(0.6, 0.8, 0.0), nearTheBottom, tray))
+  }
+
+  @Test
+  fun `the dice leave the hand within a tenth of a second, each when its seed says`() {
+    val delays = List(COUNT * 4) { Toss.delayOf(SEED, it) }
+
+    assertTrue(delays.all { it in 0..Toss.STAGGER_STEPS })
+    assertTrue("every die left on the same step", delays.toSet().size > 1)
+    assertEquals(Toss.delayOf(SEED, 3), Toss.delayOf(SEED, 3))
   }
 
   @Test

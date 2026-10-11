@@ -436,6 +436,12 @@ finds it better than the main line; no release for it before then.
   `ShakeDriver.LET_GO_STEPS` and `Toss`'s lift and spreads against the owner's
   slow-motion recordings of real throws (every shape, from straight above,
   with a scale in frame), and re-run `tools/harness.sh --release`.
+- [ ] **Shaking along the phone's length (y) still jumps now and then.** x and
+  z are fixed (owner, on the Pixel 10a). On y the let-go now comes at the
+  right moment and once per throw, and dice against a wall are tossed away
+  from it, yet a hop still shows on some shakes and not others. Next: record
+  a run with the full shake record logged per roll and line the hop up with
+  the frames.
 - [ ] Toss a crowded throw gentler: twenty d20 tossed one way are re-thrown
   3.9 % of the time against 1.2 %.
 - [ ] Score the turns *after the hand lets go*: the harness counts from the

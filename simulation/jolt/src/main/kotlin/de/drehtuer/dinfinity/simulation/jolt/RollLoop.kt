@@ -16,6 +16,7 @@ import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Tumble
+import de.drehtuer.dinfinity.simulation.api.Vector3
 
 /**
  * One throw, from the first step to the reading
@@ -332,17 +333,27 @@ class RollLoop(
 
     val step = tracker.stepsTaken
     shake.advance(step)
-    // The hand lets go: every die is tossed from where the shake left it
-    // ([Toss.from]). Every die, because every die is still in the hand — none
-    // is read before the table has settled and the hand is off it ([count]).
+    // The hand lets go: every die is tossed from where the shake left it, one
+    // after another over a tenth of a second ([Toss]). Every die, because
+    // every die is still in the hand — none is read before the table has
+    // settled and the hand is off it ([count]).
     if (shake.lettingGo(step)) {
-      Toss.from(world, states, Release.of(shake.recordedUpTo(step)), spec.seed)
+      handful.letGo(Release.of(shake.recordedUpTo(step)), step)
       tossed++
     }
+    handful.step(step, states, moving, handOn = shake.stillShaking(step))
     world.setGravity(shake.gravity)
     world.step(SettleRule.TIMESTEP_SECONDS)
 
+    val before = states
     states = world.readStates()
+    // How each die is moving, from where it was a step ago: what a toss
+    // carries it on along ([Toss]), and nothing else reads it.
+    moving =
+      states.mapIndexed { index, state ->
+        before.getOrNull(index)?.let { (state.position - it.position) * (1.0 / SettleRule.TIMESTEP_SECONDS) }
+          ?: Vector3.Zero
+      }
     // Listened to before anything is decided, and from the states that were
     // already read: an impact is a reading of the step just taken, not a thing
     // the step waits for.
@@ -357,6 +368,12 @@ class RollLoop(
     }
     return true
   }
+
+  /** How each die moved over the last step, in mm/s. */
+  private var moving: List<Vector3> = emptyList()
+
+  /** The dice leaving the hand, one after another ([Toss.Handful]). */
+  private val handful = Toss.Handful(world, diceCount, spec.seed, spec.geometry)
 
   /** How many times the hand has let go of these dice: a reading, for tests and the harness. */
   var tossed: Int = 0

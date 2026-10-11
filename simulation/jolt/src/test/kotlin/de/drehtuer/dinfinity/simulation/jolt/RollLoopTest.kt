@@ -441,7 +441,11 @@ class RollLoopTest {
     repeat(STROKE_STEPS + QUIET_STEPS) { loop.advance() }
 
     val letGo = STROKE_STEPS - 1 + ShakeDriver.LET_GO_STEPS
-    assertEquals(listOf(letGo to 0, letGo to 1), world.respawns)
+    assertEquals(
+      "each die leaves the hand once, on its own step",
+      listOf(0, 1).map { letGo + Toss.delayOf(42L, it) to it }.sortedBy { it.first },
+      world.respawns.sortedBy { it.first },
+    )
     assertEquals(1, loop.tossed)
     world.respawnPlacements.forEach { placement ->
       assertEquals("a toss moved a die", FakeWorld.tumbling().position, placement.position)
@@ -474,6 +478,25 @@ class RollLoopTest {
     }
 
     assertEquals(one.respawnPlacements, again.respawnPlacements)
+  }
+
+  @Test
+  fun `a handful leaves the hand over a moment, not on one step`() {
+    val world = FakeWorld(DICE_IN_A_HANDFUL) { _, _, _ -> FakeWorld.tumbling() }
+    val loop = loop(List(DICE_IN_A_HANDFUL) { StandardDice.d6 }, world, stroke(), toss = true)
+
+    repeat(STROKE_STEPS + QUIET_STEPS) { loop.advance() }
+
+    val steps = world.respawns.map { it.first }
+    assertEquals(
+      DICE_IN_A_HANDFUL,
+      world.respawns
+        .map { it.second }
+        .toSet()
+        .size,
+    )
+    assertTrue("a handful left the hand on one step", steps.toSet().size > 1)
+    assertTrue("the last die left long after the first", steps.max() - steps.min() <= Toss.STAGGER_STEPS)
   }
 
   @Test
@@ -538,11 +561,14 @@ class RollLoopTest {
     )
 
   private companion object {
-    /** A stroke of a shake: pushed, then braked. */
-    const val STROKE_STEPS = 20
+    /** A stroke of a shake, pushed then braked, long enough to be let go of. */
+    const val STROKE_STEPS = 48
 
-    /** And the quiet after it, past the hand letting go. */
+    /** And the quiet after it, past the hand letting go and its last die leaving. */
     const val QUIET_STEPS = 40
+
+    /** Enough dice that a stagger has room to show. */
+    const val DICE_IN_A_HANDFUL = 8
 
     /** A shake that outlasts the settle rule several times over. */
     const val SHAKE_STEPS = 200
