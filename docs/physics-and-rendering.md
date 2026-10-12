@@ -2084,9 +2084,10 @@ impact sounds rather than a crash in the middle of a roll.
   than rolling highlights off, so the exposure leaves room for it — a white
   floor facing up lands at **0.95** (`TrayLighting.WHITE_LEVEL`), what it
   receives from the key, the room and the fill worked out by
-  `TrayLighting.whiteFloorLuminance`. What reaches white is the lamp's
-  reflection in the lacquer and a pure white face turned to the key and the
-  window (1.13); the built-in set's bone resin, a felt and a table do not.
+  `TrayLighting.whiteFloorLuminance`. What reaches white is a pure white
+  face turned to the key and the window (1.13); the built-in set's bone
+  resin, a felt, a table and — since the lacquer was roughened (decision
+  103) — the lamp's reflection in a die's face do not.
   That exposure, about 2.1 × 10⁻⁵, is within a fifth of Filament's default
   (f/16, 1/125 s, ISO 100) and is reached the way a photographer would: f/16
   and 1/125 s kept, ISO 80 (`TrayLighting.sensitivity`). **Not** through
@@ -2129,9 +2130,27 @@ impact sounds rather than a crash in the middle of a roll.
   smooth at all — which is exactly what a clear coat is. Without one the only
   way to make a die shine is to make the resin itself glossy, and glossy resin
   reflects its own colour where a varnish reflects the room. The coat is not a
-  mirror either (`DIE_COAT_ROUGHNESS` is 0.12): a die has been in a bag with
+  mirror either (`DIE_COAT_ROUGHNESS` is 0.4): a die has been in a bag with
   other dice. Felt with a clear coat is a table nobody owns, so the tray has
   none, and the shader skips the whole path when there is none to apply.
+- **A face does not blink as it turns through the key light.** The key is a
+  lamp with no size, the camera looks straight down and a flat face has one
+  normal, so a polished face mirrors the lamp over the whole face at once.
+  At the coat's first roughness, 0.12, half a d6's face — and a third of a
+  dark one's — drew pure white within a few degrees of the mirror angle
+  (13° for this key), and a tumbling die turns through a few degrees in a
+  frame: the owner saw the dice "almost blink". A rougher coat spreads the
+  same reflected light over a wider cone, so the highlight swells and fades
+  over twenty degrees and its peak stays under white; 0.25 was *worse*
+  (most of the face white over more degrees), and white went away
+  between 0.3 and 0.35. 0.4 keeps a margin over that edge. Giving the lamp a
+  size instead does not work in Filament: its sun disc exists only at the
+  HIGH shader quality, and it moves the reflection *onto* the peak inside the
+  disc, which makes the white patch larger, not dimmer. The body's own
+  roughness (the built-in set's 0.1) adds nothing visible under the coat.
+  `DieGlintDeviceTest` turns a d6 and a dark d6 through the mirror angle,
+  half a degree at a time, and fails if more than 1 % of a face is blown out
+  at any tilt; at 0.12 it fails by 50 % and 34 % (decision 103).
 - **Only the dice cast a shadow.** The one shadow-casting light stands off to
   one side, so the wall and the six-millimetre band of rim on top of it threw
   a hard-edged stripe down the inside of their own felt — and a stripe down
@@ -2795,8 +2814,8 @@ is a numeral's edge (worst 0.09 on a d10, 0.30 on a d18, nought on a d12 and a
 d20; `RoundedEdgesTest`), and a bone die with *black* numbers showed a *light*
 line on the same edge. They were the lacquer's glint. A bend turns the normal
 through up to 90° in under 0.8 mm — two to four pixels of a gallery frame —
-and a coat of roughness 0.12 reflects a light from only a few of those
-degrees, so the glint is thinner than a pixel and each pixel either lands on
+and a coat as polished as it then was (0.12; 0.4 since decision 103)
+reflects a light from only a few of those degrees, so the glint is thinner than a pixel and each pixel either lands on
 it or misses it: a dashed line, nearly white against a dark resin body. Both
 dice materials are compiled with Filament's *geometric specular
 anti-aliasing* (`DiceMaterial.SPECULAR_AA_VARIANCE`, Filament's defaults),

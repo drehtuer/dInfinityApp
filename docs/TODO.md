@@ -48,6 +48,12 @@ Design `1a`–`1j`, `2a`, `3a`–`3c`, `4a`, `4b`, `6d`, `6f`, `9a`, `9c`, `1z`.
 Spec: `docs/dice-notation.md`, `docs/tables.md`,
 `docs/physics-and-rendering.md` ("What is drawn over the table").
 
+- [ ] **Show better when a shake can start** (owner, 2026-10-11). Nothing on
+      the tray says clearly that it is ready for the next throw — after a
+      roll has settled, while the board's dice are still dropping, or once a
+      formula has been typed. Decide what says "shake now" (the ready plate,
+      the shake prompt of decision 84, a haptic, the dice themselves) and
+      draw it in the prototype first.
 - [ ] **Stagger the spawn**, 85 ms between dice, the result sheet waiting
       `min(2400, 950 + (n − 1) × 85)` ms for the last landing. The prototype's
       collision shove is **not** ported: a settled die moved by code is the

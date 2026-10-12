@@ -487,9 +487,16 @@ object DiceMaterial {
    *
    * Not nought: a perfect mirror reflects the room as a hard-edged picture of
    * it, and a die is a moulded thing that has been in a bag with other dice.
-   * Low enough that the reflection is still a reflection rather than a sheen.
+   *
+   * And not much below this. The key light is a lamp with no size, so a
+   * lacquer that reflects it from only a degree or two turns a whole face
+   * white for the frame in which a tumbling die passes through that angle —
+   * the dice "blinked" at 0.12 (`DieGlintDeviceTest`, which found half a d6's
+   * face and most of a white one blown out). Anywhere from 0.35 the highlight
+   * swells and fades over twenty degrees and never reaches white; this keeps
+   * a margin over that edge.
    */
-  const val DIE_COAT_ROUGHNESS: Double = 0.12
+  const val DIE_COAT_ROUGHNESS: Double = 0.4
 
   /** And how much of one there is. A die is varnished; nothing else here is. */
   const val DIE_COAT: Double = 1.0
