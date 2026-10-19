@@ -15,7 +15,8 @@ come to rest. Rendering is a passive observer of the simulation.
 
 One right-handed system, shared by the tray, the solver and the renderer:
 **`+z` is up**, the tray's long side runs along `+x` and its short side along
-`+y`, and the origin is the middle of the floor. Distances are millimetres
+`+y`, and the origin is the middle of the floor. On the screen `+x` is up and
+`+y` is to the **left**. Distances are millimetres
 everywhere above the bridge; the solver runs in centimetres on the far side of
 it and converts in one place (decision 41).
 
@@ -3599,7 +3600,11 @@ to draw outlines over pictures that already show where the dice are. A plan says
 what the pictures cannot: which die is standing on another, which is against a
 wall, and which has not stopped yet. So nothing was added to `Stage`, and
 `TrayPlan` — the arithmetic that turns a position in millimetres into a place on
-the plan — is plain Kotlin with a JVM test (decision 56).
+the plan — is plain Kotlin with a JVM test (decision 56). The plan has the
+picture's left and right: the tray's `+y` is the screen's **left** (with `+x`
+up the screen and `+z` out of it, nowhere else is right-handed), and the test
+asks `TrayCamera` which side a point lands on rather than trusting that
+sentence. The plan once drew `+y` on the right and showed the tray mirrored.
 
 **The frame rate is measured, not estimated, and only while it is shown.**
 `TrayLoop.frame` hands the overlay the time between two frame callbacks in a
