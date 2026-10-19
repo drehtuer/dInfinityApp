@@ -129,10 +129,10 @@ class RenderedHarnessTest {
 
   /**
    * The built-in look [id] names, or the plain physics-only look when it
-   * names none (`tools/harness.sh --table`). A glossy look draws the dice a
-   * second time, for the reflection, so which table a run is on is part of
-   * what it measures (`docs/physics-and-rendering.md`, "The dice in a glossy
-   * table").
+   * names none (`tools/harness.sh --table`). A look drawn from pictures is
+   * drawn with a material of its own and samples three of them over most of
+   * the screen, so which table a run is on is part of what it measures
+   * (`docs/tables.md`, "Textures").
    */
   private fun lookOf(id: String?): TableLook =
     id?.let {

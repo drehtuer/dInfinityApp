@@ -38,15 +38,14 @@ data class ShaderTimings(
     /**
      * The Pixel 10a's figures (`docs/physics-and-rendering.md`, "Preparing the
      * dice"). The opaque and resin materials were measured there — about 2.4 s
-     * and 2 s; the glass and table ones have not been timed alone and are
-     * assumed to cost what resin does, which is the material they are closest
-     * to in size. One compile on any phone replaces the guess.
+     * and 2 s; the table one has not been timed alone and is assumed to cost
+     * what resin does, which is the material it is closest to in size. One
+     * compile on any phone replaces the guess.
      */
     val DEFAULTS: Map<DiceMaterial.Variant, Long> =
       mapOf(
         DiceMaterial.Variant.OPAQUE to 2_400L,
         DiceMaterial.Variant.RESIN to 2_000L,
-        DiceMaterial.Variant.GLASS to 2_000L,
         DiceMaterial.Variant.TABLE to 2_000L,
       )
 
@@ -57,7 +56,9 @@ data class ShaderTimings(
      * Reads what [encode] wrote. **Anything it does not understand is
      * skipped**, line by line — an unknown variant, a number that is not one, a
      * figure outside [PLAUSIBLE] — so a garbled file costs at most the figures
-     * on its garbled lines, which fall back to [DEFAULTS].
+     * on its garbled lines, which fall back to [DEFAULTS]. An unknown variant
+     * is also what a variant this app no longer has reads as: the `glass`
+     * line an earlier version wrote is skipped like any other.
      */
     fun decode(text: String): ShaderTimings {
       val byKey = DiceMaterial.Variant.entries.associateBy { it.key }

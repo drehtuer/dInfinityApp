@@ -413,9 +413,7 @@ keeps them comparable.
       the oak as warm oak — a little darker than before — and its walls as
       wood, is the felt's crinkle too strong — its normal map can be
       softened — and does it shimmer as the dice settle, and is plain
-      unchanged), the dice reflected faintly in the dark glass (93 — is the
-      reflection soft and dim enough, and does it look right that the walls
-      are not reflected). Judged with `tools/gallery.sh` before and after each
+      unchanged). Judged with `tools/gallery.sh` before and after each
       step, and merged to `main` once the owner likes it on the phone
 
 ### 5.7 Performance on the Pixel 10a
@@ -528,11 +526,6 @@ wrong answer in:
 - [ ] How should a photo sit on the tray — centre, fit width, fit height
       (`1u`)? It is drawn now (decision 92), stretched over the floor by
       `[1, 1]` tiling
-- [ ] A glossy look that also names pictures (a polished stone photograph)
-      is drawn from its pictures and shows no dice in it: pictures win over
-      the reflection (`DiceMaterial.variantOf`). Showing both needs a fifth
-      material with the table's maps and the glass's picture; build it when a
-      package asks for one
 
 ### Sets and collections
 

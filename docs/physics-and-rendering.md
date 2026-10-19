@@ -2683,8 +2683,8 @@ map giving the surface its sheen — moved to average out at the look's
 `roughness` when the look is in `color_mode = "average"`, in place of it when
 the look multiplies. Everything else — plain, a look
 whose package is gone — is drawn through the dice's opaque material exactly
-as before, and dark glass's floor through the glass material ("The dice in a
-glossy table"), so the cheapest tray is still the cheapest, and the dice's
+as before, and so is dark glass ("A glossy table"), so the cheapest tray is
+still the cheapest, and the dice's
 own materials are not touched at all: their source, their compiled packet and
 every pixel of them are what they were.
 
@@ -2823,9 +2823,9 @@ anti-aliasing* (`DiceMaterial.SPECULAR_AA_VARIANCE`, Filament's defaults),
 which raises the roughness — of the body and of the lacquer — by how fast the
 normal changes between neighbouring pixels. On a bend that spreads the glint
 into a soft, unbroken highlight; a flat face's normal does not change, so the
-faces, their numbers and the tray are drawn exactly as before. The glass
-floor has it too; the table drawn from pictures does not ("The table's
-surface"). The settings
+faces, their numbers and the tray are drawn exactly as before. A floor drawn
+in its colour alone has it too, being the dice's own opaque material; the
+table drawn from pictures does not ("The table's surface"). The settings
 are part of the material cache's key (`DiceMaterial.Variant.fingerprint`), so a
 packet compiled without them is not read back.
 
@@ -2849,105 +2849,34 @@ mesh, surface for surface, and `DieMesh.of(die, scale)` is the rounded one
 the tray draws. Nothing of the physics reads any of this — the hull, the
 radius it asks for and what Jolt makes of them are unchanged.
 
-### The dice in a glossy table
+### A glossy table
 
-A die on dark glass shows faintly in it — a bit, not a mirror: a soft,
-dim copy of the die under it that is plainly a reflection, whose numbers are
-a smudge and never compete with the real ones. Felt, oak and the plain table
-show nothing, and are drawn exactly as they were.
+**Dark glass is drawn like the plain table: one opaque surface, at its own
+roughness (0.1) and colours**, through the dice's opaque material. What a
+player sees in it is the room — the window and the lamps, sharp because the
+surface is smooth — and nothing of the dice. Its physics, its sound and its
+look in the picker are those of `docs/tables.md`, "Table looks".
 
-**Which tables reflect is read off their roughness**, not a field of its own
-(`Reflection.of`): a table rougher than **0.3** shows no die at all, and below
-it the strength rises in a straight line to one at a perfect polish. Of the
-bundled looks only `dark-glass` (0.1) is under the line, at **two-thirds**;
-felt (0.9), plain (0.8) and oak (0.75) are well over. How glossy a surface is
-*is* how much it reflects, so the table format does not grow
-(`docs/tables.md`, "Table looks"). Only the floor reflects: the walls and the
-rim take the opaque or the picture material whatever the look. **A floor
-drawn from pictures shows no dice either, however glossy**: the pictures win
-(`DiceMaterial.variantOf`), the stage then draws no picture of the dice for
-it (`DiceMaterial.reflects`), and showing both is a material of its own that
-no bundled look needs (`docs/TODO.md`, "Tables and photos").
+**There is no reflection of the dice in it.** One was built (decision 93): the
+dice drawn a second time, small, from the camera turned over in the floor, and
+the glass floor adding that picture at glass's own strength. It was withdrawn
+(decision 104) because from this app's camera there is nothing of it to see.
+The camera looks straight down — by default, and never more than the angled
+Table view's 22° off it; lower, oblique shots are ruled out — so a die's
+reflection lies directly beneath the die and is hidden by it; and glass
+looked at square on reflects about **4 %** — 2.7 % at the strength dark
+glass's roughness gave it. On the Pixel 10a the owner looked for it and saw
+none, and the render gallery shows none, while it cost a second render pass of
+the dice every frame: **11.87 ms** GPU p99 on dark glass against **11.28 ms**
+on felt at 20d20, about 0.6 ms (`tools/harness.sh --rendered`, 2026-10-19).
 
-**What is drawn is a planar reflection of the dice and nothing else.** When the
-floor is glossy, every frame draws the dice twice:
-
-```mermaid
-flowchart LR
-  shot["The camera's shot"] --> under["Turned over in the floor:<br/>a camera under it, looking up"]
-  under --> small["The dice alone, a quarter<br/>of the screen each way,<br/>no shadows, no post pass,<br/>clear where there is no die"]
-  small --> floor["The glass floor samples it<br/>where it stands on the screen,<br/>turned round across it"]
-  shot --> frame["The frame, as before"]
-  floor --> frame
-```
-
-The camera under the floor is the real one with its position, target and up
-turned over in the plane of the floor, so it sees every die along the ray the
-floor reflects — from below, through a floor it does not draw — and sees it the
-other way round across the screen, which the floor undoes when it reads the
-picture (`Reflection.mirrored`). The tray is on a layer of its own that this
-camera does not see: the line is the one the shadows already draw, **what
-casts is what the glass shows** (`Stage.add`). It is exposed exactly as the
-real camera is, so its picture is in the units the frame is lit in.
-
-**The strength is glass's own.** Where a die is reflected the floor adds the
-picture times the Fresnel term of its surface — about **4 %** looking straight
-down at a dielectric, rising at a glance, the base colour for a metal — times
-the table's strength; and it takes away the room it was reflecting there by as
-much, because the die is in front of it (`DiceMaterial.GLASS_SOURCE`). So a
-white die adds a pale patch to the glass and a dark one a darker one, as on a
-real table. Where no die is reflected the picture is clear and the floor is
-the opaque surface to the bit.
-
-**The blur is the size of the picture.** It is drawn a quarter of the screen's
-size on each side — a sixteenth of the pixels — and stretched back over the
-floor with linear filtering, which softens a die's reflection to the gloss of
-a polished table rather than the edge of a mirror, and is also most of why it
-is cheap. A reflection does not soften further with the height above the
-glass; at four per cent it does not need to.
-
-**No band along the walls, by construction.** The tray is not in the picture,
-so the floor at the foot of a wall reflects the room exactly as it did before
-— a reflected wall would lay a dark band along every side of the table, the
-same band that turning ambient occlusion off took away (above), and read the
-same way, as the rim throwing a shadow. The walls and rim reflect nothing of
-their own. The cost of that is honesty about a small
-thing: a real glass table would show the wall in it too.
-
-**Why not Filament's screen-space reflections**, which reflect what is on the
-screen and are a view option and a material flag away. Read off Filament
-1.76.1's shaders, three things stand against them here (`docs/architecture.md`,
-decision 93):
-
-- They reflect *everything on screen*, the walls included, so the band above
-  comes back.
-- The blur they take from a surface's roughness is computed in world units,
-  and this scene is in millimetres: at dark glass's roughness it comes out
-  sharp — a mirror.
-- They fade out a ray that turns back towards the camera, which is every ray
-  off a table seen from straight above — the default view — so the
-  reflection would show at the edges of the screen and not in the middle.
-
-They also need the previous frame (the first frame of a still picture has
-none) and the post pass, and cost a depth pass of the whole scene and a
-full-screen ray march over the floor every frame. The planar picture costs
-the dice drawn again, small, with no shadow pass — and nothing at all on a
-table that is not glossy.
-
-**What it costs** is measured with the rendered harness on the glass:
-`tools/harness.sh --rendered -n 10 -c 100 -s d6 --table dark-glass` against
-the same run without `--table` (Pixel 10a; not yet run). The dice are drawn
-twice and shadowed once, at a sixteenth of the pixels the second time, so
-the GPU's extra is the vertex work of the dice again and the CPU's extra is
-Filament culling and sorting them for a second view.
-
-`ReflectionDeviceTest` holds it to the device: a white d6 held above a
-polished metal floor, then above the bundled dark glass, changes at least 30 %
-of the patch of floor where its reflection has to appear — on the side away
-from its shadow and clear of the die — and the same scene on a matte floor of
-the same colours changes at most 2 % of it. What it cannot say is whether the
-reflection looks right; `tools/gallery.sh` draws `dark-glass` among its
-scenes for that.
+**Why not Filament's screen-space reflections** either, read off Filament
+1.76.1's shaders before the planar one was built: they reflect everything on
+screen, so each wall would lay a dark band along its foot; their blur is
+computed in world units and this scene is in millimetres, so it comes out
+sharp; and they fade every ray that turns back towards the camera, which from
+straight above is every ray off the table. They would show nothing in the
+middle of the screen, for a depth pass and a full-screen ray march.
 
 ### Performance, and how it is measured
 
@@ -3192,7 +3121,7 @@ gesture on every phone and for a one-line breakdown as for a twenty-die one.
 **While a dice material is being compiled, the tray says so.** The first
 launch after an install or an update compiles the opaque material before the
 first frame can be drawn — about 2.4 s of black tray on the Pixel 10a — and a
-translucent die, a dark-glass table or a table drawn from pictures compiles
+translucent die or a table drawn from pictures compiles
 one more material the first time one is shown, about two seconds in which the
 roll thread draws nothing and the dice stand still in the air. Nothing about
 either is broken, and without a word on the screen both look as if it were.
@@ -3202,7 +3131,7 @@ runs (`feature/roll`'s `PreparingTheDice`; `design/dInfinity.dc.html`, option
 `1za`):
 
 - a title naming what is being prepared, in the player's words — *the dice*,
-  *the translucent dice*, *the glass table*, *the table*;
+  *the translucent dice*, *the table*;
 - one sentence of why: the shaders are being compiled for this phone, and it
   happens once after an install or update;
 - the counting plate's 3 dp rule, filling as the compile goes;
@@ -3221,8 +3150,10 @@ The seconds are rounded up — the last one reads "1", not "0".
 `codeCacheDir`, which an update empties, and an update is exactly when the
 figure is wanted. Every compile that finishes replaces its material's figure.
 Until a phone has compiled a material once, the estimate is the Pixel 10a's:
-opaque 2.4 s and resin 2 s, measured; glass and table **assumed** at 2 s each,
-the same as resin, because neither has been timed alone. A missing,
+opaque 2.4 s and resin 2 s, measured; table **assumed** at 2 s, the same as
+resin, because it has not been timed alone. A figure an earlier version kept
+for the glass table's material, which is gone (decision 104), is skipped like
+any line the reader does not know. A missing,
 unreadable or garbled file reads as those defaults, line by line, and a figure
 under a tenth of a second or over two minutes is not a measurement of the
 compiler and is not learnt.

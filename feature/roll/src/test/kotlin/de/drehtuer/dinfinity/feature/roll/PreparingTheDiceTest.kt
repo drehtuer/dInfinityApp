@@ -128,7 +128,6 @@ class PreparingTheDiceTest {
       mapOf(
         DiceMaterial.Variant.OPAQUE to "Preparing the dice",
         DiceMaterial.Variant.RESIN to "Preparing the translucent dice",
-        DiceMaterial.Variant.GLASS to "Preparing the glass table",
         DiceMaterial.Variant.TABLE to "Preparing the table",
       ),
       titles,

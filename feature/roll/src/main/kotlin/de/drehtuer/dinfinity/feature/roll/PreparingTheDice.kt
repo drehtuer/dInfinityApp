@@ -40,11 +40,11 @@ import kotlin.math.roundToInt
  * `docs/physics-and-rendering.md`, "Preparing the dice").
  *
  * The first launch after an install or an update compiles the material for
- * this phone's driver before anything can be drawn, and a translucent die, a
- * glossy table or a table drawn from pictures compiles one more the first time
- * it is shown. Each is a few seconds of a tray that is black, or a roll that
- * stands still, for no reason the player can see — so this says what is
- * happening, why it will not happen again, and about how long is left
+ * this phone's driver before anything can be drawn, and a translucent die or
+ * a table drawn from pictures compiles one more the first time it is shown.
+ * Each is a few seconds of a tray that is black, or a roll that stands still,
+ * for no reason the player can see — so this says what is happening, why it
+ * will not happen again, and about how long is left
  * (`docs/architecture.md`, decision 95).
  *
  * The bar is an estimate ([ShaderWork.Compiling.fraction]), because the
@@ -146,7 +146,6 @@ internal fun titleOf(variant: DiceMaterial.Variant): Int =
   when (variant) {
     DiceMaterial.Variant.OPAQUE -> R.string.roll_preparing_dice
     DiceMaterial.Variant.RESIN -> R.string.roll_preparing_resin
-    DiceMaterial.Variant.GLASS -> R.string.roll_preparing_glass
     DiceMaterial.Variant.TABLE -> R.string.roll_preparing_table
   }
 

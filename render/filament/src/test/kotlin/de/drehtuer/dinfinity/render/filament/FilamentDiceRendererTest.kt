@@ -276,23 +276,13 @@ class FilamentDiceRendererTest {
   }
 
   @Test
-  fun `a glass table's floor shows the dice and its walls do not`() {
+  fun `a glass table's tray is drawn like any other, and still casts nothing`() {
     renderer.begin(spec(), geometry, look.copy(roughness = 0.1))
 
-    val floor = requireNotNull(stage.added[0].second.reflection)
-    assertEquals(Reflection.strengthOf(0.1), floor.strength, 1e-9)
-    // What the glass shows is what casts: the dice, never the tray
-    // (`Stage.add`), and the walls and rim reflect nothing of their own.
-    val reflecting = stage.added.map { it.second.reflection != null }
-    assertEquals(listOf(true) + List(reflecting.size - 1) { false }, reflecting)
+    val tray = stage.added.take(TRAY_PARTS).map { it.second }
+    assertTrue(tray.all { DiceMaterial.variantOf(it) == DiceMaterial.Variant.OPAQUE })
+    assertEquals(0.1, tray[0].roughness, 1e-9)
     assertEquals(List(TRAY_PARTS) { false }, stage.casting.take(TRAY_PARTS))
-  }
-
-  @Test
-  fun `a felt table's floor shows nothing`() {
-    renderer.begin(spec(), geometry, look)
-
-    assertTrue(stage.added.all { it.second.reflection == null })
   }
 
   @Test

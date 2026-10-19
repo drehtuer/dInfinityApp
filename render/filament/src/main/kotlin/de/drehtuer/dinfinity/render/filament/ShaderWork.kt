@@ -14,8 +14,8 @@ import kotlin.math.ceil
  * (`docs/architecture.md`, decision 46), and kept in a cache Android empties on
  * every update ([MaterialCache]) — so the first launch after an install or an
  * update spends a few seconds in `libfilamat` with nothing on the tray, and a
- * translucent die, a glossy table or a table drawn from pictures pays the same
- * again the first time one is shown. The roll screen says so while it happens
+ * translucent die or a table drawn from pictures pays the same again the
+ * first time one is shown. The roll screen says so while it happens
  * rather than leaving a black rectangle to explain itself (decision 95).
  *
  * `libfilamat` reports nothing until it is done, so how far it has got is an

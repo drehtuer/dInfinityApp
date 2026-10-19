@@ -116,20 +116,6 @@ class FilamentEngine(
    */
   val resinMaterial: Material by resin
 
-  private val glass =
-    lazy(LazyThreadSafetyMode.NONE) { loadMaterial(engine, materials, DiceMaterial.Variant.GLASS, compiling) }
-
-  /**
-   * And the floor of a table glossy enough to show the dice in it
-   * ([DiceMaterial.GLASS_SOURCE], [Reflection]).
-   *
-   * A third material rather than a parameter of the first, so that a table
-   * that reflects nothing samples nothing: felt, oak and the plain table are
-   * drawn with [material], exactly as before. Made the first time a glossy
-   * table is shown, for the reason [resinMaterial] is.
-   */
-  val glassMaterial: Material by glass
-
   private val table =
     lazy(LazyThreadSafetyMode.NONE) { loadMaterial(engine, materials, DiceMaterial.Variant.TABLE, compiling) }
 
@@ -143,12 +129,11 @@ class FilamentEngine(
    */
   val tableMaterial: Material by table
 
-  /** Which of the four [parameters] is to be drawn with. */
+  /** Which of the three [parameters] is to be drawn with. */
   fun materialFor(parameters: DiceMaterial.Parameters): Material =
     when (DiceMaterial.variantOf(parameters)) {
       DiceMaterial.Variant.OPAQUE -> material
       DiceMaterial.Variant.RESIN -> resinMaterial
-      DiceMaterial.Variant.GLASS -> glassMaterial
       DiceMaterial.Variant.TABLE -> tableMaterial
     }
 
@@ -389,7 +374,6 @@ class FilamentEngine(
     engine.destroyTexture(blank)
     engine.destroyMaterial(material)
     if (resin.isInitialized()) engine.destroyMaterial(resinMaterial)
-    if (glass.isInitialized()) engine.destroyMaterial(glassMaterial)
     if (table.isInitialized()) engine.destroyMaterial(tableMaterial)
     engine.destroy()
   }
@@ -540,7 +524,6 @@ class FilamentEngine(
               when (variant) {
                 DiceMaterial.Variant.OPAQUE -> "dinfinity"
                 DiceMaterial.Variant.RESIN -> "dinfinity-resin"
-                DiceMaterial.Variant.GLASS -> "dinfinity-glass"
                 DiceMaterial.Variant.TABLE -> "dinfinity-table"
               },
             ).material(variant.source)
@@ -556,7 +539,6 @@ class FilamentEngine(
             // opaque scene rather than by letting the blend show it.
             .blending(MaterialBuilder.BlendingMode.OPAQUE)
             .apply { if (variant == DiceMaterial.Variant.RESIN) resin() }
-            .apply { if (variant == DiceMaterial.Variant.GLASS) glass() }
             // A rounded edge's glint is thinner than a pixel, and without this
             // it is drawn as a broken white line along the edge rather than
             // spread over the bend ([DiceMaterial.SPECULAR_AA_VARIANCE]). A

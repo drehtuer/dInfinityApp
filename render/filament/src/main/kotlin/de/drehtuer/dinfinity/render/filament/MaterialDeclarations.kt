@@ -42,22 +42,9 @@ internal fun MaterialBuilder.spreadThinGlints(): MaterialBuilder =
     .specularAntiAliasingThreshold(DiceMaterial.SPECULAR_AA_THRESHOLD)
 
 /**
- * What the glass variant adds: the picture of the dice seen from under the
- * floor, and how much of it the table shows ([DiceMaterial.GLASS_SOURCE]).
- *
- * Its own picture rather than Filament's screen-space reflections, whose
- * material switch (`reflectionMode`) is left at its default: those reflect
- * the walls as well as the dice (`Reflection`).
- */
-internal fun MaterialBuilder.glass(): MaterialBuilder =
-  sampler("reflected")
-    .uniformParameter(MaterialBuilder.UniformType.FLOAT, "reflectionStrength")
-
-/**
  * What a die's surface reads beyond colour, roughness and metalness: its
  * artwork, its printed numbers and its lacquer. Declared in the order they
- * always were, so the dice compile to the packet they always did. The glass
- * floor declares them too: it is the opaque surface with the dice added.
+ * always were, so the dice compile to the packet they always did.
  */
 internal fun MaterialBuilder.diceParameters(): MaterialBuilder =
   uniformParameter(MaterialBuilder.UniformType.FLOAT, "textured")

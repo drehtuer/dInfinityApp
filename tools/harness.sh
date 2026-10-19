@@ -93,8 +93,8 @@ tools/harness.sh — run the physics harness on a device and score it.
                          the whole run
       --table <id>       with --rendered: throw onto this built-in table look
                          (felt-green, felt-black, oak, dark-glass, plain)
-                         instead of the plain physics-only one. A glossy look
-                         draws the dice twice, for their reflection
+                         instead of the plain physics-only one. A look
+                         drawn from pictures has a material of its own
       --rounding <share>  round every die's edges by this share of its size,
                          as a set file's edge_rounding would: 0.015 to 0.12
                          (default: the built-in 0.03)
@@ -120,8 +120,8 @@ Examples:
   tools/harness.sh --soak 5m               # soak mode: roll for five minutes
   tools/harness.sh --frames -n 50          # what a frame's simulation costs
   tools/harness.sh --rendered              # what a drawn frame costs (Step 5.7)
-  tools/harness.sh --rendered -n 10 -c 100 -s d6 --table dark-glass
-                                           # the same on glass, reflections and all
+  tools/harness.sh --rendered -n 10 -c 100 -s d6 --table felt-green
+                                           # the same on felt, drawn from pictures
   tools/harness.sh --capture 20            # twenty seconds of video to watch
 
 The exit code is the verdict: zero when every target was met.

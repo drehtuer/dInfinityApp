@@ -40,8 +40,8 @@ import de.drehtuer.dinfinity.simulation.api.ThrowSpec
  *   ([FrameTimes]).
  * @param table the id of the built-in table look to throw onto, or null for
  *   [PLAIN]. Only the rendered harness reads it — a look is what a frame
- *   costs to draw, and a glossy table draws the dice twice
- *   (`docs/physics-and-rendering.md`, "The dice in a glossy table"). Which
+ *   costs to draw, and a table drawn from pictures has a material of its own
+ *   (`docs/tables.md`, "Textures"). Which
  *   looks exist is the built-in package's to say, and this module does not
  *   know it, so the id travels as it was typed and is looked up on the
  *   device.
