@@ -3,6 +3,7 @@ package de.drehtuer.dinfinity.simulation.jolt
 import de.drehtuer.dinfinity.simulation.api.Release
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.Vector3
+import kotlin.math.ceil
 
 /**
  * Turns a recorded shake into the one thing the world is told each step: which
@@ -78,6 +79,13 @@ class ShakeDriver(
   /** The first and the last step a sample was hard enough to be shaking ([isShaking]). */
   private var firstActiveStep: Int = Int.MIN_VALUE
   private var lastActiveStep: Int = Int.MIN_VALUE
+
+  /**
+   * The longest this shake has gone quiet between two of its hard moments, in
+   * steps — the hand's own rhythm, which says how long a quiet must last
+   * before it is the hand stopping rather than a stroke turning ([quietToLetGo]).
+   */
+  private var longestPause: Int = 0
 
   /** The recent moments' strength, by step, for what "hard" means just now ([isShaking]). */
   private val recent: ArrayDeque<Pair<Int, Double>> = ArrayDeque()
@@ -159,7 +167,7 @@ class ShakeDriver(
       tosses &&
         !letGo &&
         lastActiveStep != Int.MIN_VALUE &&
-        step - lastActiveStep >= LET_GO_STEPS &&
+        step - lastActiveStep >= quietToLetGo() &&
         // Never before the shake has properly begun: a shake that starts
         // softly dips under the threshold in its first strokes.
         lastActiveStep - firstActiveStep >= LEAST_SHAKE_STEPS
@@ -236,6 +244,7 @@ class ShakeDriver(
     if (sample != null && !letGo) {
       if (isShaking(step, sample.accelerationMmPerSecond2.length)) {
         if (firstActiveStep == Int.MIN_VALUE) firstActiveStep = step
+        if (lastActiveStep != Int.MIN_VALUE) longestPause = maxOf(longestPause, step - lastActiveStep)
         lastActiveStep = step
       }
     }
@@ -256,6 +265,25 @@ class ShakeDriver(
     }
     gravity = down - hand
   }
+
+  /**
+   * How many quiet steps after its last hard moment the hand has stopped:
+   * [LET_GO_STEPS], or [PAUSE_MARGIN] times the longest quiet this shake has
+   * already had between two hard moments if that is longer, and never more
+   * than [MOST_LET_GO_STEPS].
+   *
+   * **A slow shake goes quiet in the middle of every stroke.** Its
+   * acceleration passes through nought between one end of a stroke and the
+   * other, and at two strokes a second it stays under the threshold for about
+   * a tenth of a second each time — longer than [LET_GO_STEPS]. Measured
+   * against that alone the hand let go mid-shake, the dice were tossed once
+   * and driven no more, and they settled while the phone was still being
+   * shaken (the owner, on the Pixel 10a). A quiet the hand has already shown
+   * it makes between strokes is not the hand stopping; one half as long again
+   * is. A fast shake's pauses are a step or two, so it still lets go after
+   * [LET_GO_STEPS], as before.
+   */
+  internal fun quietToLetGo(): Int = ceil(longestPause * PAUSE_MARGIN).toInt().coerceIn(LET_GO_STEPS, MOST_LET_GO_STEPS)
 
   /**
    * Whether a moment of [strength] at [step] is the hand still shaking rather
@@ -319,6 +347,20 @@ class ShakeDriver(
      * (`docs/TODO.md`, Step 5.8).
      */
     const val LET_GO_STEPS: Int = 8
+
+    /**
+     * How much longer than its longest pause between strokes a quiet has to
+     * be before the hand has stopped ([quietToLetGo]).
+     */
+    const val PAUSE_MARGIN: Double = 1.5
+
+    /**
+     * The longest the hand waits before letting go, in steps (0.3 s): a shake
+     * whose strokes pause longer than that is a hand that has stopped and
+     * started again, and dice lying still that long before a toss would be
+     * thrown by something other than the hand.
+     */
+    const val MOST_LET_GO_STEPS: Int = 36
 
     /** What share of the hardest recent moment still counts as shaking ([isShaking]). */
     const val STRONG_SHARE: Double = 0.25

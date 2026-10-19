@@ -344,9 +344,12 @@ shaken, and the owner rejected it: with nothing on the table, nothing said the
 shake was reaching the dice. Then:
 
 - **The hand lets go once, a moment after its last hard stroke**
-  (`ShakeDriver.lettingGo`): 12 steps, a tenth of a second, after the last
-  moment over the shake detector's 0.6 g, and never before the shake has gone
-  on for 0.3 s. Far sooner than the detector's 0.4 s of quiet, which is right
+  (`ShakeDriver.lettingGo`): 8 steps, a fifteenth of a second, after the last
+  hard moment — over the shake detector's 0.6 g and at least a quarter of the
+  recent peak — and never before the shake has gone on for 0.3 s. **A slow
+  shake waits for its own rhythm** (`ShakeDriver.quietToLetGo`): a hand that
+  has already gone quiet between two of its strokes for longer than that has
+  to stay quiet half as long again before it has stopped, up to 0.3 s. Far sooner than the detector's 0.4 s of quiet, which is right
   for deciding a roll may end and too late for a throw. **Once per throw, and
   for good**: a shake after the toss drives nothing and tosses nothing. Two
   other rules were tried on the Pixel 10a and dropped. Let go only after the
@@ -355,7 +358,11 @@ shake was reaching the dice. Then:
   into a wall, and the dice jumped. Let go once it fell under a quarter of its
   own recent peak, slow strokes along the phone's length counted as stopping —
   six let-gos in one throw, the dice tossed and grabbed back on every stroke,
-  each a hop and a lurch from real speed to slow motion and back.
+  each a hop and a lurch from real speed to slow motion and back. And with
+  the fixed wait alone, a slow shake was let go of mid-shake: at two strokes
+  a second the acceleration stays under 0.6 g for about a tenth of a second
+  in the middle of every stroke, the hand let go there, and the dice settled
+  while the phone was still being shaken (the owner, 2026-10-20).
 - **Which way, and how hard, is the hand's last stroke** (`Release.of`). The
   moments are the phone's acceleration in the tray's frame; summed over time
   they are its velocity, with the drift taken out as a straight line because a

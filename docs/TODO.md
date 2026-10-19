@@ -436,7 +436,7 @@ dice look right. Wrong numbers become the new numbers in the docs.
 Decision 105, adopted by the owner on 2026-10-20.
 
 - [ ] Tune `Release.GAIN`, `LEAST_MM_PER_SECOND`, `MOST_MM_PER_SECOND`,
-  `ShakeDriver.LET_GO_STEPS` and `Toss`'s lift and spreads against the owner's
+  `ShakeDriver.LET_GO_STEPS`, `PAUSE_MARGIN`, `MOST_LET_GO_STEPS` and `Toss`'s lift and spreads against the owner's
   slow-motion recordings of real throws (every shape, from straight above,
   with a scale in frame), and re-run `tools/harness.sh --release`.
 - [ ] **Shaking along the phone's length (y) still jumps now and then.** x and
@@ -449,6 +449,9 @@ Decision 105, adopted by the owner on 2026-10-20.
   3.9 % of the time against 1.2 %.
 - [ ] Score the turns *after the hand lets go*: the harness counts from the
   first touch, which for a shaken throw is under the hand.
+- [ ] *Judge on the phone:* shake slowly, two strokes a second or less — do
+  the dice keep moving until the hand stops, and is the toss after a slow
+  shake late enough to be the hand's and soon enough not to read as a pause?
 - [ ] *Judge on the phone:* does the toss go the way the hand went, does it
   come at the moment the hand stops, and does the tumble look like the
   recordings?
