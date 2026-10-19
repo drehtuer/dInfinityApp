@@ -4,7 +4,7 @@ Current state of the project in a few lines. Update it when a milestone moves, a
 decision is taken or something is blocked; prune anything no longer current.
 This is a snapshot, not a changelog — git history is the changelog.
 
-**Last updated:** 2026-10-11
+**Last updated:** 2026-10-20
 
 ## Where we are
 
@@ -31,8 +31,10 @@ This is a snapshot, not a changelog — git history is the changelog.
   the felt draws its set colour, no band along the walls, the room cached on
   disk), translucent dice as refracting resin (90) and rounded edges drawn
   with the solver's own convex radius (91), all passing on the Pixel 10a.
-  The dark glass reflects the dice faintly, by a small second picture of
-  them from under the floor (93). The broken light lines along resin dice's
+  The dice are no longer reflected in the dark glass: from straight above
+  the reflection hid under each die and showed nothing on the phone (decision
+  104, withdrawing 93); it saves no GPU time, as dark glass's floor now runs
+  the dice's opaque material, as plain's does. The broken light lines along resin dice's
   rounded edges were the lacquer's glint, thinner than a pixel; specular
   anti-aliasing spreads it now. Felt and oak are drawn from CC0 pictures,
   keyed by the package the look came from (92); plain stays flat. On the
@@ -51,7 +53,7 @@ This is a snapshot, not a changelog — git history is the changelog.
   on their rims until the backstop 42 times, so rounding now stops at 6 %
   for the slider and for a set file alike (decision 100).
   While a dice material compiles — the first launch after an install or
-  update, or the first resin, glass or textured-table material — a
+  update, or the first resin or textured-table material — a
   "Preparing the dice" plate over the tray says why, with a bar timed by what
   the phone took last time (decision 95; seen working on the Pixel 10a).
   Four sample sets to install — marble (artwork on every face, numbers cut
@@ -68,6 +70,12 @@ This is a snapshot, not a changelog — git history is the changelog.
   103; a device test fails by 50 % of a face at the old 0.12) — the owner
   to judge whether they still look varnished.
   It reaches `main` when the owner likes it on the phone.
+- **The hand tosses the dice** (decision 105, `docs/TODO.md` 5.8): shaken
+  in sight as before, and tossed when the hand stops, after a comparison with
+  slow-motion film of real dice. Adopted by the owner on 2026-10-20 — without
+  it the dice settle almost as the shaking stops. The constants wait for the
+  owner's recordings of real throws; a shake along the phone's length still
+  hops now and then.
 
 ## Done
 

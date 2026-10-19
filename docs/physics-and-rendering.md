@@ -235,6 +235,13 @@ power-saving mode; there is no other one.
   hauling them about and there is nothing but gravity left. A slower roll is
   also a slower *answer*, so the number is meant to be judged on a phone and
   changed.
+- **A roll a hand has just let go of eases into the pace** (`RollPace.eased`):
+  from real speed down to the pace over `RollPace.EASE_STEPS` (36 steps, 0.3 s
+  of the roll, about half a second on the screen), along a smoothstep, so there
+  is no corner at either end. Switched in one frame, the dice lurched from fast
+  to slow motion as the hand let go. `TrayLoop` remembers the last step a hand
+  drove the roll and hands the pace how long ago that was; like everything
+  else here it decides when steps are taken, never what they are.
 - **A roll being driven is never paced.** While a hand is throwing the dice the
   player is not watching the roll, they are steering it, and dice that answer a
   hand a beat late are the only way this could make the app worse. The question
@@ -282,9 +289,10 @@ power-saving mode; there is no other one.
 **A shake is the throw.** It is the only way to put dice in the air, and every
 other control in the app stops at filling the formula field. That is absolute
 (`docs/architecture.md`, decision 66): no button, no key, no accessibility
-action and no setting that switches shaking off. The dice are
-spawned when the shake begins and are driven by the phone's motion until the
-hand stops, then released ("Shake input", below).
+action and no setting that switches shaking off. The dice are spawned when
+the shake begins and are driven by the phone's motion until the hand stops
+("Shake input", below), and the hand then tosses them ("The hand lets go",
+below).
 
 There was a Roll button, and it is gone. It was not a second way to throw so
 much as a way of making the shake optional: a tap on a saved roll threw, the
@@ -315,6 +323,108 @@ shake to throw again ("Picking a die up and throwing it again"), and a surface
 that threw the whole formula the moment it is touched would have nowhere left
 to put either. A roll is also not something to start by
 accident — it replaces a result somebody may still be reading.
+
+### The hand lets go
+
+Decision 105; what is still to tune is `docs/TODO.md`, Step 5.8.
+
+**Shaking a box is not throwing dice.** Put side by side with a slow-motion
+film of four real d6 being thrown, the tray showed the difference plainly: the
+real dice leave a hand with height, speed and spin, land hard, bounce several
+of their own heights and tumble over two to four faces before they stop. On the
+Pixel 10a, four d6 shaken in the tray raced about while the phone moved and
+were all still about 0.3 s after it stopped — the last stroke braked them into
+a wall or each other, and nothing was left to tumble with.
+
+So **the shake is as it was, and the hand tosses the dice when it stops.**
+The dice are spawned when the shake begins and rattle about the tray under
+it, in sight, as they always did ("Shake input") — the first version of the
+toss, tried on a branch, took them off the table while the phone was
+shaken, and the owner rejected it: with nothing on the table, nothing said the
+shake was reaching the dice. Then:
+
+- **The hand lets go once, a moment after its last hard stroke**
+  (`ShakeDriver.lettingGo`): 8 steps, a fifteenth of a second, after the last
+  hard moment — over the shake detector's 0.6 g and at least a quarter of the
+  recent peak — and never before the shake has gone on for 0.3 s. **A slow
+  shake waits for its own rhythm** (`ShakeDriver.quietToLetGo`): a hand that
+  has already gone quiet between two of its strokes for longer than that has
+  to stay quiet half as long again before it has stopped, up to 0.3 s. Far sooner than the detector's 0.4 s of quiet, which is right
+  for deciding a roll may end and too late for a throw. **Once per throw, and
+  for good**: a shake after the toss drives nothing and tosses nothing. Two
+  other rules were tried on the Pixel 10a and dropped. Let go only after the
+  hand had fallen under 0.6 g, a hand braking from several gravities was let go
+  of a quarter of a second after it stopped, from a heap the stop had slammed
+  into a wall, and the dice jumped. Let go once it fell under a quarter of its
+  own recent peak, slow strokes along the phone's length counted as stopping —
+  six let-gos in one throw, the dice tossed and grabbed back on every stroke,
+  each a hop and a lurch from real speed to slow motion and back. And with
+  the fixed wait alone, a slow shake was let go of mid-shake: at two strokes
+  a second the acceleration stays under 0.6 g for about a tenth of a second
+  in the middle of every stroke, the hand let go there, and the dice settled
+  while the phone was still being shaken (the owner, 2026-10-20).
+- **Which way, and how hard, is the hand's last stroke** (`Release.of`). The
+  moments are the phone's acceleration in the tray's frame; summed over time
+  they are its velocity, with the drift taken out as a straight line because a
+  phone picked up still and stopped still begins and ends at rest. The throw
+  is the last stroke in the final 0.35 s before the hand went quiet — the last
+  run of moments at 60 % or more of the fastest there, and its peak — not the
+  fastest moment, which in a window one stroke long is as likely to be the
+  stroke before, going the other way. The dice leave at 1.5 times the hand's
+  speed, held to 600–1,600 mm/s, tapered for a crowded tray as the spawn
+  throw is. A shake straight at the glass has no direction along the floor; its
+  toss takes one from the seed.
+- **Every die is tossed from where it lies** (`Toss`): up, at the speed that
+  would lift it 15–60 mm, and along the stroke within 17° and 15 % of its
+  speed, with a fresh spin of 60–120 rad/s. Its pose is kept exactly. **One
+  after another**: each die leaves the hand on its own step, within a tenth of
+  a second of the let-go (`Toss.Handful`). And **onward**: a die already
+  sliding is tossed the way it is going, at the hand's speed or its own if
+  faster; only a die barely moving takes the stroke's direction — tossed along
+  the stroke whatever it was doing, a sliding heap reversed. And **never into
+  a wall it is against** (`Toss.offTheWalls`): within 30 mm of a wall, the part
+  of a toss aimed at it is turned back. A stroke that stops slams the heap into
+  the wall it was heading for, and tossed along the stroke the dice bounced off
+  it as one. Tossed on one step and lifted
+  40–90 mm, every die hopped together and the owner saw the dice jump. Every
+  die, because every die is still in the hand: no die is read before the table
+  has settled and the hand is off it, and a die lying still under a hand that
+  is still shaking is a roll caught at the top of a swing, not a die at rest —
+  nothing touches a die that has come to rest, and none has.
+- **Then nothing but gravity.** The hand drives nothing after it lets go, the
+  roll stops counting as driven, and the settle rule no longer waits on the
+  quiet tail of the shake. The watched pace takes over **eased**, over 0.3 s of
+  the roll ("The simulation clock"): dropped in one frame, the dice went from
+  fast to slow motion just as they flew their fastest, which the owner read as
+  the roll lagging and catching up.
+
+It is a function of the record and nothing else: the let-go step and the toss
+are read off the moments `ShakeDriver` already files by step, so a live roll and
+its replay toss on the same step, the same way. A throw thrown by a shake says
+so (`ThrowSpec.toss`); a throw recorded before there was a toss — every golden
+case — does not, and replays exactly as it did.
+
+Measured on the Pixel 10a with `tools/harness.sh --release 1200`, which shakes
+each roll with a synthetic hand (`HandStroke`: four strokes along a line the
+roll's seed draws, then quiet) and tosses it as a live one is, 500 rolls a row:
+
+| | re-thrown | median / p99 settle | deepest overlap | turns after first touch |
+| --- | --- | --- | --- | --- |
+| 4d6, grid throw, no shake | 0.20 % | 0.80 / 1.03 s | 4.8 mm | 2.96 |
+| 4d6, shaken and tossed | 0.40 % | 1.53 / 2.13 s | 5.8 mm | 10.5 |
+| 20d20, grid throw, no shake | 1.17 % | 0.96 / 1.99 s | 5.9 mm | 2.67 |
+| 20d20, shaken and tossed | 3.93 % | 1.81 / 2.86 s | 6.4 mm | 9.1 |
+
+The settle times include the synthetic shake, about half a second, and the
+turns include the tumbling under it, so neither column is yet the figure that
+matters — the turns *after the hand lets go* (`docs/TODO.md`, Step 5.8). What
+does read straight off: twenty dice tossed one way pile against the far wall
+and are thrown again three times as often, so a crowded toss needs less speed.
+On the phone, four d6 shaken by hand rattled in sight while the phone moved,
+left the felt as it stopped and tumbled for about a second before they rested. The owner's first verdict, on the phone: "The tumbling looks much better.
+Dice twirl around and tilt over."
+Every constant here is a first guess, to be set from the owner's recordings of
+real throws.
 
 ### No way in that is not a hand
 
@@ -615,6 +725,11 @@ longer do: at the current throw they leave the shaken heap exactly where it
 was, as the table above says.)
 
 ## Shake input
+
+> **The hand also lets go** ("The hand lets go", under "Starting a roll";
+> decision 105). Everything below holds while the phone is shaken; a moment
+> after the last hard stroke the hand tosses the dice and drives them no more
+> for the rest of the throw.
 
 - Sensors: linear acceleration (gravity removed) and gyroscope, at
   `SENSOR_DELAY_GAME`. Registered while the roll screen is resumed and let go
@@ -2683,8 +2798,8 @@ map giving the surface its sheen — moved to average out at the look's
 `roughness` when the look is in `color_mode = "average"`, in place of it when
 the look multiplies. Everything else — plain, a look
 whose package is gone — is drawn through the dice's opaque material exactly
-as before, and dark glass's floor through the glass material ("The dice in a
-glossy table"), so the cheapest tray is still the cheapest, and the dice's
+as before, and so is dark glass ("A glossy table"), so the cheapest tray is
+still the cheapest, and the dice's
 own materials are not touched at all: their source, their compiled packet and
 every pixel of them are what they were.
 
@@ -2823,9 +2938,9 @@ anti-aliasing* (`DiceMaterial.SPECULAR_AA_VARIANCE`, Filament's defaults),
 which raises the roughness — of the body and of the lacquer — by how fast the
 normal changes between neighbouring pixels. On a bend that spreads the glint
 into a soft, unbroken highlight; a flat face's normal does not change, so the
-faces, their numbers and the tray are drawn exactly as before. The glass
-floor has it too; the table drawn from pictures does not ("The table's
-surface"). The settings
+faces, their numbers and the tray are drawn exactly as before. A floor drawn
+in its colour alone has it too, being the dice's own opaque material; the
+table drawn from pictures does not ("The table's surface"). The settings
 are part of the material cache's key (`DiceMaterial.Variant.fingerprint`), so a
 packet compiled without them is not read back.
 
@@ -2849,105 +2964,42 @@ mesh, surface for surface, and `DieMesh.of(die, scale)` is the rounded one
 the tray draws. Nothing of the physics reads any of this — the hull, the
 radius it asks for and what Jolt makes of them are unchanged.
 
-### The dice in a glossy table
+### A glossy table
 
-A die on dark glass shows faintly in it — a bit, not a mirror: a soft,
-dim copy of the die under it that is plainly a reflection, whose numbers are
-a smudge and never compete with the real ones. Felt, oak and the plain table
-show nothing, and are drawn exactly as they were.
+**Dark glass is drawn like the plain table: one opaque surface, at its own
+roughness (0.1) and colours**, through the dice's opaque material. What a
+player sees in it is the room — the window and the lamps, sharp because the
+surface is smooth — and nothing of the dice. Its physics, its sound and its
+look in the picker are those of `docs/tables.md`, "Table looks".
 
-**Which tables reflect is read off their roughness**, not a field of its own
-(`Reflection.of`): a table rougher than **0.3** shows no die at all, and below
-it the strength rises in a straight line to one at a perfect polish. Of the
-bundled looks only `dark-glass` (0.1) is under the line, at **two-thirds**;
-felt (0.9), plain (0.8) and oak (0.75) are well over. How glossy a surface is
-*is* how much it reflects, so the table format does not grow
-(`docs/tables.md`, "Table looks"). Only the floor reflects: the walls and the
-rim take the opaque or the picture material whatever the look. **A floor
-drawn from pictures shows no dice either, however glossy**: the pictures win
-(`DiceMaterial.variantOf`), the stage then draws no picture of the dice for
-it (`DiceMaterial.reflects`), and showing both is a material of its own that
-no bundled look needs (`docs/TODO.md`, "Tables and photos").
+**There is no reflection of the dice in it.** One was built (decision 93): the
+dice drawn a second time, small, from the camera turned over in the floor, and
+the glass floor adding that picture at glass's own strength. It was withdrawn
+(decision 104) because from this app's camera there is nothing of it to see.
+The camera looks straight down — by default, and never more than the angled
+Table view's 22° off it; lower, oblique shots are ruled out — so a die's
+reflection lies directly beneath the die and is hidden by it; and glass
+looked at square on reflects about **4 %** — 2.7 % at the strength dark
+glass's roughness gave it. On the Pixel 10a the owner looked for it and saw
+none, and the render gallery shows none. So it went, with the second view of
+the dice, its target and a material to compile on first use.
 
-**What is drawn is a planar reflection of the dice and nothing else.** When the
-floor is glossy, every frame draws the dice twice:
+**It was not removed for speed, and it saved none.** The floor of dark glass
+is now drawn by the dice's opaque material, as plain's is, and that material
+costs more over a whole floor than the glass one did: at 20d20 on the Pixel
+10a, GPU p99 was **11.87 ms** with the reflection (2026-10-19) and is
+**13.20 ms** without it, against plain's 13.0 ms and felt's 11.34 ms
+(`tools/harness.sh --rendered`, 2026-10-20). Every table still draws at 60
+fps. A cheaper floor for the flat looks is the open question on the clear
+coat they wear (`docs/TODO.md`, "Open questions").
 
-```mermaid
-flowchart LR
-  shot["The camera's shot"] --> under["Turned over in the floor:<br/>a camera under it, looking up"]
-  under --> small["The dice alone, a quarter<br/>of the screen each way,<br/>no shadows, no post pass,<br/>clear where there is no die"]
-  small --> floor["The glass floor samples it<br/>where it stands on the screen,<br/>turned round across it"]
-  shot --> frame["The frame, as before"]
-  floor --> frame
-```
-
-The camera under the floor is the real one with its position, target and up
-turned over in the plane of the floor, so it sees every die along the ray the
-floor reflects — from below, through a floor it does not draw — and sees it the
-other way round across the screen, which the floor undoes when it reads the
-picture (`Reflection.mirrored`). The tray is on a layer of its own that this
-camera does not see: the line is the one the shadows already draw, **what
-casts is what the glass shows** (`Stage.add`). It is exposed exactly as the
-real camera is, so its picture is in the units the frame is lit in.
-
-**The strength is glass's own.** Where a die is reflected the floor adds the
-picture times the Fresnel term of its surface — about **4 %** looking straight
-down at a dielectric, rising at a glance, the base colour for a metal — times
-the table's strength; and it takes away the room it was reflecting there by as
-much, because the die is in front of it (`DiceMaterial.GLASS_SOURCE`). So a
-white die adds a pale patch to the glass and a dark one a darker one, as on a
-real table. Where no die is reflected the picture is clear and the floor is
-the opaque surface to the bit.
-
-**The blur is the size of the picture.** It is drawn a quarter of the screen's
-size on each side — a sixteenth of the pixels — and stretched back over the
-floor with linear filtering, which softens a die's reflection to the gloss of
-a polished table rather than the edge of a mirror, and is also most of why it
-is cheap. A reflection does not soften further with the height above the
-glass; at four per cent it does not need to.
-
-**No band along the walls, by construction.** The tray is not in the picture,
-so the floor at the foot of a wall reflects the room exactly as it did before
-— a reflected wall would lay a dark band along every side of the table, the
-same band that turning ambient occlusion off took away (above), and read the
-same way, as the rim throwing a shadow. The walls and rim reflect nothing of
-their own. The cost of that is honesty about a small
-thing: a real glass table would show the wall in it too.
-
-**Why not Filament's screen-space reflections**, which reflect what is on the
-screen and are a view option and a material flag away. Read off Filament
-1.76.1's shaders, three things stand against them here (`docs/architecture.md`,
-decision 93):
-
-- They reflect *everything on screen*, the walls included, so the band above
-  comes back.
-- The blur they take from a surface's roughness is computed in world units,
-  and this scene is in millimetres: at dark glass's roughness it comes out
-  sharp — a mirror.
-- They fade out a ray that turns back towards the camera, which is every ray
-  off a table seen from straight above — the default view — so the
-  reflection would show at the edges of the screen and not in the middle.
-
-They also need the previous frame (the first frame of a still picture has
-none) and the post pass, and cost a depth pass of the whole scene and a
-full-screen ray march over the floor every frame. The planar picture costs
-the dice drawn again, small, with no shadow pass — and nothing at all on a
-table that is not glossy.
-
-**What it costs** is measured with the rendered harness on the glass:
-`tools/harness.sh --rendered -n 10 -c 100 -s d6 --table dark-glass` against
-the same run without `--table` (Pixel 10a; not yet run). The dice are drawn
-twice and shadowed once, at a sixteenth of the pixels the second time, so
-the GPU's extra is the vertex work of the dice again and the CPU's extra is
-Filament culling and sorting them for a second view.
-
-`ReflectionDeviceTest` holds it to the device: a white d6 held above a
-polished metal floor, then above the bundled dark glass, changes at least 30 %
-of the patch of floor where its reflection has to appear — on the side away
-from its shadow and clear of the die — and the same scene on a matte floor of
-the same colours changes at most 2 % of it. What it cannot say is whether the
-reflection looks right; `tools/gallery.sh` draws `dark-glass` among its
-scenes for that.
+**Why not Filament's screen-space reflections** either, read off Filament
+1.76.1's shaders before the planar one was built: they reflect everything on
+screen, so each wall would lay a dark band along its foot; their blur is
+computed in world units and this scene is in millimetres, so it comes out
+sharp; and they fade every ray that turns back towards the camera, which from
+straight above is every ray off the table. They would show nothing in the
+middle of the screen, for a depth pass and a full-screen ray march.
 
 ### Performance, and how it is measured
 
@@ -3192,7 +3244,7 @@ gesture on every phone and for a one-line breakdown as for a twenty-die one.
 **While a dice material is being compiled, the tray says so.** The first
 launch after an install or an update compiles the opaque material before the
 first frame can be drawn — about 2.4 s of black tray on the Pixel 10a — and a
-translucent die, a dark-glass table or a table drawn from pictures compiles
+translucent die or a table drawn from pictures compiles
 one more material the first time one is shown, about two seconds in which the
 roll thread draws nothing and the dice stand still in the air. Nothing about
 either is broken, and without a word on the screen both look as if it were.
@@ -3202,7 +3254,7 @@ runs (`feature/roll`'s `PreparingTheDice`; `design/dInfinity.dc.html`, option
 `1za`):
 
 - a title naming what is being prepared, in the player's words — *the dice*,
-  *the translucent dice*, *the glass table*, *the table*;
+  *the translucent dice*, *the table*;
 - one sentence of why: the shaders are being compiled for this phone, and it
   happens once after an install or update;
 - the counting plate's 3 dp rule, filling as the compile goes;
@@ -3221,8 +3273,10 @@ The seconds are rounded up — the last one reads "1", not "0".
 `codeCacheDir`, which an update empties, and an update is exactly when the
 figure is wanted. Every compile that finishes replaces its material's figure.
 Until a phone has compiled a material once, the estimate is the Pixel 10a's:
-opaque 2.4 s and resin 2 s, measured; glass and table **assumed** at 2 s each,
-the same as resin, because neither has been timed alone. A missing,
+opaque 2.4 s and resin 2 s, measured; table **assumed** at 2 s, the same as
+resin, because it has not been timed alone. A figure an earlier version kept
+for the glass table's material, which is gone (decision 104), is skipped like
+any line the reader does not know. A missing,
 unreadable or garbled file reads as those defaults, line by line, and a figure
 under a tenth of a second or over two minutes is not a measurement of the
 compiler and is not learnt.

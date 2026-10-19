@@ -52,6 +52,12 @@ interface DiceSimulator {
  *   by. They are here for the two things outside the solver that still need
  *   them — the clear floor the new die is dropped onto ([ClearSpace]) and the
  *   picture it lands in.
+ * @param toss whether the hand tosses the dice when it stops shaking
+ *   (`docs/physics-and-rendering.md`, "The hand lets go"; decision 105): a
+ *   moment after the last hard stroke of [shake], every die is thrown up and
+ *   the way that stroke went ([Release]), and the hand drives them no more.
+ *   False for a throw recorded before there was a toss, which replays as it
+ *   was, and for a tap.
  */
 data class ThrowSpec(
   val dice: List<DieInstance>,
@@ -61,6 +67,7 @@ data class ThrowSpec(
   val dieScale: Double = 1.0,
   val shake: List<ShakeSample> = emptyList(),
   val among: List<DieAtRest> = emptyList(),
+  val toss: Boolean = false,
 ) {
   init {
     require(dieScale in TableCapacity.MIN_SCALE..1.0) {

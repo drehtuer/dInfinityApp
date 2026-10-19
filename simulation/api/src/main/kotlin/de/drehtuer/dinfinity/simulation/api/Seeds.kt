@@ -133,6 +133,15 @@ object Seeds {
    */
   const val RETHROW: Long = 0x52_45_54_48_52_4F
 
+  /**
+   * And which way a hand that moved no way in particular throws ([Release]).
+   *
+   * Drawn once per throw rather than per die, so the dice of one throw leave
+   * the hand together; a stream of its own, so a throw that has a direction
+   * draws exactly the spawn numbers it would without this.
+   */
+  const val RELEASE: Long = 0x52_45_4C_45_41_53_45
+
   /** And the nudge a die in trouble gets. */
   const val BIAS: Long = 0x42_49_41_53
 

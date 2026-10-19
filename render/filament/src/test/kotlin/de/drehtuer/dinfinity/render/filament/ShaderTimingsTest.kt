@@ -29,9 +29,9 @@ class ShaderTimingsTest {
 
   @Test
   fun `a measurement replaces the figure for its own material only`() {
-    val timings = ShaderTimings().with(DiceMaterial.Variant.GLASS, 3_300L)
+    val timings = ShaderTimings().with(DiceMaterial.Variant.RESIN, 3_300L)
 
-    assertEquals(3_300L, timings.estimateOf(DiceMaterial.Variant.GLASS))
+    assertEquals(3_300L, timings.estimateOf(DiceMaterial.Variant.RESIN))
     assertEquals(2_400L, timings.estimateOf(DiceMaterial.Variant.OPAQUE))
   }
 
@@ -71,8 +71,18 @@ class ShaderTimingsTest {
 
     assertEquals(2_100L, read.estimateOf(DiceMaterial.Variant.OPAQUE))
     assertEquals(2_000L, read.estimateOf(DiceMaterial.Variant.RESIN))
-    assertEquals(2_000L, read.estimateOf(DiceMaterial.Variant.GLASS))
     assertEquals(1_700L, read.estimateOf(DiceMaterial.Variant.TABLE))
+  }
+
+  @Test
+  fun `a figure kept for the glass table an earlier version had still loads the rest`() {
+    // The glass floor's own material was withdrawn (`docs/architecture.md`,
+    // decision 104); a phone that timed it has a `glass=` line on disk.
+    val read = ShaderTimings.decode("opaque=2600\nglass=2300\nresin=1900\n")
+
+    assertEquals(2_600L, read.estimateOf(DiceMaterial.Variant.OPAQUE))
+    assertEquals(1_900L, read.estimateOf(DiceMaterial.Variant.RESIN))
+    assertEquals("opaque=2600\nresin=1900\n", read.encode())
   }
 
   @Test

@@ -433,17 +433,133 @@ class RollLoopTest {
     assertEquals(0, loop(listOf(StandardDice.d6, StandardDice.d6), world).run().stackedAtRest)
   }
 
+  @Test
+  fun `a tossed shake throws every die once, from where it lies, when the hand lets go`() {
+    val world = FakeWorld(2) { _, _, _ -> FakeWorld.tumbling() }
+    val loop = loop(listOf(StandardDice.d6, StandardDice.d6), world, stroke(), toss = true)
+
+    repeat(STROKE_STEPS + QUIET_STEPS) { loop.advance() }
+
+    val letGo = STROKE_STEPS - 1 + ShakeDriver.LET_GO_STEPS
+    assertEquals(
+      "each die leaves the hand once, on its own step",
+      listOf(0, 1).map { letGo + Toss.delayOf(42L, it) to it }.sortedBy { it.first },
+      world.respawns.sortedBy { it.first },
+    )
+    assertEquals(1, loop.tossed)
+    world.respawnPlacements.forEach { placement ->
+      assertEquals("a toss moved a die", FakeWorld.tumbling().position, placement.position)
+      assertTrue("a toss did not throw a die up", placement.linearVelocity.z > 0.0)
+    }
+  }
+
+  @Test
+  fun `a roll asked to say how its hand let go, and whether the hand went on`() {
+    // Tumbling through the shake and the toss, then at rest, so the roll ends.
+    val world =
+      FakeWorld(1) { step, _, _ ->
+        if (step < STROKE_STEPS + QUIET_STEPS) FakeWorld.tumbling() else FakeWorld.settled()
+      }
+    val lines = mutableListOf<String>()
+    val spec = spec(listOf(StandardDice.d6), 42L).copy(shake = stroke(), toss = true)
+    val loop = RollLoop(spec, world, ShakeDriver(spec.shake, tosses = true), tossLog = lines::add)
+
+    loop.run()
+
+    val letGo = STROKE_STEPS - 1 + ShakeDriver.LET_GO_STEPS
+    assertTrue(lines.toString(), lines.first().startsWith("let go at step $letGo: hard "))
+    assertTrue(lines.toString(), lines.first().contains(" mm/s, dice moving at "))
+    assertTrue(lines.toString(), lines.last().startsWith("roll over at step "))
+    assertTrue(
+      lines.toString(),
+      lines.last().endsWith("tossed 1 times; 0 moments came after the toss, the last at step -1"),
+    )
+  }
+
+  @Test
+  fun `a shake recorded before there was a toss replays without one`() {
+    val world = FakeWorld(2) { _, _, _ -> FakeWorld.tumbling() }
+    val loop = loop(listOf(StandardDice.d6, StandardDice.d6), world, stroke())
+
+    repeat(STROKE_STEPS + QUIET_STEPS) { loop.advance() }
+
+    assertTrue(world.respawns.isEmpty())
+    assertEquals(0, loop.tossed)
+  }
+
+  @Test
+  fun `the same record and seed toss the same way`() {
+    val one = FakeWorld(3) { _, _, _ -> FakeWorld.tumbling() }
+    val again = FakeWorld(3) { _, _, _ -> FakeWorld.tumbling() }
+    val dice = List(3) { StandardDice.d6 }
+
+    val first = loop(dice, one, stroke(), toss = true)
+    val second = loop(dice, again, stroke(), toss = true)
+    repeat(STROKE_STEPS + QUIET_STEPS) {
+      first.advance()
+      second.advance()
+    }
+
+    assertEquals(one.respawnPlacements, again.respawnPlacements)
+  }
+
+  @Test
+  fun `a handful leaves the hand over a moment, not on one step`() {
+    val world = FakeWorld(DICE_IN_A_HANDFUL) { _, _, _ -> FakeWorld.tumbling() }
+    val loop = loop(List(DICE_IN_A_HANDFUL) { StandardDice.d6 }, world, stroke(), toss = true)
+
+    repeat(STROKE_STEPS + QUIET_STEPS) { loop.advance() }
+
+    val steps = world.respawns.map { it.first }
+    assertEquals(
+      DICE_IN_A_HANDFUL,
+      world.respawns
+        .map { it.second }
+        .toSet()
+        .size,
+    )
+    assertTrue("a handful left the hand on one step", steps.toSet().size > 1)
+    assertTrue("the last die left long after the first", steps.max() - steps.min() <= Toss.STAGGER_STEPS)
+  }
+
+  @Test
+  fun `a tossed roll is no longer driven once the hand has let go`() {
+    val world = FakeWorld(1) { _, _, _ -> FakeWorld.tumbling() }
+    val loop = loop(listOf(StandardDice.d6), world, stroke(), toss = true)
+
+    repeat(STROKE_STEPS) { loop.advance() }
+    assertTrue("a hand mid-shake is not driving", loop.driven)
+    repeat(ShakeDriver.LET_GO_STEPS + 1) { loop.advance() }
+
+    assertFalse("dice out of the hand are still driven", loop.driven)
+  }
+
+  /** A hand shaking hard along the tray for [STROKE_STEPS], then quiet. */
+  private fun stroke(): List<ShakeSample> =
+    List(STROKE_STEPS + QUIET_STEPS) { step ->
+      val push =
+        if (step >= STROKE_STEPS) {
+          0.0
+        } else if (step < STROKE_STEPS / 2) {
+          9_000.0
+        } else {
+          -9_000.0
+        }
+      ShakeSample(stepIndex = step, accelerationMmPerSecond2 = Vector3(push, 0.0, 0.0), gravity = DOWN)
+    }
+
   private fun loop(
     dice: List<Die>,
     world: FakeWorld,
     shake: List<ShakeSample> = emptyList(),
     seed: Long = 42L,
+    toss: Boolean = false,
   ): RollLoop {
-    val spec = spec(dice, seed).copy(shake = shake)
+    val spec = spec(dice, seed).copy(shake = shake, toss = toss)
     return RollLoop(
       spec = spec,
       world = world,
-      shake = ShakeDriver(spec.shake),
+      shake = ShakeDriver(spec.shake, tosses = spec.toss),
     )
   }
 
@@ -468,6 +584,15 @@ class RollLoopTest {
     )
 
   private companion object {
+    /** A stroke of a shake, pushed then braked, long enough to be let go of. */
+    const val STROKE_STEPS = 48
+
+    /** And the quiet after it, past the hand letting go and its last die leaving. */
+    const val QUIET_STEPS = 40
+
+    /** Enough dice that a stagger has room to show. */
+    const val DICE_IN_A_HANDFUL = 8
+
     /** A shake that outlasts the settle rule several times over. */
     const val SHAKE_STEPS = 200
 

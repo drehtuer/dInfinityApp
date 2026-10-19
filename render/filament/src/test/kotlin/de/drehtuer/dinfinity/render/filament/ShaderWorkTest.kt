@@ -124,7 +124,7 @@ class ShaderWorkTest {
 
     progress.finished(opaque, compiled = true)
     progress.started(opaque)
-    progress.finished(DiceMaterial.Variant.GLASS, compiled = true)
+    progress.finished(DiceMaterial.Variant.RESIN, compiled = true)
 
     assertSame(ShaderWork.Idle, progress.work.value)
     assertTrue("a compile nobody saw start was written down", !file.exists())

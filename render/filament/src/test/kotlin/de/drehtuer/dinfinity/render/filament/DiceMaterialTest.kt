@@ -242,7 +242,7 @@ class DiceMaterialTest {
     // designer's ink never reached the tray. Every die material shares the
     // surface, so each must composite the artwork as it was drawn. Whether
     // the pixels agree is `AtlasTextureTest`'s, on a device.
-    listOf(DiceMaterial.SOURCE, DiceMaterial.RESIN_SOURCE, DiceMaterial.GLASS_SOURCE).forEach { source ->
+    listOf(DiceMaterial.SOURCE, DiceMaterial.RESIN_SOURCE).forEach { source ->
       assertTrue(source.contains("colour = mix(body, art.rgb, art.a);"))
       assertFalse("the artwork is tinted by the body", source.contains("* art.rgb"))
     }
@@ -295,12 +295,11 @@ class DiceMaterialTest {
 
   @Test
   fun `every surface with a bend in it spreads its glint, and the picture-drawn tray does not`() {
-    // The dice have rounded edges and the glass floor shares their surface;
-    // the tray's mesh is flat where the pictures are, and Filament's filter
+    // The dice have rounded edges, and a floor drawn in its colour alone
+    // shares their surface; the tray's mesh is flat where the pictures are, and Filament's filter
     // reads the mesh's normal, not the normal map's.
     assertTrue(DiceMaterial.Variant.OPAQUE.specularAntiAliasing)
     assertTrue(DiceMaterial.Variant.RESIN.specularAntiAliasing)
-    assertTrue(DiceMaterial.Variant.GLASS.specularAntiAliasing)
     assertFalse(DiceMaterial.Variant.TABLE.specularAntiAliasing)
     val table = DiceMaterial.Variant.TABLE.fingerprint
     assertTrue(table.endsWith("specularAntiAliasing off"))
@@ -398,66 +397,27 @@ class DiceMaterialTest {
   }
 
   @Test
-  fun `a glossy floor is glass, and nothing else of a table is`() {
-    val glassy = PLAIN.copy(roughness = 0.1, metallic = 0.1)
-    val floor = DiceMaterial.floorOf(glassy)
-    assertEquals(Reflection.strengthOf(0.1), floor.reflection!!.strength, TOLERANCE)
-    assertEquals(DiceMaterial.Variant.GLASS, DiceMaterial.variantOf(floor))
-    // The walls and the rim reflect nothing: a wall in the glass is a dark
-    // band along its foot, which is what the table must not wear.
-    assertNull(DiceMaterial.wallOf(glassy).reflection)
-    assertEquals(DiceMaterial.Variant.OPAQUE, DiceMaterial.variantOf(DiceMaterial.wallOf(glassy)))
-    // And a die never does, glossy or not: the dice are what is reflected.
-    assertNull(DiceMaterial.dieOf(DieMaterial(roughness = 0.0), texturePath = null).reflection)
-  }
-
-  @Test
-  fun `a glossy floor drawn from pictures is drawn from them and shows no dice`() {
-    // Both are set — the look is glossy and names pictures — and the
-    // pictures win: no material has both, and no bundled look needs one.
-    val polished = DiceMaterial.floorOf(FELT.copy(roughness = 0.1))
-    assertEquals(Reflection.strengthOf(0.1), polished.reflection!!.strength, TOLERANCE)
-    assertEquals("builtin::tables/felt-albedo.webp", polished.maps?.albedo)
-    assertEquals(DiceMaterial.Variant.TABLE, DiceMaterial.variantOf(polished))
-    assertFalse("a picture-drawn floor took a reflection pass", DiceMaterial.reflects(polished))
-  }
-
-  @Test
-  fun `only a glass floor asks for the picture of the dice`() {
-    assertTrue(DiceMaterial.reflects(DiceMaterial.floorOf(PLAIN.copy(roughness = 0.1))))
-    assertFalse(DiceMaterial.reflects(DiceMaterial.floorOf(PLAIN)))
-    assertFalse(DiceMaterial.reflects(DiceMaterial.wallOf(PLAIN.copy(roughness = 0.1))))
-    assertFalse(DiceMaterial.reflects(DiceMaterial.floorOf(FELT)))
-    assertFalse(DiceMaterial.reflects(DiceMaterial.dieOf(DieMaterial(roughness = 0.0), texturePath = null)))
-    // A glossy look that came from no package has no pictures, so it is glass.
-    val adrift = FELT.copy(roughness = 0.1, packageId = null)
-    assertEquals(DiceMaterial.Variant.GLASS, DiceMaterial.variantOf(DiceMaterial.floorOf(adrift)))
-  }
-
-  @Test
-  fun `felt, oak and the plain table are drawn as they always were`() {
-    listOf(0.9, 0.75, 0.8).forEach { roughness ->
-      val floor = DiceMaterial.floorOf(PLAIN.copy(roughness = roughness))
-      assertNull("a floor of roughness $roughness reflects", floor.reflection)
+  fun `a glossy floor in its colour alone is the opaque surface, however smooth`() {
+    // Dark glass, and any look as smooth: the floor is the plain surface at
+    // the look's roughness, walls and rim alike (`docs/architecture.md`,
+    // decision 104, which withdrew the reflection of the dice in it).
+    listOf(0.9, 0.75, 0.1, 0.0).forEach { roughness ->
+      val glossy = PLAIN.copy(roughness = roughness, metallic = 0.1)
+      val floor = DiceMaterial.floorOf(glossy)
       assertEquals(DiceMaterial.Variant.OPAQUE, DiceMaterial.variantOf(floor))
+      assertEquals(roughness, floor.roughness, TOLERANCE)
+      assertEquals(DiceMaterial.Variant.OPAQUE, DiceMaterial.variantOf(DiceMaterial.wallOf(glossy)))
     }
   }
 
   @Test
-  fun `the glass is the opaque surface with the dice added, under its own name`() {
-    assertEquals(DiceMaterial.GLASS_SOURCE, DiceMaterial.Variant.GLASS.source)
-    assertNotEquals(DiceMaterial.Variant.OPAQUE.key, DiceMaterial.Variant.GLASS.key)
-    assertNotEquals(DiceMaterial.Variant.RESIN.key, DiceMaterial.Variant.GLASS.key)
-    assertTrue(DiceMaterial.GLASS_SOURCE.contains("material.roughness = materialParams.roughness;"))
-    // Turned round across the screen, because the camera under the floor sees
-    // the reflection from the other side (`Reflection.mirrored`).
-    assertTrue(DiceMaterial.GLASS_SOURCE.contains("vec2(1.0 - seen.x, seen.y)"))
-    // A clear pixel changes nothing: reflectance stays Filament's default of
-    // a half and nothing is added.
-    assertTrue(DiceMaterial.GLASS_SOURCE.contains("0.5 * sqrt(max(1.0 - mirrored.a * strength, 0.0))"))
-    // Added as it stands, not exposed a second time.
-    assertTrue(DiceMaterial.GLASS_SOURCE.contains("* fresnel * strength, 0.0);"))
-    assertFalse(DiceMaterial.GLASS_SOURCE.contains("material.transmission"))
+  fun `a glossy floor drawn from pictures is drawn from them`() {
+    val polished = DiceMaterial.floorOf(FELT.copy(roughness = 0.1))
+    assertEquals("builtin::tables/felt-albedo.webp", polished.maps?.albedo)
+    assertEquals(DiceMaterial.Variant.TABLE, DiceMaterial.variantOf(polished))
+    // A glossy look that came from no package has no pictures to draw.
+    val adrift = FELT.copy(roughness = 0.1, packageId = null)
+    assertEquals(DiceMaterial.Variant.OPAQUE, DiceMaterial.variantOf(DiceMaterial.floorOf(adrift)))
   }
 
   @Test

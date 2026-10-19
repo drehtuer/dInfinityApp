@@ -413,9 +413,7 @@ keeps them comparable.
       the oak as warm oak — a little darker than before — and its walls as
       wood, is the felt's crinkle too strong — its normal map can be
       softened — and does it shimmer as the dice settle, and is plain
-      unchanged), the dice reflected faintly in the dark glass (93 — is the
-      reflection soft and dim enough, and does it look right that the walls
-      are not reflected). Judged with `tools/gallery.sh` before and after each
+      unchanged). Judged with `tools/gallery.sh` before and after each
       step, and merged to `main` once the owner likes it on the phone
 
 ### 5.7 Performance on the Pixel 10a
@@ -432,6 +430,34 @@ measured"). Re-run after any change to the renderer or the physics step.
 
 **Done when** every target is met on the Pixel 10a and the user agrees the
 dice look right. Wrong numbers become the new numbers in the docs.
+
+### 5.8 The hand tosses the dice
+
+Decision 105, adopted by the owner on 2026-10-20.
+
+- [ ] Tune `Release.GAIN`, `LEAST_MM_PER_SECOND`, `MOST_MM_PER_SECOND`,
+  `ShakeDriver.LET_GO_STEPS`, `PAUSE_MARGIN`, `MOST_LET_GO_STEPS` and `Toss`'s lift and spreads against the owner's
+  slow-motion recordings of real throws (every shape, from straight above,
+  with a scale in frame), and re-run `tools/harness.sh --release`.
+- [ ] **Shaking along the phone's length (y) still jumps now and then.** x and
+  z are fixed (owner, on the Pixel 10a). On y the let-go now comes at the
+  right moment and once per throw, and dice against a wall are tossed away
+  from it, yet a hop still shows on some shakes and not others. Next: record
+  a run with the full shake record logged per roll and line the hop up with
+  the frames.
+- [ ] Toss a crowded throw gentler: twenty d20 tossed one way are re-thrown
+  3.9 % of the time against 1.2 %.
+- [ ] Score the turns *after the hand lets go*: the harness counts from the
+  first touch, which for a shaken throw is under the hand.
+- [ ] *Judge on the phone:* shake slowly, two strokes a second or less — do
+  the dice keep moving until the hand stops, and is the toss after a slow
+  shake late enough to be the hand's and soon enough not to read as a pause?
+- [ ] *Judge on the phone:* does the toss go the way the hand went, does it
+  come at the moment the hand stops, and does the tumble look like the
+  recordings?
+- [ ] Fold "The hand lets go" into "Shake input" and decisions 65 and 87, and
+  make the golden cases toss (a physics change: goldens re-recorded,
+  `FairnessTest` re-run).
 
 ## Step 6 — v1 release
 
@@ -528,11 +554,6 @@ wrong answer in:
 - [ ] How should a photo sit on the tray — centre, fit width, fit height
       (`1u`)? It is drawn now (decision 92), stretched over the floor by
       `[1, 1]` tiling
-- [ ] A glossy look that also names pictures (a polished stone photograph)
-      is drawn from its pictures and shows no dice in it: pictures win over
-      the reflection (`DiceMaterial.variantOf`). Showing both needs a fifth
-      material with the table's maps and the glass's picture; build it when a
-      package asks for one
 
 ### Sets and collections
 
