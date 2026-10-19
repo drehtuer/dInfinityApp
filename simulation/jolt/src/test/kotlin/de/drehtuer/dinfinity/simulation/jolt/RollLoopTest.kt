@@ -454,6 +454,29 @@ class RollLoopTest {
   }
 
   @Test
+  fun `a roll asked to say how its hand let go, and whether the hand went on`() {
+    // Tumbling through the shake and the toss, then at rest, so the roll ends.
+    val world =
+      FakeWorld(1) { step, _, _ ->
+        if (step < STROKE_STEPS + QUIET_STEPS) FakeWorld.tumbling() else FakeWorld.settled()
+      }
+    val lines = mutableListOf<String>()
+    val spec = spec(listOf(StandardDice.d6), 42L).copy(shake = stroke(), toss = true)
+    val loop = RollLoop(spec, world, ShakeDriver(spec.shake, tosses = true), tossLog = lines::add)
+
+    loop.run()
+
+    val letGo = STROKE_STEPS - 1 + ShakeDriver.LET_GO_STEPS
+    assertTrue(lines.toString(), lines.first().startsWith("let go at step $letGo: hard "))
+    assertTrue(lines.toString(), lines.first().contains(" mm/s, dice moving at "))
+    assertTrue(lines.toString(), lines.last().startsWith("roll over at step "))
+    assertTrue(
+      lines.toString(),
+      lines.last().endsWith("tossed 1 times; 0 moments came after the toss, the last at step -1"),
+    )
+  }
+
+  @Test
   fun `a shake recorded before there was a toss replays without one`() {
     val world = FakeWorld(2) { _, _, _ -> FakeWorld.tumbling() }
     val loop = loop(listOf(StandardDice.d6, StandardDice.d6), world, stroke())

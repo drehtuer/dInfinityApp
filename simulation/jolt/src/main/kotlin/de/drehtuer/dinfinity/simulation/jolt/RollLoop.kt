@@ -17,6 +17,7 @@ import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Tumble
 import de.drehtuer.dinfinity.simulation.api.Vector3
+import kotlin.math.roundToInt
 
 /**
  * One throw, from the first step to the reading
@@ -55,6 +56,8 @@ class RollLoop(
    */
   private val recorder: ImpactRecorder =
     ImpactRecorder(spec.dice.map { it.die.material.sizeMm * spec.dieScale }),
+  /** Where this roll says how its hand let go, or null for nowhere ([TossLog]). */
+  private val tossLog: ((String) -> Unit)? = TossLog.current(),
 ) {
   private val diceCount = spec.dice.size
   private val tracker = RestTracker(diceCount)
@@ -338,8 +341,13 @@ class RollLoop(
     // every die is still in the hand — none is read before the table has
     // settled and the hand is off it ([count]).
     if (shake.lettingGo(step)) {
-      handful.letGo(Release.of(shake.recordedUpTo(step)), step)
+      val release = Release.of(shake.recordedUpTo(step))
+      handful.letGo(release, step)
       tossed++
+      tossLog?.invoke(
+        "let go at step $step: ${shake.describe(step)}; toss ${release.speedMmPerSecond.roundToInt()} mm/s, " +
+          "dice moving at ${TossLog.medianOf(moving.map(Vector3::length)).roundToInt()} mm/s",
+      )
     }
     handful.step(step, states, moving, handOn = shake.stillShaking(step))
     world.setGravity(shake.gravity)
@@ -422,7 +430,12 @@ class RollLoop(
    * (`docs/architecture.md`, decision 70). Always false: there is nothing
    * left for this loop to step.
    */
+
   private fun closeOut(): Boolean {
+    tossLog?.invoke(
+      "roll over at step ${tracker.stepsTaken}, tossed $tossed times; " +
+        "${shake.samplesAfterLetGo} moments came after the toss, the last at step ${shake.lastStepAfterLetGo}",
+    )
     val unread = count(states)
     val again = unread.isNotEmpty()
 

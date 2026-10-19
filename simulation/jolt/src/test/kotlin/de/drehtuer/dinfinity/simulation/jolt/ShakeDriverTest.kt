@@ -438,6 +438,35 @@ class ShakeDriverTest {
     assertTrue(letGos(driver, 200, from = 101).isEmpty())
   }
 
+  @Test
+  fun `moments that arrive after the hand let go are counted`() {
+    val driver = ShakeDriver(hard(0 until 50), tosses = true)
+    val letGo = 49 + ShakeDriver.LET_GO_STEPS
+    letGos(driver, letGo + 1)
+    assertEquals(0, driver.samplesAfterLetGo)
+
+    driver.add(sample(0, HARD), atStep = letGo + 3)
+    driver.add(sample(0, HARD), atStep = letGo + 5)
+
+    assertEquals(2, driver.samplesAfterLetGo)
+    assertEquals(letGo + 5, driver.lastStepAfterLetGo)
+  }
+
+  @Test
+  fun `a shake describes itself in a line`() {
+    val driver = ShakeDriver(hard(0 until 50), tosses = true)
+    letGos(driver, 60)
+
+    val line = driver.describe(57)
+
+    assertTrue(
+      line,
+      line.startsWith("hard 0..49, quiet 8, longest pause 1, waited for ${ShakeDriver.LET_GO_STEPS}, pushes "),
+    )
+    // Nine thousand mm/s² is nine tenths of a gravity.
+    assertTrue(line, line.endsWith(" 9"))
+  }
+
   /** The steps from [from] up to [until] at which [driver] lets go. */
   private fun letGos(
     driver: ShakeDriver,

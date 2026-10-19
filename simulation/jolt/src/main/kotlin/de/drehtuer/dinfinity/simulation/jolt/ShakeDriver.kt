@@ -4,6 +4,7 @@ import de.drehtuer.dinfinity.simulation.api.Release
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.Vector3
 import kotlin.math.ceil
+import kotlin.math.roundToInt
 
 /**
  * Turns a recorded shake into the one thing the world is told each step: which
@@ -98,6 +99,16 @@ class ShakeDriver(
    * the phone.
    */
   private var letGo: Boolean = false
+
+  /**
+   * How many moments arrived after the hand let go, and the step of the last:
+   * a hand still shaking when it was let go of, which is what a toss that came
+   * too soon looks like from here ([TossLog]).
+   */
+  var samplesAfterLetGo: Int = 0
+    private set
+  var lastStepAfterLetGo: Int = -1
+    private set
 
   /**
    * Which way down is and how hard, in mm/s²: gravity as the gyroscope has
@@ -226,6 +237,10 @@ class ShakeDriver(
   ) {
     val placed = sample.copy(stepIndex = atStep)
     if (!placed.drivesAStep) return
+    if (letGo) {
+      samplesAfterLetGo++
+      lastStepAfterLetGo = atStep
+    }
     byStep[atStep] = placed
     lastSampleStep = maxOf(lastSampleStep, atStep)
   }
@@ -264,6 +279,21 @@ class ShakeDriver(
       step - handFromStep > HOLD_STEPS -> hand = Vector3.Zero
     }
     gravity = down - hand
+  }
+
+  /**
+   * The shake as it stood at [step], in a line: its first and last hard
+   * moment, the quiet since, its longest pause and the quiet it waited for,
+   * and how hard the hand pushed over the last [TRACE_STEPS], a tenth of a
+   * gravity to the figure ([TossLog]).
+   */
+  fun describe(step: Int): String {
+    val trace =
+      (step - TRACE_STEPS..step)
+        .mapNotNull { byStep[it]?.accelerationMmPerSecond2?.length }
+        .joinToString(" ") { (it / TENTH_OF_A_G).roundToInt().toString() }
+    return "hard $firstActiveStep..$lastActiveStep, quiet ${step - lastActiveStep}, " +
+      "longest pause $longestPause, waited for ${quietToLetGo()}, pushes $trace"
   }
 
   /**
@@ -361,6 +391,11 @@ class ShakeDriver(
      * thrown by something other than the hand.
      */
     const val MOST_LET_GO_STEPS: Int = 36
+
+    /** How far back [describe] traces the hand: about one slow stroke. */
+    const val TRACE_STEPS: Int = 72
+
+    private const val TENTH_OF_A_G: Double = GRAVITY_MM_PER_SECOND2 / 10
 
     /** What share of the hardest recent moment still counts as shaking ([isShaking]). */
     const val STRONG_SHARE: Double = 0.25
