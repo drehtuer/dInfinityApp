@@ -6,6 +6,7 @@ import de.drehtuer.dinfinity.core.model.DieMaterial
 import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.simulation.api.CapacityVerdict
+import de.drehtuer.dinfinity.simulation.api.Release
 import de.drehtuer.dinfinity.simulation.api.Seeds
 import de.drehtuer.dinfinity.simulation.api.TableCapacity
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
@@ -49,6 +50,11 @@ import de.drehtuer.dinfinity.simulation.api.ThrowSpec
  *   file's `edge_rounding` would give, or null for the default every die has
  *   when nothing says otherwise (`docs/architecture.md`, decision 94). What
  *   lets a run measure a rounder die than the built-in set has.
+ * @param releaseMmPerSecond how fast a hand tosses the dice, for a run of
+ *   throws shaken and then tossed (decision 105), or null for the grid throw
+ *   the harness has always made. Each roll is shaken by [HandStroke] — four
+ *   strokes, the last one the way its own seed says — and tossed when it goes
+ *   quiet, through the same `ShakeDriver` a live shake does.
  */
 data class HarnessRequest(
   val label: String,
@@ -59,6 +65,7 @@ data class HarnessRequest(
   val framePaced: Boolean = false,
   val table: String? = null,
   val edgeRounding: Double? = null,
+  val releaseMmPerSecond: Double? = null,
 ) {
   init {
     require(diceCount in 1..TableCapacity.MAX_DICE) {
@@ -99,6 +106,7 @@ data class HarnessRequest(
       geometry = geometry,
       table = table,
       seed = seed,
+      tossMmPerSecond = releaseMmPerSecond,
     )
   }
 
@@ -136,6 +144,9 @@ data class HarnessRequest(
     /** How round the dice are, as `edge_rounding` would say it ([edgeRounding]). */
     const val EDGE_ROUNDING: String = "harness.edgeRounding"
 
+    /** How fast a hand lets the dice go, in mm/s ([releaseMmPerSecond]). */
+    const val RELEASE: String = "harness.release"
+
     /** Twenty dice, because that is the count Step 5.5 states its settle targets at. */
     const val DEFAULT_DICE: Int = 20
 
@@ -158,10 +169,11 @@ data class HarnessRequest(
       val diceCount = arguments(DICE)?.trim()?.toIntOrNull() ?: DEFAULT_DICE
       val table = arguments(TABLE)?.trim()?.takeIf(String::isNotEmpty)
       val edgeRounding = edgeRoundingOf(arguments(EDGE_ROUNDING))
+      val release = releaseOf(arguments(RELEASE))
       return HarnessRequest(
         label =
           arguments(LABEL)?.trim()?.takeIf(String::isNotEmpty)
-            ?: labelOf(diceCount, shape, length, table, edgeRounding),
+            ?: labelOf(diceCount, shape, length, table, edgeRounding, release),
         shape = shape,
         diceCount = diceCount,
         length = length,
@@ -169,7 +181,27 @@ data class HarnessRequest(
         framePaced = asked(arguments(FRAMES)),
         table = table,
         edgeRounding = edgeRounding,
+        releaseMmPerSecond = release,
       )
+    }
+
+    /**
+     * How fast [value] asks a hand to let the dice go, or null when it asks for
+     * the grid throw.
+     *
+     * Refused rather than clamped outside the speeds a release can have
+     * ([Release.LEAST_MM_PER_SECOND]..[Release.MOST_MM_PER_SECOND]), for the
+     * reason [edgeRoundingOf] gives: a measurement of a throw the app cannot
+     * make is no measurement of the app.
+     */
+    fun releaseOf(value: String?): Double? {
+      val text = value?.trim()?.takeIf(String::isNotEmpty) ?: return null
+      val speed = text.toDoubleOrNull()
+      require(speed != null && speed in Release.LEAST_MM_PER_SECOND..Release.MOST_MM_PER_SECOND) {
+        "a release at \"$text\" is not a speed between " +
+          "${Release.LEAST_MM_PER_SECOND} and ${Release.MOST_MM_PER_SECOND} mm/s"
+      }
+      return speed
     }
 
     /**
@@ -202,14 +234,18 @@ data class HarnessRequest(
      * A soak says so in its own name, because the files are named after the
      * label and a soak of `20d20` that overwrote the `20d20` run beside it
      * would be two measurements in one file name. A run on a named [table]
-     * says that too, for the same reason.
+     * says that too, for the same reason. One parameter per thing a run can be
+     * asked to vary, because the name has to say each of them: fewer would be
+     * a label two different runs share.
      */
+    @Suppress("LongParameterList")
     fun labelOf(
       diceCount: Int,
       shape: DieShape,
       length: RunLength,
       table: String? = null,
       edgeRounding: Double? = null,
+      releaseMmPerSecond: Double? = null,
     ): String =
       buildString {
         append(diceCount)
@@ -217,6 +253,7 @@ data class HarnessRequest(
         append(shape.faceCount)
         if (table != null) append('-').append(table)
         if (edgeRounding != null) append("-round").append(edgeRounding)
+        if (releaseMmPerSecond != null) append("-release").append(releaseMmPerSecond.toInt())
         if (length is RunLength.Soak) append("-soak")
       }
 
@@ -267,6 +304,8 @@ data class HarnessRequest(
  * @param geometry the tray they are thrown in.
  * @param table its friction and restitution.
  * @param seed the run's base seed.
+ * @param tossMmPerSecond how fast a hand tosses every throw after shaking
+ *   it ([HandStroke]), or null for the grid throw.
  */
 data class HarnessPlan(
   val dice: List<DieInstance>,
@@ -274,6 +313,7 @@ data class HarnessPlan(
   val geometry: TableGeometry,
   val table: TableLook,
   val seed: Long,
+  val tossMmPerSecond: Double? = null,
 ) {
   /**
    * The throw for roll [index].
@@ -291,5 +331,7 @@ data class HarnessPlan(
       table = table,
       seed = Seeds.derived(seed, index),
       dieScale = dieScale,
+      shake = tossMmPerSecond?.let { HandStroke.of(it, Seeds.derived(seed, index)) } ?: emptyList(),
+      toss = tossMmPerSecond != null,
     )
 }

@@ -319,6 +319,97 @@ class ShakeDriverTest {
     assertTrue("a sample that drives nothing still counted as a shake", driver.isStill)
   }
 
+  @Test
+  fun `a hand that does not toss never lets go`() {
+    val driver = ShakeDriver(hard(0 until 50) + quiet(50 until 120))
+
+    assertTrue((0 until 120).none { step -> driver.advance(step).let { driver.lettingGo(step) } })
+  }
+
+  @Test
+  fun `a tossing hand lets go once, a moment after its last hard stroke`() {
+    val driver = ShakeDriver(hard(0 until 50) + quiet(50 until 120), tosses = true)
+
+    assertEquals(listOf(49 + ShakeDriver.LET_GO_STEPS), letGos(driver, 120))
+  }
+
+  @Test
+  fun `a hand braking from a hard shake has stopped before it falls under the threshold`() {
+    // Seven gravities, then a tail over the threshold but a sliver of the
+    // shake: the hand stopped when the hard moments did.
+    val driver =
+      ShakeDriver(hard(0 until 40) + stop(40 until 44) + tail(44 until 80) + quiet(80 until 120), tosses = true)
+
+    assertEquals(listOf(43 + ShakeDriver.LET_GO_STEPS), letGos(driver, 120))
+  }
+
+  @Test
+  fun `a shake shorter than its least is never let go of`() {
+    val short = ShakeDriver.LEAST_SHAKE_STEPS - 1
+    val driver = ShakeDriver(hard(0 until short) + quiet(short until 120), tosses = true)
+
+    assertTrue(letGos(driver, 120).isEmpty())
+  }
+
+  @Test
+  fun `the still moment at the turn of a stroke is not letting go`() {
+    val pause = ShakeDriver.LET_GO_STEPS - 1
+    val driver =
+      ShakeDriver(
+        hard(0 until 40) + quiet(40 until 40 + pause) + hard(40 + pause until 60 + pause) + quiet(60 + pause until 140),
+        tosses = true,
+      )
+
+    assertEquals(listOf(59 + pause + ShakeDriver.LET_GO_STEPS), letGos(driver, 140))
+  }
+
+  @Test
+  fun `a hand that has let go drives nothing and is no longer shaking`() {
+    val driver = ShakeDriver(hard(0 until 50) + quiet(50 until 120), tosses = true)
+    val letGo = 49 + ShakeDriver.LET_GO_STEPS
+    letGos(driver, letGo + 1)
+
+    driver.advance(letGo + 1)
+
+    assertEquals(ShakeDriver.DEFAULT_GRAVITY, driver.gravity)
+    assertFalse("the dice left the hand and the roll still waits on it", driver.stillShaking(letGo + 1))
+  }
+
+  @Test
+  fun `a hand lets go once per throw, and a shake after that drives nothing`() {
+    val driver =
+      ShakeDriver(hard(0 until 50) + quiet(50 until 80) + hard(80 until 130) + quiet(130 until 200), tosses = true)
+
+    assertEquals(listOf(49 + ShakeDriver.LET_GO_STEPS), letGos(driver, 100))
+    driver.advance(100)
+
+    assertEquals("a shake after the toss pushed the dice", ShakeDriver.DEFAULT_GRAVITY, driver.gravity)
+    assertFalse(driver.stillShaking(100))
+    assertTrue(letGos(driver, 200, from = 101).isEmpty())
+  }
+
+  /** The steps from [from] up to [until] at which [driver] lets go. */
+  private fun letGos(
+    driver: ShakeDriver,
+    until: Int,
+    from: Int = 0,
+  ): List<Int> = (from until until).filter { step -> driver.advance(step).let { driver.lettingGo(step) } }
+
+  @Test
+  fun `a hand letting go has felt only what came before`() {
+    val driver = ShakeDriver(hard(0 until 10) + quiet(10 until 80), tosses = true)
+
+    assertEquals((0..20).toList(), driver.recordedUpTo(20).map(ShakeSample::stepIndex))
+  }
+
+  private fun hard(steps: IntRange): List<ShakeSample> = steps.map { sample(it, HARD) }
+
+  private fun stop(steps: IntRange): List<ShakeSample> = steps.map { sample(it, SEVEN_G) }
+
+  private fun tail(steps: IntRange): List<ShakeSample> = steps.map { sample(it, TAIL) }
+
+  private fun quiet(steps: IntRange): List<ShakeSample> = steps.map { sample(it, QUIET) }
+
   private fun sample(
     step: Int,
     x: Double,
@@ -330,6 +421,18 @@ class ShakeDriverTest {
     )
 
   private companion object {
+    /** A hand shaking: over the detector's threshold. */
+    const val HARD = 9_000.0
+
+    /** And one coming to a stop: under it. */
+    const val QUIET = 500.0
+
+    /** A hand stopping hard. */
+    const val SEVEN_G = 68_000.0
+
+    /** And the decay after it: over the threshold, under a quarter of the stop. */
+    const val TAIL = 7_000.0
+
     /** Long enough to be past the roll's own cap several times over. */
     const val THIRTY_SECONDS_OF_STEPS = 3_600
 

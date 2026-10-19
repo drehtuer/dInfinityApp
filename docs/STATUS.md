@@ -69,6 +69,12 @@ This is a snapshot, not a changelog — git history is the changelog.
   103; a device test fails by 50 % of a face at the old 0.12) — the owner
   to judge whether they still look varnished.
   It reaches `main` when the owner likes it on the phone.
+- **The hand tosses the dice** (decision 105, `docs/TODO.md` 5.8): shaken
+  in sight as before, and tossed when the hand stops, after a comparison with
+  slow-motion film of real dice. Adopted by the owner on 2026-10-20 — without
+  it the dice settle almost as the shaking stops. The constants wait for the
+  owner's recordings of real throws; a shake along the phone's length still
+  hops now and then.
 
 ## Done
 

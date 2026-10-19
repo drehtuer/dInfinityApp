@@ -167,4 +167,39 @@ class RollPaceTest {
 
     const val TOLERANCE = 1e-12
   }
+
+  @Test
+  fun `when the hand lets go the pace eases down from real speed instead of dropping`() {
+    // The owner saw the dice go from fast to slow motion in one frame as the
+    // hand let go, and read it as the roll lagging.
+    assertEquals(1.0, RollPace.eased(RollPace.WATCHED, driven = false, stepsSinceHand = 0), 0.0)
+    val halfway = RollPace.eased(RollPace.WATCHED, driven = false, stepsSinceHand = RollPace.EASE_STEPS / 2)
+    assertEquals((1.0 + RollPace.WATCHED) / 2, halfway, 1e-9)
+    assertEquals(
+      RollPace.WATCHED,
+      RollPace.eased(RollPace.WATCHED, driven = false, stepsSinceHand = RollPace.EASE_STEPS),
+      0.0,
+    )
+  }
+
+  @Test
+  fun `the ease only ever slows, step by step, with no corner at either end`() {
+    val paces = (0..RollPace.EASE_STEPS).map { RollPace.eased(RollPace.WATCHED, driven = false, stepsSinceHand = it) }
+
+    assertTrue(paces.zipWithNext().all { (a, b) -> b <= a })
+    assertTrue(1.0 - paces[1] < 0.01, "the first step is a jolt")
+    assertTrue(paces[RollPace.EASE_STEPS - 1] - RollPace.WATCHED < 0.01, "the last step is a jolt")
+  }
+
+  @Test
+  fun `a roll no hand ever drove, or one a hand is driving, is not eased`() {
+    assertEquals(RollPace.WATCHED, RollPace.eased(RollPace.WATCHED, driven = false, stepsSinceHand = null), 0.0)
+    assertEquals(1.0, RollPace.eased(1.0, driven = true, stepsSinceHand = 3), 0.0)
+    assertEquals(
+      0.5 * RollPace.WATCHED,
+      RollPace.secondsFor(0.5, driven = false, stepsSinceHand = RollPace.EASE_STEPS + 1),
+      1e-12,
+    )
+    assertEquals(0.5, RollPace.secondsFor(0.5, driven = false, stepsSinceHand = 0), 1e-12)
+  }
 }

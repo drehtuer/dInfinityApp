@@ -235,6 +235,13 @@ power-saving mode; there is no other one.
   hauling them about and there is nothing but gravity left. A slower roll is
   also a slower *answer*, so the number is meant to be judged on a phone and
   changed.
+- **A roll a hand has just let go of eases into the pace** (`RollPace.eased`):
+  from real speed down to the pace over `RollPace.EASE_STEPS` (36 steps, 0.3 s
+  of the roll, about half a second on the screen), along a smoothstep, so there
+  is no corner at either end. Switched in one frame, the dice lurched from fast
+  to slow motion as the hand let go. `TrayLoop` remembers the last step a hand
+  drove the roll and hands the pace how long ago that was; like everything
+  else here it decides when steps are taken, never what they are.
 - **A roll being driven is never paced.** While a hand is throwing the dice the
   player is not watching the roll, they are steering it, and dice that answer a
   hand a beat late are the only way this could make the app worse. The question
@@ -282,9 +289,10 @@ power-saving mode; there is no other one.
 **A shake is the throw.** It is the only way to put dice in the air, and every
 other control in the app stops at filling the formula field. That is absolute
 (`docs/architecture.md`, decision 66): no button, no key, no accessibility
-action and no setting that switches shaking off. The dice are
-spawned when the shake begins and are driven by the phone's motion until the
-hand stops, then released ("Shake input", below).
+action and no setting that switches shaking off. The dice are spawned when
+the shake begins and are driven by the phone's motion until the hand stops
+("Shake input", below), and the hand then tosses them ("The hand lets go",
+below).
 
 There was a Roll button, and it is gone. It was not a second way to throw so
 much as a way of making the shake optional: a tap on a saved roll threw, the
@@ -315,6 +323,101 @@ shake to throw again ("Picking a die up and throwing it again"), and a surface
 that threw the whole formula the moment it is touched would have nowhere left
 to put either. A roll is also not something to start by
 accident — it replaces a result somebody may still be reading.
+
+### The hand lets go
+
+Decision 105; what is still to tune is `docs/TODO.md`, Step 5.8.
+
+**Shaking a box is not throwing dice.** Put side by side with a slow-motion
+film of four real d6 being thrown, the tray showed the difference plainly: the
+real dice leave a hand with height, speed and spin, land hard, bounce several
+of their own heights and tumble over two to four faces before they stop. On the
+Pixel 10a, four d6 shaken in the tray raced about while the phone moved and
+were all still about 0.3 s after it stopped — the last stroke braked them into
+a wall or each other, and nothing was left to tumble with.
+
+So **the shake is as it was, and the hand tosses the dice when it stops.**
+The dice are spawned when the shake begins and rattle about the tray under
+it, in sight, as they always did ("Shake input") — the first version of the
+toss, tried on a branch, took them off the table while the phone was
+shaken, and the owner rejected it: with nothing on the table, nothing said the
+shake was reaching the dice. Then:
+
+- **The hand lets go once, a moment after its last hard stroke**
+  (`ShakeDriver.lettingGo`): 12 steps, a tenth of a second, after the last
+  moment over the shake detector's 0.6 g, and never before the shake has gone
+  on for 0.3 s. Far sooner than the detector's 0.4 s of quiet, which is right
+  for deciding a roll may end and too late for a throw. **Once per throw, and
+  for good**: a shake after the toss drives nothing and tosses nothing. Two
+  other rules were tried on the Pixel 10a and dropped. Let go only after the
+  hand had fallen under 0.6 g, a hand braking from several gravities was let go
+  of a quarter of a second after it stopped, from a heap the stop had slammed
+  into a wall, and the dice jumped. Let go once it fell under a quarter of its
+  own recent peak, slow strokes along the phone's length counted as stopping —
+  six let-gos in one throw, the dice tossed and grabbed back on every stroke,
+  each a hop and a lurch from real speed to slow motion and back.
+- **Which way, and how hard, is the hand's last stroke** (`Release.of`). The
+  moments are the phone's acceleration in the tray's frame; summed over time
+  they are its velocity, with the drift taken out as a straight line because a
+  phone picked up still and stopped still begins and ends at rest. The throw
+  is the last stroke in the final 0.35 s before the hand went quiet — the last
+  run of moments at 60 % or more of the fastest there, and its peak — not the
+  fastest moment, which in a window one stroke long is as likely to be the
+  stroke before, going the other way. The dice leave at 1.5 times the hand's
+  speed, held to 600–1,600 mm/s, tapered for a crowded tray as the spawn
+  throw is. A shake straight at the glass has no direction along the floor; its
+  toss takes one from the seed.
+- **Every die is tossed from where it lies** (`Toss`): up, at the speed that
+  would lift it 15–60 mm, and along the stroke within 17° and 15 % of its
+  speed, with a fresh spin of 60–120 rad/s. Its pose is kept exactly. **One
+  after another**: each die leaves the hand on its own step, within a tenth of
+  a second of the let-go (`Toss.Handful`). And **onward**: a die already
+  sliding is tossed the way it is going, at the hand's speed or its own if
+  faster; only a die barely moving takes the stroke's direction — tossed along
+  the stroke whatever it was doing, a sliding heap reversed. And **never into
+  a wall it is against** (`Toss.offTheWalls`): within 30 mm of a wall, the part
+  of a toss aimed at it is turned back. A stroke that stops slams the heap into
+  the wall it was heading for, and tossed along the stroke the dice bounced off
+  it as one. Tossed on one step and lifted
+  40–90 mm, every die hopped together and the owner saw the dice jump. Every
+  die, because every die is still in the hand: no die is read before the table
+  has settled and the hand is off it, and a die lying still under a hand that
+  is still shaking is a roll caught at the top of a swing, not a die at rest —
+  nothing touches a die that has come to rest, and none has.
+- **Then nothing but gravity.** The hand drives nothing after it lets go, the
+  roll stops counting as driven, and the settle rule no longer waits on the
+  quiet tail of the shake. The watched pace takes over **eased**, over 0.3 s of
+  the roll ("The simulation clock"): dropped in one frame, the dice went from
+  fast to slow motion just as they flew their fastest, which the owner read as
+  the roll lagging and catching up.
+
+It is a function of the record and nothing else: the let-go step and the toss
+are read off the moments `ShakeDriver` already files by step, so a live roll and
+its replay toss on the same step, the same way. A throw thrown by a shake says
+so (`ThrowSpec.toss`); a throw recorded before there was a toss — every golden
+case — does not, and replays exactly as it did.
+
+Measured on the Pixel 10a with `tools/harness.sh --release 1200`, which shakes
+each roll with a synthetic hand (`HandStroke`: four strokes along a line the
+roll's seed draws, then quiet) and tosses it as a live one is, 500 rolls a row:
+
+| | re-thrown | median / p99 settle | deepest overlap | turns after first touch |
+| --- | --- | --- | --- | --- |
+| 4d6, grid throw, no shake | 0.20 % | 0.80 / 1.03 s | 4.8 mm | 2.96 |
+| 4d6, shaken and tossed | 0.40 % | 1.53 / 2.13 s | 5.8 mm | 10.5 |
+| 20d20, grid throw, no shake | 1.17 % | 0.96 / 1.99 s | 5.9 mm | 2.67 |
+| 20d20, shaken and tossed | 3.93 % | 1.81 / 2.86 s | 6.4 mm | 9.1 |
+
+The settle times include the synthetic shake, about half a second, and the
+turns include the tumbling under it, so neither column is yet the figure that
+matters — the turns *after the hand lets go* (`docs/TODO.md`, Step 5.8). What
+does read straight off: twenty dice tossed one way pile against the far wall
+and are thrown again three times as often, so a crowded toss needs less speed.
+On the phone, four d6 shaken by hand rattled in sight while the phone moved,
+left the felt as it stopped and tumbled for about a second before they rested. The owner's first verdict, on the phone: "The tumbling looks much better.
+Dice twirl around and tilt over."
+Every constant here is a first guess, to be set from the owner's recordings of
+real throws.
 
 ### No way in that is not a hand
 
@@ -615,6 +718,11 @@ longer do: at the current throw they leave the shaken heap exactly where it
 was, as the table above says.)
 
 ## Shake input
+
+> **The hand also lets go** ("The hand lets go", under "Starting a roll";
+> decision 105). Everything below holds while the phone is shaken; a moment
+> after the last hard stroke the hand tosses the dice and drives them no more
+> for the rest of the throw.
 
 - Sensors: linear acceleration (gravity removed) and gyroscope, at
   `SENSOR_DELAY_GAME`. Registered while the roll screen is resumed and let go

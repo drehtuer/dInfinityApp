@@ -415,6 +415,8 @@ class RollMachine(
         seed = seeds(),
         dieScale = ready.scale,
         shake = shake,
+        // Thrown by a shake, so tossed when the hand lets go (decision 105).
+        toss = true,
       )
     inFlight = InFlight(ready, spec).also { it.rounding = defaultRounding }
     state = RollState.Rolling(ready.diceCount)
@@ -857,6 +859,7 @@ class RollMachine(
         dieScale = flight.prepared.scale,
         shake = shake,
         among = flight.down.toList(),
+        toss = true,
       )
     flight.picking = indices
     flight.round = Passes(spec)
@@ -955,6 +958,7 @@ class RollMachine(
         seed = Seeds.derived(flight.spec.seed, flight.added.size + 1),
         dieScale = flight.prepared.scale,
         among = flight.down.toList(),
+        toss = true,
       )
     flight.adding = spec.dice
     // The round is this throw from the moment it is owed, so whatever lands

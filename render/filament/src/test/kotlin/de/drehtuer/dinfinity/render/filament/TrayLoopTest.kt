@@ -155,7 +155,9 @@ class TrayLoopTest {
 
     assertEquals("the watched frame was not paced", RollPace.WATCHED / 60.0, roll.advanced[1], EPSILON)
     assertEquals("the hand was answered late", 1.0 / 60.0, roll.advanced[2], EPSILON)
-    assertEquals("the pace did not come back", RollPace.WATCHED / 60.0, roll.advanced[3], EPSILON)
+    // And when the hand lets go the pace eases back down rather than dropping
+    // in one frame (`RollPace.eased`): the first frame after is still real speed.
+    assertEquals("the pace dropped the moment the hand let go", 1.0 / 60.0, roll.advanced[3], EPSILON)
   }
 
   @Test
