@@ -2866,9 +2866,17 @@ Table view's 22° off it; lower, oblique shots are ruled out — so a die's
 reflection lies directly beneath the die and is hidden by it; and glass
 looked at square on reflects about **4 %** — 2.7 % at the strength dark
 glass's roughness gave it. On the Pixel 10a the owner looked for it and saw
-none, and the render gallery shows none, while it cost a second render pass of
-the dice every frame: **11.87 ms** GPU p99 on dark glass against **11.28 ms**
-on felt at 20d20, about 0.6 ms (`tools/harness.sh --rendered`, 2026-10-19).
+none, and the render gallery shows none. So it went, with the second view of
+the dice, its target and a material to compile on first use.
+
+**It was not removed for speed, and it saved none.** The floor of dark glass
+is now drawn by the dice's opaque material, as plain's is, and that material
+costs more over a whole floor than the glass one did: at 20d20 on the Pixel
+10a, GPU p99 was **11.87 ms** with the reflection (2026-10-19) and is
+**13.20 ms** without it, against plain's 13.0 ms and felt's 11.34 ms
+(`tools/harness.sh --rendered`, 2026-10-20). Every table still draws at 60
+fps. A cheaper floor for the flat looks is the open question on the clear
+coat they wear (`docs/TODO.md`, "Open questions").
 
 **Why not Filament's screen-space reflections** either, read off Filament
 1.76.1's shaders before the planar one was built: they reflect everything on
