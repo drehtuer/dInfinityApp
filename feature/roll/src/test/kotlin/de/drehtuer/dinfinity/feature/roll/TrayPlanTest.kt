@@ -1,5 +1,6 @@
 package de.drehtuer.dinfinity.feature.roll
 
+import de.drehtuer.dinfinity.render.filament.TrayCamera
 import de.drehtuer.dinfinity.simulation.api.ContactPoint
 import de.drehtuer.dinfinity.simulation.api.DieDiagnostic
 import de.drehtuer.dinfinity.simulation.api.SettleRule
@@ -43,12 +44,36 @@ class TrayPlanTest {
   }
 
   @Test
-  fun `plus y is the right of the plan, which is where the camera puts it`() {
-    val right = TrayPlan.spot(Vector3(0.0, geometry.shortSideMm / 2, 0.0), geometry)
-    val left = TrayPlan.spot(Vector3(0.0, -geometry.shortSideMm / 2, 0.0), geometry)
+  fun `plus y is the left of the plan`() {
+    val left = TrayPlan.spot(Vector3(0.0, geometry.shortSideMm / 2, 0.0), geometry)
+    val right = TrayPlan.spot(Vector3(0.0, -geometry.shortSideMm / 2, 0.0), geometry)
 
-    assertEquals(1.0, right.across, EPSILON)
     assertEquals(0.0, left.across, EPSILON)
+    assertEquals(1.0, right.across, EPSILON)
+  }
+
+  @Test
+  fun `the plan puts a point on the same side as the camera does`() {
+    // Asked of the camera rather than of a convention written down beside it:
+    // the plan said `+y` was right, the picture put it left, and the overlay
+    // showed the tray mirrored. Straight down, as a new install looks.
+    val width = 1080
+    val height = 2424
+    val shot = TrayCamera.framingTheTray(geometry, width.toDouble() / height, tiltDegrees = 0.0)
+    val corners =
+      listOf(
+        Vector3(geometry.longSideMm / 3, geometry.shortSideMm / 3, 0.0),
+        Vector3(geometry.longSideMm / 3, -geometry.shortSideMm / 3, 0.0),
+        Vector3(-geometry.longSideMm / 3, geometry.shortSideMm / 3, 0.0),
+        Vector3(-geometry.longSideMm / 3, -geometry.shortSideMm / 3, 0.0),
+      )
+
+    for (point in corners) {
+      val (x, y) = requireNotNull(TrayCamera.pixelOf(shot, point, width, height))
+      val spot = TrayPlan.spot(point, geometry)
+      assertEquals("across, for $point", x > width / 2.0, spot.across > 0.5)
+      assertEquals("along, for $point", y > height / 2.0, spot.along > 0.5)
+    }
   }
 
   @Test

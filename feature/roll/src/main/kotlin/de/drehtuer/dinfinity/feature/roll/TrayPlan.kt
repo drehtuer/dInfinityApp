@@ -22,10 +22,12 @@ import de.drehtuer.dinfinity.simulation.api.Vector3
  * Fractions rather than pixels, because the panel's size is the screen's
  * business and this is the tray's. `0,0` is the top-left corner of the plan.
  *
- * The axes are the tray's own (`docs/tables.md`): the long side is `+x` and
- * points up the screen, `+y` points to its right, and the floor is `z = 0`.
- * That is the same convention [TrayCamera] builds its `up` and `right` from,
- * so the plan and the picture agree about which end of the tray is which.
+ * The axes are the tray's own (`docs/physics-and-rendering.md`,
+ * "Coordinates"): the long side is `+x` and points up the screen, `+y` points
+ * to its **left**, and the floor is `z = 0`. With `+x` up and `+z` out of the
+ * glass, right-handedness leaves `+y` nowhere else — [TrayCamera]'s `right` is
+ * `cross(forward, up)`, which is `-y`, and `input/shake`'s `PhoneAxes` says
+ * the same. The plan once put `+y` on the right and drew the tray mirrored.
  */
 object TrayPlan {
   /**
@@ -41,7 +43,7 @@ object TrayPlan {
     geometry: TableGeometry,
   ): PlanSpot =
     PlanSpot(
-      across = HALF + position.y / geometry.shortSideMm,
+      across = HALF - position.y / geometry.shortSideMm,
       along = HALF - position.x / geometry.longSideMm,
     )
 
