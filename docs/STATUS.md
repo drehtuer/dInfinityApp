@@ -32,8 +32,9 @@ This is a snapshot, not a changelog — git history is the changelog.
   disk), translucent dice as refracting resin (90) and rounded edges drawn
   with the solver's own convex radius (91), all passing on the Pixel 10a.
   The dice are no longer reflected in the dark glass: from straight above
-  the reflection hid under each die and showed nothing on the phone, for
-  0.6 ms of GPU a frame (decision 104, withdrawing 93). The broken light lines along resin dice's
+  the reflection hid under each die and showed nothing on the phone (decision
+  104, withdrawing 93); it saves no GPU time, as dark glass's floor now runs
+  the dice's opaque material, as plain's does. The broken light lines along resin dice's
   rounded edges were the lacquer's glint, thinner than a pixel; specular
   anti-aliasing spreads it now. Felt and oak are drawn from CC0 pictures,
   keyed by the package the look came from (92); plain stays flat. On the
