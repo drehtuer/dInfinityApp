@@ -4,7 +4,7 @@ Current state of the project in a few lines. Update it when a milestone moves, a
 decision is taken or something is blocked; prune anything no longer current.
 This is a snapshot, not a changelog — git history is the changelog.
 
-**Last updated:** 2026-10-20
+**Last updated:** 2026-10-21
 
 ## Where we are
 
@@ -43,7 +43,8 @@ This is a snapshot, not a changelog — git history is the changelog.
   look in `average` now has its roughness map averaged at its `roughness`
   too, and oak is oiled at 0.75. The phone then drew green felt's red 13 over:
   the felt's own sheen, 1.4 % of white, which a look in `average` now has
-  taken out of its colour (`SurfaceLight`) — not yet run on the phone. The
+  taken out of its colour (`SurfaceLight`); on the phone green felt now
+  draws (30, 92, 57) against its (31, 94, 58). The
   face designer is three steps — Shape, Material (six named materials, a body
   colour, an edge-rounding slider over 1.5–6 %), Faces
   — after the owner's feedback (decisions 94, 97–99); a drawn face is no
@@ -92,10 +93,18 @@ This is a snapshot, not a changelog — git history is the changelog.
 - **Every decision about a roll is Kotlin over an interface**, so "nothing
   touches a die that has come to rest" is proved by JVM tests, not sampled.
 
-## Last device run — Pixel 10a, 2026-10-04, the overnight stack tip (#349)
+## Last device runs — Pixel 10a
 
-- **Device suite:** 102 tests, **101 passed, 0 failed**, 1 skipped
-  (`HarnessTest`, which declines without a roll count).
+- **2026-10-21, `feature/designer-material-and-roundness` (#406):** every
+  library module's device suite — `designer`, `dicesets:install`,
+  `feature:roll`, `simulation:jolt`, `render:filament` — 126 passed, 0
+  failed, 3 skipped. `:app`'s suite was not run, because it writes into the
+  owner's real history. Floors straight down: green felt (30, 92, 57),
+  black felt (30, 29, 29), oak (92, 62, 40); the gallery drawn for the owner
+  to judge.
+- **2026-10-04, the overnight stack tip (#349):** 102 tests, 101 passed, 0
+  failed, 1 skipped (`HarnessTest`, which declines without a roll count).
+  The harness and rendered-harness figures below are from that run.
 - **Harness, 10,000 rolls of 20d20:** no die read while standing on another,
   none gave up, settle 0.95 s median and 1.96 s p99, **2.70 turns after
   landing**. Fails, as before: re-throws 1.21 % against 0.05 %, overlap
