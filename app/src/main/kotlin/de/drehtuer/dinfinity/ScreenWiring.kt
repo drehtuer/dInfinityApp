@@ -15,6 +15,7 @@ import de.drehtuer.dinfinity.data.setDefaultTable
 import de.drehtuer.dinfinity.designer.OpeningDie
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.feature.designer.DesignerPresenter
+import de.drehtuer.dinfinity.feature.designer.DesignerStep
 import de.drehtuer.dinfinity.feature.roll.WhatIsThere
 import de.drehtuer.dinfinity.feature.sets.SetDetailPresenter
 import de.drehtuer.dinfinity.feature.sets.SetsPresenter
@@ -189,6 +190,7 @@ internal class ScreenWiring(
           personal = app.personalSets,
         ),
       scope = scope,
+      step = DesignerStep.openingFor(wanted),
     )
   }
 
@@ -336,7 +338,7 @@ internal fun basesIn(
  *   drawing was just saved into, so the artwork would be on a die nobody
  *   threw. A die found this way is always spelled with its set — that is the
  *   point of asking for it (`DrawnSets`; `docs/face-designer.md`, "Flow",
- *   step 4).
+ *   Roll it).
  */
 internal fun spellingOf(
   die: Die,

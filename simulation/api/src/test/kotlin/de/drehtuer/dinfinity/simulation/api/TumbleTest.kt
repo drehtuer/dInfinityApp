@@ -107,9 +107,11 @@ class TumbleTest {
   @Test
   fun `a die index nobody threw is ignored rather than thrown at`() {
     val tumble = Tumble(1)
-    tumble.step(OFF_THE_END, about(QUARTER), touching = true)
-    tumble.settled(OFF_THE_END)
-    assertEquals(0.0, tumble.turnsOf(OFF_THE_END), TOLERANCE)
+    listOf(-1, OFF_THE_END).forEach { nobody ->
+      tumble.step(nobody, about(QUARTER), touching = true)
+      tumble.settled(nobody)
+      assertEquals(0.0, tumble.turnsOf(nobody), TOLERANCE)
+    }
   }
 
   @Test

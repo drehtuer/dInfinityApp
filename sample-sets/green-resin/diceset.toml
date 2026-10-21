@@ -1,0 +1,79 @@
+# Green resin — a sample package for trying the app's import with
+# (sample-sets/README.md). The format is explained field by field in
+# ../../examples/diceset.toml; this file only says what is particular to green resin.
+
+format = 1
+
+[set]
+id = "green-resin"
+name = "Green resin"
+version = "1.0.0"
+author = "dInfinity"
+license = "CC0-1.0"
+description = "Bottle-green cast resin, about half translucent, so the felt shows softly through it."
+homepage = "https://github.com/drehtuer/dInfinityApp/tree/main/sample-sets/green-resin"
+
+[defaults]
+color = "#2f8a55"
+number_color = "#f4f1e8"
+roughness = 0.15
+metallic = 0.0
+size_mm = 16
+density = 1.15              # cast resin
+translucency = 45           # somewhat see-through
+restitution = 0.55
+friction = 0.5
+
+[[die]]
+id = "d2"
+shape = "coin"
+faces = [1, 2]
+
+[[die]]
+id = "d4"
+shape = "tetrahedron"
+read = "vertex-up"
+faces = [1, 2, 3, 4]
+
+[[die]]
+id = "d6"
+shape = "cube"
+faces = [1, 2, 3, 4, 5, 6]
+
+[[die]]
+id = "d8"
+shape = "octahedron"
+faces = [1, 2, 3, 4, 5, 6, 7, 8]
+
+[[die]]
+id = "d10"
+shape = "pentagonal-trapezohedron"
+faces = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+labels = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]
+
+[[die]]
+id = "d10-tens"
+shape = "pentagonal-trapezohedron"
+faces = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]
+labels = ["00", "10", "20", "30", "40", "50", "60", "70", "80", "90"]
+
+[[die]]
+id = "d12"
+shape = "dodecahedron"
+faces = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+
+[[die]]
+id = "d18"
+shape = "enneagonal-trapezohedron"
+faces = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
+
+[[die]]
+id = "d20"
+shape = "icosahedron"
+faces = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+
+[[die]]
+id = "df"
+shape = "cube"
+faces = [-1, -1, 0, 0, 1, 1]
+labels = ["−", "−", "", "", "+", "+"]

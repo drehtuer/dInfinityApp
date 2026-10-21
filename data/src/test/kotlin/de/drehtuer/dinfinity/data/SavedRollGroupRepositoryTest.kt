@@ -88,6 +88,15 @@ class SavedRollGroupRepositoryTest {
     }
 
   @Test
+  fun `half a pin read back from a row names no table`() {
+    // Not a row this repository writes, but one a hand edit or an older
+    // version can leave: a package with no table, or a table with no package,
+    // is not somewhere a roll can land, and the fallback has to take over.
+    assertNull(pin(setId = "brass", tableId = null))
+    assertNull(pin(setId = null, tableId = "oak"))
+  }
+
+  @Test
   fun `groups nest one level, and a third is refused`() =
     runTest {
       repository.save(SavedRollGroup(id = "dnd", name = "D&D"))

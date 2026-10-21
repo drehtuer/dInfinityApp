@@ -113,14 +113,51 @@ object RollPace {
    *   [WATCHED_STEPS] the frame is given back whole as well.
    * @param stillMoving how many of the roll's dice have not been read yet.
    * @param dice how many dice the roll threw.
+   * @param stepsSinceHand how many steps ago a hand last drove these dice, or
+   *   null when none ever did ([eased]).
    */
+  @Suppress("LongParameterList")
   fun secondsFor(
     elapsedSeconds: Double,
     driven: Boolean,
     stepsTaken: Int = 0,
     stillMoving: Int = 0,
     dice: Int = 0,
-  ): Double = elapsedSeconds * paceFor(driven, stepsTaken, stillMoving, dice)
+    stepsSinceHand: Int? = null,
+  ): Double = elapsedSeconds * eased(paceFor(driven, stepsTaken, stillMoving, dice), driven, stepsSinceHand)
+
+  /**
+   * [pace], eased in from real speed over [EASE_STEPS] after a hand lets go
+   * of the dice (`docs/physics-and-rendering.md`, "The simulation clock").
+   *
+   * A roll a hand is driving is shown at real speed and one it is not at
+   * [WATCHED]; switched in one frame, at the moment the hand lets go and the
+   * dice are flying their fastest, the dice lurch from fast to slow motion,
+   * which the owner read as the roll lagging and catching up. So the pace slides
+   * down to [pace] over [EASE_STEPS] of the roll instead, along a smoothstep —
+   * no corner at either end. Like the rest of this object it decides when steps
+   * are taken and nothing about them.
+   */
+  fun eased(
+    pace: Double,
+    driven: Boolean,
+    stepsSinceHand: Int?,
+  ): Double {
+    if (driven || stepsSinceHand == null || stepsSinceHand >= EASE_STEPS) return pace
+    val t = stepsSinceHand.coerceAtLeast(0).toDouble() / EASE_STEPS
+    val smooth = t * t * (SMOOTHSTEP_RISE - 2 * t)
+    return 1.0 + (pace - 1.0) * smooth
+  }
+
+  /**
+   * How long the pace takes to come down after a hand lets go, in steps of the
+   * roll: 0.3 s, which at the paces it passes through is about half a second
+   * on the screen. A first guess, to be judged on the phone.
+   */
+  const val EASE_STEPS: Int = 36
+
+  /** The 3 of smoothstep's `3t² − 2t³`, which starts and ends with no slope. */
+  private const val SMOOTHSTEP_RISE: Double = 3.0
 
   /**
    * The share of real time a roll is shown at, from [WATCHED] up to `1.0`.

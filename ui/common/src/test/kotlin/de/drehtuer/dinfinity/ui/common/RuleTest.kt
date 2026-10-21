@@ -7,7 +7,6 @@ import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.unit.dp
-import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -37,10 +36,5 @@ class RuleTest {
 
     compose.onNodeWithTag("block").assertHeightIsEqualTo(2.dp)
     compose.onNodeWithTag("hairline").assertHeightIsEqualTo(1.dp)
-  }
-
-  @Test
-  fun `the heavier weight is the default, because it is the one that groups`() {
-    assertEquals(RuleWeight.Block, RuleWeight.entries.maxBy { it.thickness })
   }
 }

@@ -1,14 +1,19 @@
 package de.drehtuer.dinfinity.feature.stats
 
 import android.content.Context
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.click
+import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTouchInput
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
@@ -189,6 +194,8 @@ class StatsScreenTest {
     compose.onNodeWithTag(StatsTestTags.RESET_DIE).performScrollTo().performClick()
 
     compose.onNodeWithTag(StatsTestTags.CONFIRM).assertIsDisplayed()
+    // It names the die, and says what is left alone.
+    compose.onNodeWithText("Every throw of d20", substring = true).assertIsDisplayed()
     assertEquals(1, summaries())
   }
 
@@ -228,6 +235,7 @@ class StatsScreenTest {
     compose.onNodeWithTag(StatsTestTags.RESET_ALL).performScrollTo().performClick()
 
     compose.onNodeWithTag(StatsTestTags.CONFIRM).assertIsDisplayed()
+    compose.onNodeWithText("Every die’s record", substring = true).assertIsDisplayed()
     compose.onNodeWithTag(StatsTestTags.CONFIRM_YES).performClick()
 
     compose.waitUntil(PATIENCE) { summaries() == 0 }
@@ -310,6 +318,9 @@ class StatsScreenTest {
     compose.onNodeWithTag(StatsTestTags.ACROSS_SETS).performClick()
 
     compose.waitUntil(PATIENCE) { presenter.state.acrossSets }
+    // What the rows *are* now is more surprising than their order, so the line
+    // above them says that instead.
+    compose.onNodeWithText("counted together", substring = true).assertIsDisplayed()
     val pooled = presenter.state.dice.single()
     assertEquals("d6", pooled.name)
     assertEquals(40L, pooled.summary.throws)
@@ -387,6 +398,72 @@ class StatsScreenTest {
     assertEquals("6", die.labelOf(6))
   }
 
+  @Test
+  fun `a die with no throws shows a dash for its average, not a zero`() {
+    // A record can be left with nothing in it, and an average of 0.00 would
+    // be a claim about a die that has not come out at all.
+    given(dieId = "d4", sides = 4, throws = 0, sum = 0)
+    val presenter = show()
+
+    compose.onNodeWithTag(StatsTestTags.meanOf("builtin", "d4"), useUnmergedTree = true).assertTextContains("—")
+    open(presenter, "builtin", "d4")
+    compose.onNodeWithTag(StatsTestTags.MEAN).assertTextContains("—", substring = true)
+    compose.onNodeWithTag(StatsTestTags.THROWS).assertTextContains("0", substring = true)
+  }
+
+  @Test
+  fun `a roll landing while a die is open moves its histogram`() {
+    // The detail is watched rather than read once, so a throw made with the
+    // screen open turns up in the bar it landed in.
+    given(dieId = "d20", sides = 20, throws = 1, sum = 20)
+    faces(dieId = "d20", sides = 20, counts = mapOf(20 to 1L))
+    val presenter = show()
+    open(presenter, "builtin", "d20")
+
+    given(dieId = "d20", sides = 20, throws = 2, sum = 40)
+    faces(dieId = "d20", sides = 20, counts = mapOf(20 to 2L))
+
+    compose.waitUntil(PATIENCE) {
+      presenter.state.selected
+        ?.bars
+        ?.single { it.value == 20 }
+        ?.count == 2L
+    }
+    compose.onNodeWithTag(StatsTestTags.THROWS).assertTextContains("2", substring = true)
+  }
+
+  @Test
+  fun `forgetting without having been asked forgets nothing`() {
+    // Nothing is reset without a confirmation. A call that arrives without one
+    // — a stale frame, an accessibility service — must find nothing to do.
+    given(dieId = "d20", sides = 20, throws = 4, sum = 40)
+    val presenter = show()
+
+    presenter.reset()
+    compose.waitForIdle()
+
+    assertEquals(1, summaries())
+  }
+
+  @Test
+  fun `putting the export question away exports nothing`() {
+    // There is no Cancel on the sheet; a tap outside it is the way out.
+    given(dieId = "d6", sides = 6, throws = 60, sum = 210)
+    val exported = mutableListOf<ExportFile>()
+    show(onExport = exported::add)
+
+    compose.onNodeWithTag(StatsTestTags.EXPORT).performClick()
+    compose.onNodeWithTag(StatsTestTags.EXPORT_DIALOG).assertIsDisplayed()
+    compose
+      .onAllNodes(isRoot())
+      .onLast()
+      .performTouchInput { click(Offset(1f, 1f)) }
+    compose.waitForIdle()
+
+    compose.onNodeWithTag(StatsTestTags.EXPORT_DIALOG).assertDoesNotExist()
+    assertEquals(emptyList<ExportFile>(), exported)
+  }
+
   private fun summaries(): Int = runBlocking { database.dieSummary().all().first() }.size
 
   @Test
@@ -440,6 +517,8 @@ class StatsScreenTest {
     compose.onNodeWithText("most recently used first", substring = true).assertIsDisplayed()
     compose.onNodeWithTag(StatsTestTags.orderOf(DieOrder.Throws)).performClick()
     compose.onNodeWithText("most thrown first", substring = true).assertIsDisplayed()
+    compose.onNodeWithTag(StatsTestTags.orderOf(DieOrder.Average)).performClick()
+    compose.onNodeWithText("highest average first", substring = true).assertIsDisplayed()
   }
 
   @Test
@@ -606,180 +685,6 @@ class StatsScreenTest {
     compose.setContent { StatsScreen(presenter = presenter, onExport = onExport) }
     compose.waitUntil(PATIENCE) { presenter.state.loaded }
     return presenter
-  }
-
-  /** Two sessions with something thrown in each, which is when the chooser appears. */
-  private fun twoSessions(): SessionRepository {
-    val sessions = SessionRepository(database)
-    runBlocking {
-      sessions.ensureDefault("First rolls")
-      database.sessions().upsert(
-        de.drehtuer.dinfinity.data.db
-          .SessionRow(id = "tuesday", name = "Tuesday", startedAtEpochMs = 1),
-      )
-    }
-    return sessions
-  }
-
-  @Test
-  fun `there is no session chooser until there is a second session`() {
-    given(dieId = "d20", sides = 20, throws = 4, sum = 40)
-    faces(dieId = "d20", sides = 20, counts = mapOf(20 to 4L))
-
-    show(sessions = SessionRepository(database).also { runBlocking { it.ensureDefault("First rolls") } })
-
-    compose.onNodeWithTag(StatsTestTags.ALL_SESSIONS).assertDoesNotExist()
-  }
-
-  @Test
-  fun `choosing a session shows only what was thrown in it`() {
-    given(dieId = "d20", sides = 20, throws = 7, sum = 140)
-    faces(dieId = "d20", sides = 20, counts = mapOf(20 to 4L))
-    faces(dieId = "d20", sides = 20, counts = mapOf(20 to 3L), sessionId = "tuesday")
-    val presenter = show(sessions = twoSessions())
-
-    compose.waitUntil(PATIENCE) { presenter.state.sessionsChoosable }
-    compose.onNodeWithTag(StatsTestTags.sessionOf("tuesday")).performClick()
-    compose.waitUntil(PATIENCE) { presenter.state.dice.isNotEmpty() }
-
-    assertEquals(
-      "the session's own throws, not every throw of that die",
-      3L,
-      presenter.state.dice
-        .single()
-        .summary.throws,
-    )
-  }
-
-  @Test
-  fun `going back to all sessions puts every throw back`() {
-    given(dieId = "d20", sides = 20, throws = 7, sum = 140)
-    faces(dieId = "d20", sides = 20, counts = mapOf(20 to 4L))
-    faces(dieId = "d20", sides = 20, counts = mapOf(20 to 3L), sessionId = "tuesday")
-    val presenter = show(sessions = twoSessions())
-    compose.waitUntil(PATIENCE) { presenter.state.sessionsChoosable }
-    compose.onNodeWithTag(StatsTestTags.sessionOf("tuesday")).performClick()
-    compose.waitUntil(PATIENCE) { presenter.state.cutToSession }
-
-    compose.onNodeWithTag(StatsTestTags.ALL_SESSIONS).performClick()
-
-    compose.waitUntil(PATIENCE) { !presenter.state.cutToSession }
-    assertEquals(
-      7L,
-      presenter.state.dice
-        .single()
-        .summary.throws,
-    )
-  }
-
-  @Test
-  fun `a session with nothing in it is a filter that found nothing, not an empty history`() {
-    // The mistake this exists to make impossible: telling somebody who has
-    // rolled hundreds of times that they never have, because they picked a
-    // quiet campaign (`docs/statistics.md`).
-    given(dieId = "d20", sides = 20, throws = 4, sum = 40)
-    faces(dieId = "d20", sides = 20, counts = mapOf(20 to 4L))
-    val presenter = show(sessions = twoSessions())
-    compose.waitUntil(PATIENCE) { presenter.state.sessionsChoosable }
-
-    compose.onNodeWithTag(StatsTestTags.sessionOf("tuesday")).performClick()
-
-    compose.waitUntil(PATIENCE) { presenter.state.cutToSession }
-    assertTrue("an empty session read as an empty history", !presenter.state.empty)
-    compose.onNodeWithTag(StatsTestTags.EMPTY).assertDoesNotExist()
-    compose.onNodeWithTag(StatsTestTags.FILTERED_EMPTY).assertIsDisplayed()
-  }
-
-  @Test
-  fun `the file is the whole record even while a session is on screen`() {
-    // A session cuts what is *looked at*. The streaks a file carries are runs
-    // through a die's whole sequence and a session has none of its own, so an
-    // export taken here would otherwise write zeros.
-    given(dieId = "d20", sides = 20, throws = 7, sum = 140)
-    faces(dieId = "d20", sides = 20, counts = mapOf(20 to 4L))
-    faces(dieId = "d20", sides = 20, counts = mapOf(20 to 3L), sessionId = "tuesday")
-    val presenter = show(sessions = twoSessions())
-    compose.waitUntil(PATIENCE) { presenter.state.sessionsChoosable }
-    compose.onNodeWithTag(StatsTestTags.sessionOf("tuesday")).performClick()
-    compose.waitUntil(PATIENCE) { presenter.state.cutToSession }
-
-    assertEquals(
-      "the export would have carried one session's throws",
-      7L,
-      presenter.state.recorded
-        .single()
-        .summary.throws,
-    )
-  }
-
-  @Test
-  fun `all my d20s can be asked of one session`() {
-    // The one combination that needs both cuts at once. The set filter and the
-    // roll-up cancel each other out; a session does not cancel either.
-    given(dieId = "d20", sides = 20, throws = 5, sum = 100)
-    faces(setId = "builtin", dieId = "d20", sides = 20, counts = mapOf(20 to 2L))
-    faces(setId = "builtin", dieId = "d20", sides = 20, counts = mapOf(20 to 3L), sessionId = "tuesday")
-    val presenter = show(sessions = twoSessions())
-    compose.waitUntil(PATIENCE) { presenter.state.sessionsChoosable }
-
-    compose.onNodeWithTag(StatsTestTags.sessionOf("tuesday")).performClick()
-    compose.waitUntil(PATIENCE) { presenter.state.dice.isNotEmpty() }
-    presenter.rollUp(across = true)
-    presenter.select(setId = "", dieId = "d20")
-
-    compose.waitUntil(PATIENCE) { presenter.state.selected != null }
-    assertEquals(
-      "the pool counted every session's throws, not this one's",
-      3L,
-      presenter.state.selected
-        ?.bars
-        ?.first { it.value == 20 }
-        ?.count,
-    )
-  }
-
-  @Test
-  fun `tapping the session that is already chosen changes nothing`() {
-    given(dieId = "d20", sides = 20, throws = 7, sum = 140)
-    faces(dieId = "d20", sides = 20, counts = mapOf(20 to 4L))
-    faces(dieId = "d20", sides = 20, counts = mapOf(20 to 3L), sessionId = "tuesday")
-    val presenter = show(sessions = twoSessions())
-    compose.waitUntil(PATIENCE) { presenter.state.sessionsChoosable }
-    compose.onNodeWithTag(StatsTestTags.sessionOf("tuesday")).performClick()
-    compose.waitUntil(PATIENCE) { presenter.state.dice.isNotEmpty() }
-
-    compose.onNodeWithTag(StatsTestTags.sessionOf("tuesday")).performClick()
-
-    assertEquals(
-      "the list was emptied and rebuilt for a filter that did not move",
-      3L,
-      presenter.state.dice
-        .single()
-        .summary.throws,
-    )
-  }
-
-  @Test
-  fun `a roll landing while a session is chosen does not put the other sessions back`() {
-    given(dieId = "d20", sides = 20, throws = 7, sum = 140)
-    faces(dieId = "d20", sides = 20, counts = mapOf(20 to 4L))
-    faces(dieId = "d20", sides = 20, counts = mapOf(20 to 3L), sessionId = "tuesday")
-    val presenter = show(sessions = twoSessions())
-    compose.waitUntil(PATIENCE) { presenter.state.sessionsChoosable }
-    compose.onNodeWithTag(StatsTestTags.sessionOf("tuesday")).performClick()
-    compose.waitUntil(PATIENCE) { presenter.state.dice.isNotEmpty() }
-
-    // The all-time list is watched the whole time, for the export and for
-    // "has anything ever been rolled". Its next answer must not become the
-    // list on screen.
-    given(dieId = "d6", sides = 6, throws = 1, sum = 3)
-
-    compose.waitUntil(PATIENCE) { presenter.state.allTime.size == 2 }
-    assertEquals(
-      "a roll in another session walked into the list",
-      listOf("d20"),
-      presenter.state.dice.map(DieRow::dieId),
-    )
   }
 
   private companion object {

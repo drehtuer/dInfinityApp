@@ -60,6 +60,10 @@ import java.nio.ByteOrder
  * @param studio where the studio's folded cube is kept between launches
  *   ([StudioCache]). The default keeps nothing and folds every time, which is
  *   what a device test that measures the fold wants.
+ * @param compiling what is told when a material has to be compiled because
+ *   [materials] did not have it ([ShaderListener]) — the roll screen's
+ *   "Preparing the dice" (`docs/architecture.md`, decision 95). Never told
+ *   about a packet read back from disk. The default tells nobody.
  */
 class FilamentEngine(
   artwork: (String) -> AtlasImage? = { null },
@@ -67,6 +71,7 @@ class FilamentEngine(
   private val materials: MaterialCache = MaterialCache.NONE,
   private val environment: () -> ByteArray? = StudioLight::bytes,
   private val studio: StudioCache = StudioCache.NONE,
+  private val compiling: ShaderListener = ShaderListener.NONE,
 ) : AutoCloseable {
   init {
     // Safe to call more than once, and nothing below works before it has been.
@@ -82,9 +87,10 @@ class FilamentEngine(
    * Everything that hides what is behind it, which is every surface of the
    * tray and every die a set has not called translucent.
    */
-  val material: Material = loadMaterial(engine, materials, DiceMaterial.Variant.OPAQUE)
+  val material: Material = loadMaterial(engine, materials, DiceMaterial.Variant.OPAQUE, compiling)
 
-  private val resin = lazy(LazyThreadSafetyMode.NONE) { loadMaterial(engine, materials, DiceMaterial.Variant.RESIN) }
+  private val resin =
+    lazy(LazyThreadSafetyMode.NONE) { loadMaterial(engine, materials, DiceMaterial.Variant.RESIN, compiling) }
 
   /**
    * And the material of a die light passes through.
@@ -110,20 +116,8 @@ class FilamentEngine(
    */
   val resinMaterial: Material by resin
 
-  private val glass = lazy(LazyThreadSafetyMode.NONE) { loadMaterial(engine, materials, DiceMaterial.Variant.GLASS) }
-
-  /**
-   * And the floor of a table glossy enough to show the dice in it
-   * ([DiceMaterial.GLASS_SOURCE], [Reflection]).
-   *
-   * A third material rather than a parameter of the first, so that a table
-   * that reflects nothing samples nothing: felt, oak and the plain table are
-   * drawn with [material], exactly as before. Made the first time a glossy
-   * table is shown, for the reason [resinMaterial] is.
-   */
-  val glassMaterial: Material by glass
-
-  private val table = lazy(LazyThreadSafetyMode.NONE) { loadMaterial(engine, materials, DiceMaterial.Variant.TABLE) }
+  private val table =
+    lazy(LazyThreadSafetyMode.NONE) { loadMaterial(engine, materials, DiceMaterial.Variant.TABLE, compiling) }
 
   /**
    * And the material of a table drawn from pictures ([DiceMaterial.TABLE_SOURCE]).
@@ -135,12 +129,11 @@ class FilamentEngine(
    */
   val tableMaterial: Material by table
 
-  /** Which of the four [parameters] is to be drawn with. */
+  /** Which of the three [parameters] is to be drawn with. */
   fun materialFor(parameters: DiceMaterial.Parameters): Material =
     when (DiceMaterial.variantOf(parameters)) {
       DiceMaterial.Variant.OPAQUE -> material
       DiceMaterial.Variant.RESIN -> resinMaterial
-      DiceMaterial.Variant.GLASS -> glassMaterial
       DiceMaterial.Variant.TABLE -> tableMaterial
     }
 
@@ -152,11 +145,11 @@ class FilamentEngine(
    * leak the JVM cannot see. It is given back in [close], before the engine
    * that owns the handles ([AtlasCache]).
    */
-  val atlases: AtlasCache<Texture> =
+  val atlases: AtlasCache<DieArtwork<Texture>> =
     AtlasCache(
       artwork = artwork,
-      upload = { uploadAtlas(engine, it) },
-      destroy = engine::destroyTexture,
+      upload = { DieArtwork(uploadAtlas(engine, it), AtlasCoverage.of(it)) },
+      destroy = { engine.destroyTexture(it.texture) },
       stamp = artworkStamp,
     )
 
@@ -359,7 +352,7 @@ class FilamentEngine(
     width: Int,
     height: Int,
     postProcessing: Boolean = true,
-    atlases: (String) -> Texture? = this.atlases::of,
+    atlases: (String) -> DieArtwork<Texture>? = this.atlases::of,
   ): FilamentStage =
     FilamentStage(
       width = width,
@@ -381,7 +374,6 @@ class FilamentEngine(
     engine.destroyTexture(blank)
     engine.destroyMaterial(material)
     if (resin.isInitialized()) engine.destroyMaterial(resinMaterial)
-    if (glass.isInitialized()) engine.destroyMaterial(glassMaterial)
     if (table.isInitialized()) engine.destroyMaterial(tableMaterial)
     engine.destroy()
   }
@@ -479,15 +471,29 @@ class FilamentEngine(
     /**
      * The [variant] of the dice material for [engine], from [materials] if it
      * was compiled on an earlier launch.
+     *
+     * Only a compile is reported to [compiling], and nothing else is done
+     * here about it: what the report means — how long it should take, how far
+     * it has got — is [ShaderProgress]'s, where a JVM test can reach it.
      */
     fun loadMaterial(
       engine: Engine,
       materials: MaterialCache,
       variant: DiceMaterial.Variant,
+      compiling: ShaderListener,
     ): Material {
       val target = targetOf(engine.backend)
       val key = MaterialCache.keyOf(variant.fingerprint, backend = target.name, variant = variant.key)
-      val packet = materials.packet(key) { compileMaterial(target, variant) }
+      val packet =
+        materials.packet(key) {
+          compiling.started(variant)
+          var compiled = false
+          try {
+            compileMaterial(target, variant).also { compiled = true }
+          } finally {
+            compiling.finished(variant, compiled)
+          }
+        }
       return Material.Builder().payload(packet, packet.remaining()).build(engine)
     }
 
@@ -518,7 +524,6 @@ class FilamentEngine(
               when (variant) {
                 DiceMaterial.Variant.OPAQUE -> "dinfinity"
                 DiceMaterial.Variant.RESIN -> "dinfinity-resin"
-                DiceMaterial.Variant.GLASS -> "dinfinity-glass"
                 DiceMaterial.Variant.TABLE -> "dinfinity-table"
               },
             ).material(variant.source)
@@ -534,7 +539,6 @@ class FilamentEngine(
             // opaque scene rather than by letting the blend show it.
             .blending(MaterialBuilder.BlendingMode.OPAQUE)
             .apply { if (variant == DiceMaterial.Variant.RESIN) resin() }
-            .apply { if (variant == DiceMaterial.Variant.GLASS) glass() }
             // A rounded edge's glint is thinner than a pixel, and without this
             // it is drawn as a broken white line along the edge rather than
             // spread over the bend ([DiceMaterial.SPECULAR_AA_VARIANCE]). A
@@ -622,11 +626,18 @@ class FilamentEngine(
     /**
      * A decoded atlas, uploaded as it stands.
      *
-     * `RGBA8` and straight alpha, because the material blends the artwork over
-     * the die's printed label by the artwork's own alpha and a premultiplied
-     * edge would drag every soft pixel towards the body colour
-     * ([AtlasImage]). One level: a die is looked at from a hand's distance and
-     * the atlas is already the larger of the two sizes involved.
+     * **sRGB**, because a PNG's colours are sRGB — the space the face designer's
+     * picker and every image editor write in — and the material mixes them with
+     * a body colour that [Colour.of] has already made linear. Uploaded as plain
+     * `RGBA8` the GPU read an ink of `#C01010` as 75 % red rather than the 52 %
+     * it is, so every drawing came to the tray paler than it was drawn. The
+     * alpha is not a light level and an sRGB format leaves it linear.
+     *
+     * Straight alpha, because the material blends the artwork over the die's
+     * printed label by the artwork's own alpha and a premultiplied edge would
+     * drag every soft pixel towards the body colour ([AtlasImage]). One level:
+     * a die is looked at from a hand's distance and the atlas is already the
+     * larger of the two sizes involved.
      */
     fun uploadAtlas(
       engine: Engine,
@@ -638,7 +649,7 @@ class FilamentEngine(
           .width(image.width)
           .height(image.height)
           .levels(1)
-          .format(Texture.InternalFormat.RGBA8)
+          .format(Texture.InternalFormat.SRGB8_A8)
           .build(engine)
       val pixels = ByteBuffer.allocateDirect(image.pixels.size).order(ByteOrder.nativeOrder())
       pixels.put(image.pixels)

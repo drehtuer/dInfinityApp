@@ -13,7 +13,12 @@ package de.drehtuer.dinfinity.render.filament
  *
  * [FilamentStage] is the one implementation that ships; a test drives the same
  * renderer against a stage it can ask questions of.
+ *
+ * Over detekt's count of functions by one, and on purpose: [drawnCells] is a
+ * question only the side with the pixels can answer, and this interface is
+ * where everything on that side is asked.
  */
+@Suppress("TooManyFunctions")
 interface Stage : AutoCloseable {
   /** The viewport, in pixels. The camera frames for its shape. */
   val width: Int
@@ -39,9 +44,7 @@ interface Stage : AutoCloseable {
    *   (`docs/physics-and-rendering.md`, "What is drawn over the table"). The
    *   two are one decision per renderable rather than one for the scene,
    *   because the promise the app makes is about the dice and not about the
-   *   furniture they land on. The same line decides what a glossy table
-   *   shows in it: what casts — the dice — and none of what does not
-   *   ([Reflection]).
+   *   furniture they land on.
    */
   fun add(
     mesh: GpuMesh,
@@ -104,6 +107,22 @@ interface Stage : AutoCloseable {
    * what a caller does about it is show something else.
    */
   fun capture(): Snapshot? = null
+
+  /**
+   * Which faces of a die with [faces] faces the artwork named by [atlas] — an
+   * [AtlasKey] — draws on, or none when there is no such artwork or this stage
+   * cannot read it.
+   *
+   * Asked before a die is added, because a face its artwork draws on is not
+   * printed (`docs/dice-sets.md`, "Labels, and the artwork over them"). The
+   * pixels are on the far side of this line ([Stage.add]'s parameters name the
+   * atlas rather than carry it), so the answer is too. A stage that cannot
+   * read pixels answers none, and every face is printed.
+   */
+  fun drawnCells(
+    atlas: String,
+    faces: Int,
+  ): Set<Int>
 
   /** Throws away everything one roll put in the scene, and nothing else. */
   fun clear()

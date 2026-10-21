@@ -34,6 +34,9 @@ class WatchedRollTest {
     assertEquals(emptyList(), Plainest.unsettled)
     assertEquals(emptyMap(), Plainest.countedSoFar)
     assertEquals(RollDiagnostics.NONE, Plainest.diagnostics)
+    // No steps, so a roll that keeps no count is never mistaken for one that
+    // has run long enough to stop being paced (`RollPace.WATCHED_STEPS`).
+    assertEquals(0, Plainest.stepsTaken)
   }
 
   private companion object {

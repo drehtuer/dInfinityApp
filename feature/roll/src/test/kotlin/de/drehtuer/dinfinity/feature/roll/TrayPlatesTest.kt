@@ -1,5 +1,11 @@
 package de.drehtuer.dinfinity.feature.roll
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertCountEquals
@@ -8,10 +14,12 @@ import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import de.drehtuer.dinfinity.core.notation.RollRange
+import de.drehtuer.dinfinity.ui.common.Modernist
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -74,9 +82,70 @@ class TrayPlatesTest {
 
   @Test
   fun `the progress rule fills as far as the dice have been read`() {
-    compose.setContent { CountingPlate(progress(read = 10, of = 20, lowest = 1, highest = 2)) }
+    // Half read is half the rule, all read is all of it — and nothing read is
+    // no fill at all rather than a sliver, which is why the fill is laid out
+    // by hand instead of by `fillMaxWidth(fraction)`.
+    compose.setContent {
+      Column {
+        CountingPlate(progress(read = 10, of = 20, lowest = 1, highest = 2))
+        CountingPlate(progress(read = 20, of = 20, lowest = 1, highest = 2))
+        CountingPlate(progress(read = 0, of = 20, lowest = 1, highest = 2))
+      }
+    }
 
-    compose.onNodeWithTag(RollTestTags.COUNTING_RULE, useUnmergedTree = true).assertExists()
+    val (half, whole, none) =
+      compose
+        .onAllNodesWithTag(RollTestTags.COUNTING_RULE, useUnmergedTree = true)
+        .fetchSemanticsNodes()
+        .map { it.size.width }
+
+    assertTrue("a whole roll read drew no rule", whole > 0)
+    assertEquals("half the dice read is not half the rule", whole / 2f, half.toFloat(), 1f)
+    assertEquals("a roll with nothing read drew a sliver of fill", 0, none)
+  }
+
+  /**
+   * The track the rule runs along is the pale end of the grey ramp on a light
+   * ground and the dark end on a dark one — mirrored the way `.dz-dark`
+   * mirrors the ramp. A near-white bar under a dark plate would be the
+   * brightest thing on the screen and read as the fill rather than as what is
+   * left to do (`Modernist.Neutral`).
+   */
+  @Test
+  @GraphicsMode(GraphicsMode.Mode.NATIVE)
+  fun `the track under the rule is the pale step on a light ground`() {
+    assertEquals(Modernist.Neutral.v200, trackUnder(lightColorScheme()))
+  }
+
+  @Test
+  @GraphicsMode(GraphicsMode.Mode.NATIVE)
+  fun `and the mirrored step on a dark one`() {
+    assertEquals(Modernist.Neutral.v800, trackUnder(darkColorScheme()))
+  }
+
+  /**
+   * The colour of the track just past the end of a rule one die in twenty has
+   * filled, a pixel inside its 3 dp. One rather than none, because a rule with
+   * no fill is a node with no size and nothing to say where the track is.
+   */
+  private fun trackUnder(scheme: ColorScheme): Color {
+    compose.setContent {
+      MaterialTheme(colorScheme = scheme) {
+        CountingPlate(progress(read = 1, of = 20, lowest = 1, highest = 2))
+      }
+    }
+    val plate = compose.onNodeWithTag(RollTestTags.COUNTING).fetchSemanticsNode().boundsInRoot
+    val rule =
+      compose
+        .onNodeWithTag(
+          RollTestTags.COUNTING_RULE,
+          useUnmergedTree = true,
+        ).fetchSemanticsNode()
+        .boundsInRoot
+    val pixels = compose.onNodeWithTag(RollTestTags.COUNTING).captureToImage().toPixelMap()
+    val across = (rule.right - plate.left + PAST_THE_FILL).toInt()
+    val down = (rule.top - plate.top + 1f).toInt()
+    return pixels[across, down]
   }
 
   @Test
@@ -246,4 +315,9 @@ class TrayPlatesTest {
     onTheTable = lowest,
     range = RollRange(lowest = lowest, highest = highest, more = more),
   )
+
+  private companion object {
+    /** Far enough past the fill's end to be clear of its anti-aliased edge. */
+    const val PAST_THE_FILL = 4f
+  }
 }

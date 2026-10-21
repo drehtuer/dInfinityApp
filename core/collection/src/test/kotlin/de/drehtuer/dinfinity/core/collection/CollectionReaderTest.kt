@@ -359,6 +359,8 @@ class CollectionReaderTest {
     // The design took the favourite flag out; a file somebody exported from a
     // version that still had it must not become unreadable for carrying it.
     // It is read as any other file, and the flag is simply not there any more.
+    // This is forward compatibility in the one direction it is safe: a field
+    // the format does not know is ignored rather than refused.
     val loaded =
       loaded(
         collection(
@@ -389,20 +391,55 @@ class CollectionReaderTest {
   }
 
   @Test
-  fun `a field the format does not know is ignored rather than refused`() {
-    // Forward compatibility in the one direction it is safe: a file of this
-    // format with something extra in it is still a file of this format.
-    val loaded =
-      loaded(
-        collection(rolls = """{ "group": "a", "name": "One", "formula": "1d20", "colour": "#ff0000" }"""),
-      )
+  fun `a format that is not a whole number is the wrong kind of field`() {
+    val rejected = rejected("""{"format": "one", "name": "Words", "groups": [], "rolls": []}""")
 
-    assertEquals(
-      "One",
-      loaded.collection.rolls
-        .single()
-        .name,
-    )
+    assertEquals(CollectionCode.WrongType, rejected.errors.single().code)
+    assertEquals("format", rejected.errors.single().at)
+  }
+
+  @Test
+  fun `a list that is not a list is refused by name`() {
+    val rejected = rejected("""{"format": 1, "name": "Odd", "groups": {"id": "a"}, "rolls": "none"}""")
+
+    assertEquals(listOf("groups", "rolls"), rejected.errors.map { it.at })
+    assertTrue(rejected.errors.all { it.code == CollectionCode.WrongType })
+  }
+
+  @Test
+  fun `an entry that is not an object is refused at its place in the list`() {
+    // Dropped from the collection, but the file is still refused because of
+    // it: an entry nobody can read must not quietly go missing.
+    val rejected = rejected(collection(groups = """{ "id": "a", "name": "A" }, 7""", rolls = "\"1d20\""))
+
+    assertEquals(listOf("groups[1]", "rolls[0]"), rejected.errors.map { it.at })
+    assertTrue(rejected.errors.all { it.code == CollectionCode.WrongType })
+  }
+
+  @Test
+  fun `a roll that is missing its fields names each of them`() {
+    val rejected = rejected(collection(rolls = """{ "group": "a" }, { "group": "a", "name": "Two" }"""))
+
+    assertEquals(listOf("rolls[0].name", "rolls[0].formula", "rolls[1].formula"), rejected.errors.map { it.at })
+    assertTrue(rejected.errors.all { it.code == CollectionCode.MissingField })
+  }
+
+  @Test
+  fun `text that arrives as an object is the wrong kind, not missing`() {
+    val rejected = rejected(collection(groups = """{ "id": "a", "name": { "en": "A" } }"""))
+
+    assertEquals(CollectionCode.WrongType, rejected.errors.first().code)
+    assertEquals("groups[0].name", rejected.errors.first().at)
+  }
+
+  @Test
+  fun `a problem prints where it is in front of what is wrong, unless it is the whole file`() {
+    val inside = CollectionProblem(CollectionCode.BadFormula, "\"3d\" ends after \"d\"", "rolls[3].formula")
+    val whole = only("this is not a collection")
+
+    assertEquals("rolls[3].formula: \"3d\" ends after \"d\"", inside.toString())
+    assertEquals("", whole.at)
+    assertEquals(whole.text, whole.toString())
   }
 
   private fun collection(

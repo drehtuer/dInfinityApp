@@ -30,6 +30,12 @@ package de.drehtuer.dinfinity.core.model
  * @param friction surface friction. Never zero: dice-on-dice friction is what
  *   stops a pile from behaving like ball bearings
  *   (`docs/physics-and-rendering.md`).
+ * @param edgeRounding how far the die's edges and corners are rounded off, as
+ *   a share of [sizeMm]: the solver's convex radius, which the renderer draws
+ *   the die with (`docs/physics-and-rendering.md`, "Rounded edges";
+ *   `docs/architecture.md`, decisions 91 and 94). A physical property rather
+ *   than a look, because what is drawn is what collides — so it is clamped
+ *   like friction is, to [EdgeRoundingRange].
  */
 data class DieMaterial(
   val colorArgb: Int = DEFAULT_COLOR_ARGB,
@@ -41,6 +47,7 @@ data class DieMaterial(
   val translucency: Double = 0.0,
   val restitution: Double = 0.55,
   val friction: Double = 0.5,
+  val edgeRounding: Double = DEFAULT_EDGE_ROUNDING,
 ) {
   /**
    * The radius of the sphere that contains this die at scale 1, in
@@ -84,6 +91,7 @@ data class DieMaterial(
       translucency = clamp(translucency, UnitRange, DieMaterial().translucency),
       restitution = clamp(restitution, RestitutionRange, DieMaterial().restitution),
       friction = clamp(friction, FrictionRange, DieMaterial().friction),
+      edgeRounding = clamp(edgeRounding, EdgeRoundingRange, DEFAULT_EDGE_ROUNDING),
     )
 
   companion object {
@@ -107,6 +115,28 @@ data class DieMaterial(
 
     /** Never 0: frictionless dice slide forever and pile like marbles. */
     val FrictionRange: ClosedFloatingPointRange<Double> = 0.1..1.0
+
+    /**
+     * How round a die's edges are when nothing says otherwise: 3 % of its
+     * size, 0.48 mm on a 16 mm die — what every die has been rolled with
+     * since the solver was first given a convex radius, and so what every
+     * golden and every fairness figure was measured on.
+     */
+    const val DEFAULT_EDGE_ROUNDING: Double = 0.03
+
+    /**
+     * Half the default to twice it (`docs/dice-sets.md`, `edge_rounding`).
+     *
+     * Not down to nought: a die with no convex radius at all catches on its
+     * corners instead of tumbling off them, which is what the radius was
+     * given to the solver to stop. Not past 6 %, because that is where the
+     * Pixel 10a stopped saying yes: at 20,000 throws a shape every solid is
+     * fair and every coin settles at 6 %, at 8 % the coin is already at its
+     * bar for throws that never settle, and at 12 % it gives up 42 times and
+     * the d18 is a hair inside its bound (`docs/physics-and-rendering.md`,
+     * "How round a die may be"; `docs/architecture.md`, decisions 94 and 100).
+     */
+    val EdgeRoundingRange: ClosedFloatingPointRange<Double> = 0.015..0.06
 
     /**
      * [value] inside [range], or [fallback] when it is not a number at all.

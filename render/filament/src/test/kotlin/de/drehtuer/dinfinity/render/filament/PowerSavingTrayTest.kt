@@ -229,6 +229,58 @@ class PowerSavingTrayTest {
   }
 
   @Test
+  fun `a throw that gives up offers back the dice that never stopped, and what it did read`() {
+    // A power-saving roll has no frames, so the faces it read are reported
+    // here or never: without them the throw that brings the rest back has
+    // nothing to score them against (`RollMachine.gaveUp`).
+    val heard = FakeImpacts()
+    val roll =
+      FakeRoll(steps = 3).apply {
+        gaveUp = true
+        stillMoving = listOf(1)
+        read = mapOf(0 to 5)
+        hits += impact(step = 2)
+      }
+    val counted = mutableListOf<Map<Int, Int>>()
+    val offered = mutableListOf<List<Int>>()
+
+    PowerSavingTray(on = { it.run() }, impacts = heard).roll(
+      start = roll.start(),
+      onCounted = { counted += it },
+      onStalled = { offered += it },
+      onSettled = { _, _ -> error("a roll that gave up was reported as an answer") },
+    )
+
+    assertEquals(listOf(mapOf(0 to 5)), counted)
+    assertEquals(listOf(listOf(1)), offered)
+    assertTrue("the roll that gave up was not closed", roll.closed)
+    assertTrue("a throw with no answer was played as one", heard.played.isEmpty())
+  }
+
+  @Test
+  fun `a throw that gives up having read nothing reports no count at all`() {
+    // An empty count is not a count: the screen would show a total of nothing
+    // for a throw that has no total yet.
+    val roll =
+      FakeRoll(steps = 1).apply {
+        gaveUp = true
+        stillMoving = listOf(0, 1)
+      }
+    val counted = mutableListOf<Map<Int, Int>>()
+    val offered = mutableListOf<List<Int>>()
+
+    PowerSavingTray(here).roll(
+      start = roll.start(),
+      onCounted = { counted += it },
+      onStalled = { offered += it },
+      onSettled = { _, _ -> error("a roll that gave up was reported as an answer") },
+    )
+
+    assertTrue("an empty count was reported", counted.isEmpty())
+    assertEquals(listOf(listOf(0, 1)), offered)
+  }
+
+  @Test
   fun `the table still says what the dice sound like, with nothing drawn`() {
     val heard = FakeImpacts()
 
@@ -282,7 +334,22 @@ class PowerSavingTrayTest {
     override val running: Boolean get() = advanced.size < steps
 
     override val outcome: SimulationOutcome?
-      get() = if (running) null else SimulationOutcome(faces = mapOf(0 to 0))
+      get() = if (running || gaveUp) null else SimulationOutcome(faces = mapOf(0 to 0))
+
+    /** Whether a test says this roll ran out of time with dice still moving. */
+    var gaveUp: Boolean = false
+
+    /** The dice a test says never came to rest. */
+    var stillMoving: List<Int> = emptyList()
+
+    /** The faces a test says were read before the roll gave up. */
+    var read: Map<Int, Int> = emptyMap()
+
+    override val stalled: Boolean get() = gaveUp && !running
+
+    override val unsettled: List<Int> get() = stillMoving
+
+    override val countedSoFar: Map<Int, Int> get() = read
 
     override val drivenBy: List<ShakeSample> get() = shaken.toList()
 

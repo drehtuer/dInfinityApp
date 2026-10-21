@@ -149,7 +149,7 @@ class DraftTest {
   fun `a cell the die does not have is left alone rather than invented`() {
     // The cell comes from a strip the finger swipes, and a key no face has
     // would be a drawing nothing ever shows.
-    val drawn = draft().onFace(99) { it.draw(stroke()) }
+    val drawn = draft().onFace(99) { it.draw(stroke()) }.onFace(-1) { it.draw(stroke()) }
 
     assertTrue(drawn.blank)
     assertEquals(emptyMap<Int, FaceDrawing>(), drawn.faces)
@@ -390,6 +390,18 @@ class DraftTest {
     try {
       Eyes(rings = listOf(listOf(Dot(0f, 0f))), colorArgb = 0)
       fail("pips were made out of rings that enclose nothing")
+    } catch (refused: IllegalArgumentException) {
+      assertTrue(refused.message.orEmpty().contains("closed rings"))
+    }
+  }
+
+  @Test
+  fun `pips with no rings at all cannot be made`() {
+    // An empty list passes "every ring is closed" vacuously, and pips that
+    // draw nothing would still take the pips off a face that had them.
+    try {
+      Eyes(rings = emptyList(), colorArgb = 0)
+      fail("pips were made out of nothing")
     } catch (refused: IllegalArgumentException) {
       assertTrue(refused.message.orEmpty().contains("closed rings"))
     }

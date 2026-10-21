@@ -26,6 +26,7 @@ class RolledAgainstExpectedTest {
 
     assertEquals((2..12).toList(), comparison.bars.map(TotalBar::total))
     assertEquals(0L, comparison.bars.single { it.total == 12 }.count)
+    assertFalse(comparison.bars.single { it.total == 12 }.over, "a total never rolled was marked as over")
   }
 
   @Test

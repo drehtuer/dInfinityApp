@@ -162,6 +162,13 @@ class ThrowSpecTest {
   }
 
   @Test
+  fun `turning after landing is an amount, so it cannot be negative`() {
+    assertFailsWith<IllegalArgumentException> {
+      SimulationOutcome(faces = mapOf(0 to 1), medianTurnsAfterLanding = -0.1)
+    }
+  }
+
+  @Test
   fun `a simulator gives the same faces for the same throw`() {
     val simulator = FakeDiceSimulator()
     val spec = spec(count = 5, scale = 1.0)

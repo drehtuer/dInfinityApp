@@ -431,6 +431,27 @@ class LiveRollTest {
   }
 
   @Test
+  fun `the running total and the impacts are the loop's own, passed on as they are`() {
+    // The roll screen follows these every frame instead of the dice. A live
+    // roll that kept a copy of its own would drift from the loop that decides
+    // them, and the total on screen would disagree with the result it becomes.
+    val world = FakeWorld(DICE, awkward())
+    val spec = spec(List(DICE) { StandardDice.d6 })
+    val loop = RollLoop(spec, world, ShakeDriver(emptyList()))
+    LiveRoll(spec, world, loop, HeadlessRenderer(), FrameClock()).use { live ->
+      live.advance(1.0 / FRAMES_PER_SECOND)
+      assertEquals("a die was counted while the dice were still tumbling", emptyMap<Int, Int>(), live.countedSoFar)
+
+      while (live.running) live.advance(1.0 / FRAMES_PER_SECOND)
+
+      val outcome = requireNotNull(live.outcome)
+      assertTrue("no die was read, so this proves nothing", outcome.faces.isNotEmpty())
+      assertEquals(outcome.faces, live.countedSoFar)
+      assertEquals(loop.impacts, live.impacts)
+    }
+  }
+
+  @Test
   fun `the outcome is not there until the dice have stopped`() {
     liveOver(FakeWorld(DICE, tumblingThenSettling())).use { live ->
       live.advance(SettleRule.TIMESTEP_SECONDS)

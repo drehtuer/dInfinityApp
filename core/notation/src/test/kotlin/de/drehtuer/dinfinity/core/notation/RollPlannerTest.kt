@@ -1,8 +1,10 @@
 package de.drehtuer.dinfinity.core.notation
 
 import de.drehtuer.dinfinity.core.model.DiceSet
+import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.DieInstance
 import de.drehtuer.dinfinity.core.model.DieRole
+import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.core.model.PlannedGroup
 import de.drehtuer.dinfinity.core.model.RollPlan
 import de.drehtuer.dinfinity.fixtures.StandardDice
@@ -204,6 +206,24 @@ class RollPlannerTest {
   @Test
   fun `dividing by a die that cannot roll zero is fine`() {
     assertEquals(2, planned("1d6 / 1d4", catalog).dice.size)
+  }
+
+  @Test
+  fun `dividing by something that is always negative is fine too`() {
+    // Zero is the only thing division refuses. A divisor that runs from -4 to
+    // -1 never reaches it, however the range is written.
+    assertEquals(2, planned("1d6 / -1d4", catalog).dice.size)
+  }
+
+  @Test
+  fun `a set with no numbered dice has no nearest to offer`() {
+    val skulls =
+      DiceSet(id = "skulls", name = "Skulls", version = "1.0.0", dice = listOf(Die.standard("skull-d6", DieShape.Cube)))
+
+    val error = refusedPlan("skulls:1d7", DiceCatalog.of(listOf(builtin, skulls)))
+
+    assertEquals(NotationErrorCode.UnknownDie, error.code)
+    assertEquals(null, error.suggestion)
   }
 
   @Test

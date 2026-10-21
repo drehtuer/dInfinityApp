@@ -388,6 +388,7 @@ void World::AddDie(const DieSpec& die, const Placement& placement) {
   }
 
   ConvexHullShapeSettings hull(points, die.convex_radius);
+  hull.mMaxErrorConvexRadius = die.max_error_convex_radius;
   hull.SetDensity(die.density);
   hull.SetEmbedded();
 

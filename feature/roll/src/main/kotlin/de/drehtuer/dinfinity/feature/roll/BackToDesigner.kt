@@ -16,7 +16,7 @@ import de.drehtuer.dinfinity.ui.common.Plate
 /**
  * The way back to the face designer, for a throw that came from it
  * (`design/dInfinityPhone.dc.html`, the `fromDesigner` banner over the roll
- * screen; `docs/face-designer.md`, "Flow", step 4).
+ * screen; `docs/face-designer.md`, "Flow", Roll it).
  *
  * **Roll it is a round trip, and until now it was a one-way street.** The
  * button hands the tray `mine:1d20` and leaves the player on the tray with no

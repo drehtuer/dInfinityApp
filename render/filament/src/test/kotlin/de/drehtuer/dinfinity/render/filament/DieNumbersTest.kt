@@ -427,6 +427,47 @@ class DieNumbersTest {
   }
 
   @Test
+  fun `a drawn face is left out of the field and the same die drawn differently is another field`() {
+    val printed = PrintedDice(cellPixels = 16)
+
+    val plain = requireNotNull(printed.of(d6))
+    val drawn = requireNotNull(printed.of(d6, drawn = setOf(0)))
+
+    assertEquals(2, printed.built)
+    assertSame(drawn, printed.of(d6, drawn = setOf(0)))
+    // Face 0 is the top-left cell of the 3 x 2 grid: its 16 x 16 square.
+    val corner = (0 until 16).flatMap { y -> (0 until 16).map { x -> y * plain.width + x } }
+    assertTrue("the plain die prints its 1", corner.any { (plain.pixels[it].toInt() and 0xFF) > 127 })
+    assertTrue("the drawn face prints nothing", corner.all { drawn.pixels[it].toInt() == 0 })
+  }
+
+  @Test
+  fun `a die drawn on every face prints nothing at all`() {
+    assertNull(DieNumbers.fieldOf(d6, cellPixels = 16, drawn = (0 until 6).toSet()))
+  }
+
+  @Test
+  fun `a d4 drawn on one triangle loses that triangle's three numbers and no other`() {
+    val all = DieNumbers.plan(d4).associate { it.index to it }
+    val field = requireNotNull(DieNumbers.fieldOf(d4, cellPixels = 16, drawn = setOf(1)))
+    val full = requireNotNull(DieNumbers.fieldOf(d4, cellPixels = 16))
+    val grid = ShapeAtlas.gridFor(DieShape.Tetrahedron)
+
+    fun cellOf(
+      field: NumberField,
+      index: Int,
+    ): List<Byte> {
+      val cell = requireNotNull(all[index])
+      return (0 until 16).flatMap { y ->
+        (0 until 16).map { x -> field.pixels[(cell.row * 16 + y) * field.width + cell.column * 16 + x] }
+      }
+    }
+    assertEquals(grid.columns * 16, field.width)
+    assertTrue(cellOf(field, 1).all { it.toInt() == 0 })
+    listOf(0, 2, 3).forEach { assertEquals(cellOf(full, it), cellOf(field, it)) }
+  }
+
+  @Test
   fun `builds nothing for a die with nothing written on any face`() {
     val printed = PrintedDice(cellPixels = 16)
 

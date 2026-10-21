@@ -4,7 +4,7 @@ Current state of the project in a few lines. Update it when a milestone moves, a
 decision is taken or something is blocked; prune anything no longer current.
 This is a snapshot, not a changelog — git history is the changelog.
 
-**Last updated:** 2026-10-04
+**Last updated:** 2026-10-20
 
 ## Where we are
 
@@ -31,8 +31,10 @@ This is a snapshot, not a changelog — git history is the changelog.
   the felt draws its set colour, no band along the walls, the room cached on
   disk), translucent dice as refracting resin (90) and rounded edges drawn
   with the solver's own convex radius (91), all passing on the Pixel 10a.
-  The dark glass reflects the dice faintly, by a small second picture of
-  them from under the floor (93). The broken light lines along resin dice's
+  The dice are no longer reflected in the dark glass: from straight above
+  the reflection hid under each die and showed nothing on the phone (decision
+  104, withdrawing 93); it saves no GPU time, as dark glass's floor now runs
+  the dice's opaque material, as plain's does. The broken light lines along resin dice's
   rounded edges were the lacquer's glint, thinner than a pixel; specular
   anti-aliasing spreads it now. Felt and oak are drawn from CC0 pictures,
   keyed by the package the look came from (92); plain stays flat. On the
@@ -41,8 +43,39 @@ This is a snapshot, not a changelog — git history is the changelog.
   look in `average` now has its roughness map averaged at its `roughness`
   too, and oak is oiled at 0.75. The phone then drew green felt's red 13 over:
   the felt's own sheen, 1.4 % of white, which a look in `average` now has
-  taken out of its colour (`SurfaceLight`) — not yet run on the phone. It
-  reaches `main` when the owner likes it on the phone.
+  taken out of its colour (`SurfaceLight`) — not yet run on the phone. The
+  face designer is three steps — Shape, Material (six named materials, a body
+  colour, an edge-rounding slider over 1.5–6 %), Faces
+  — after the owner's feedback (decisions 94, 97–99); a drawn face is no
+  longer printed over (96) and the turning die shows the pen's strokes and
+  the rounding. The range is measured: at 20,000 throws a shape every
+  solid is fair and every coin settles up to 6 %, while at 12 % coins rolled
+  on their rims until the backstop 42 times, so rounding now stops at 6 %
+  for the slider and for a set file alike (decision 100).
+  While a dice material compiles — the first launch after an install or
+  update, or the first resin or textured-table material — a
+  "Preparing the dice" plate over the tray says why, with a bar timed by what
+  the phone took last time (decision 95; seen working on the Pixel 10a).
+  Four sample sets to install — marble (artwork on every face, numbers cut
+  in by the app's own printing), steel, green resin and red glass — are in
+  `sample-sets/`, as folders and zips, each installed by a test on every
+  build. The designer's ink now reaches the tray in its own colour: the
+  dice material multiplied artwork by the body colour and read the atlas as
+  linear, so yellow pips on a black die were black (decision 101; a device
+  test fails by 127 levels without the fix). The Material step has an
+  Opacity slider, glass to solid in five per cents, over the same
+  `translucency` the menu sets (decision 102); seen on the Pixel 10a.
+  Dice no longer blink at some angles: the lacquer mirrored the sizeless
+  key light over a whole face for a frame, and is rougher now (0.4, decision
+  103; a device test fails by 50 % of a face at the old 0.12) — the owner
+  to judge whether they still look varnished.
+  It reaches `main` when the owner likes it on the phone.
+- **The hand tosses the dice** (decision 105, `docs/TODO.md` 5.8): shaken
+  in sight as before, and tossed when the hand stops, after a comparison with
+  slow-motion film of real dice. Adopted by the owner on 2026-10-20 — without
+  it the dice settle almost as the shaking stops. The constants wait for the
+  owner's recordings of real throws; a shake along the phone's length still
+  hops now and then.
 
 ## Done
 
@@ -113,9 +146,14 @@ of it in `docs/TODO.md` (4.1 and 5.6). The most useful three:
   to the worst-face bound (0.389 % against 1 %).
 - **The capacity rule barely bites**: the 100-body cap refuses long before the
   table's floor would (~241 dice).
+- **The emulator can no longer read a frame back.** Every
+  `render/filament` test that reads pixels aborts there with Filament's
+  `blitLow` program failing to compile (seen 2026-10-10); the phone runs them.
+  `docs/TODO.md`, Step 2.
 - Determinism holds across both ABIs; unproven across devices of one ABI.
-- **Coverage:** branch ~71.4 % against a floor of 62, function ~92.7 % against
-  85. Most missed branches are Compose skip branches.
+- **Coverage:** branch ~75.4 % against a floor of 62, function ~92.8 % against
+  85, after a pass that pruned about forty redundant tests and added two
+  hundred. Most missed branches are Compose skip branches.
 
 ## Decisions pending
 
@@ -127,5 +165,5 @@ All in `docs/TODO.md`; the ones that block code first.
   many fit.
 - Whether the too-many-dice refusal offers a way to the outcome graph (the
   argument is in `docs/architecture.md`).
-- Filled-button label contrast (3.65:1 against 4.5:1), the coverage floor,
+- Filled-button label contrast (3.76:1 against 4.5:1), the coverage floor,
   the anomaly log surviving a restart, more than one personal set.

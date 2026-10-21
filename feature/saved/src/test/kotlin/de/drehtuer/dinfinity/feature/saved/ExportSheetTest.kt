@@ -76,20 +76,12 @@ class ExportSheetTest {
   }
 
   @Test
-  fun `the screen offers a way to export, which it had none of`() {
+  fun `the screen's export mark opens a sheet offering both choices - this group, and everything`() {
     show()
 
     compose.onNodeWithTag(ExportTestTags.OPEN).performClick()
 
     compose.onNodeWithTag(ExportTestTags.SHEET).assertIsDisplayed()
-  }
-
-  @Test
-  fun `both choices are offered - this group, and everything`() {
-    show()
-
-    compose.onNodeWithTag(ExportTestTags.OPEN).performClick()
-
     compose.onNodeWithTag(ExportTestTags.GROUP).assertIsDisplayed()
     compose.onNodeWithTag(ExportTestTags.EVERYTHING).assertIsDisplayed()
   }

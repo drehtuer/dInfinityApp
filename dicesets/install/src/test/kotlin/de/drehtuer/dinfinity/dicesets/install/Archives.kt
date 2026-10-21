@@ -51,11 +51,17 @@ faces = [1, 2, 3, 4, 5, 6]
     return file
   }
 
-  /** A gzipped tar, which is what every git forge hands out. */
+  /**
+   * A gzipped tar, which is what every git forge hands out.
+   *
+   * @param special entries that are not files at all — a hard link, a device,
+   *   a pipe — by path and the tar type flag that says which.
+   */
   fun tarGz(
     into: File,
     entries: Map<String, ByteArray>,
     symlinks: Map<String, String> = emptyMap(),
+    special: Map<String, Byte> = emptyMap(),
   ): File {
     val file = File(into, "package-${System.nanoTime()}.tar.gz")
     TarArchiveOutputStream(GzipCompressorOutputStream(file.outputStream())).use { out ->
@@ -70,6 +76,12 @@ faces = [1, 2, 3, 4, 5, 6]
       symlinks.forEach { (path, target) ->
         val entry = TarArchiveEntry(path, TarArchiveEntry.LF_SYMLINK)
         entry.linkName = target
+        out.putArchiveEntry(entry)
+        out.closeArchiveEntry()
+      }
+      special.forEach { (path, flag) ->
+        val entry = TarArchiveEntry(path, flag)
+        if (flag == TarArchiveEntry.LF_LINK) entry.linkName = "pkg/diceset.toml"
         out.putArchiveEntry(entry)
         out.closeArchiveEntry()
       }

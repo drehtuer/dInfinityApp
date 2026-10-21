@@ -51,6 +51,21 @@ class TrayReadingTest {
   }
 
   @Test
+  fun `a chain waiting on a hand counts the dice already down`() {
+    // Not the throws it earned: those are not on the table yet, and what a
+    // screen reader is told is what is there to find.
+    assertEquals(
+      TrayReading.ShakeAgain(4),
+      TrayReading.of(RollState.ShakeAgain(diceCount = 4, waiting = 2)),
+    )
+  }
+
+  @Test
+  fun `a roll that gave up counts the dice that never stopped`() {
+    assertEquals(TrayReading.Stalled(2), TrayReading.of(RollState.Stalled(unsettled = 2, read = 6)))
+  }
+
+  @Test
   fun `dice nobody could read are counted, and only those`() {
     // What a screen reader hears over a tray waiting for a shake: how many
     // dice the shake will throw again, not how many are on the table.

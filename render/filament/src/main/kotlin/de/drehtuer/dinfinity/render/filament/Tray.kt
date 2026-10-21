@@ -9,6 +9,7 @@ import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Somewhere to throw dice and watch them land.
@@ -32,6 +33,16 @@ interface Tray : AutoCloseable {
    * (`design/dInfinity.dc.html`, option 1z).
    */
   val draws: Boolean get() = true
+
+  /**
+   * Whether the far side is compiling a dice material right now, and how far
+   * it has probably got ([ShaderWork]) — what the roll screen's "Preparing the
+   * dice" is drawn from (`docs/architecture.md`, decision 95).
+   *
+   * Readable from any thread. The default never compiles anything, which is
+   * true of power-saving mode, where there is no engine, and of every fake.
+   */
+  val shaders: StateFlow<ShaderWork> get() = ShaderWork.NEVER
 
   /**
    * There is somewhere to draw, this big. Called again with a new size when

@@ -64,15 +64,20 @@ internal fun Path.follow(
  *
  * The **mask is the rule** rather than a hint about it: anything outside the
  * outline is on a part of the atlas no face shows.
+ *
+ * [paper] is the die's own body colour, so what is drawn here is what the
+ * tray shows between the marks (`docs/face-designer.md`, "Material, colour
+ * and edges").
  */
 internal fun DrawScope.drawFace(
   outline: FaceOutline,
   marks: List<Mark>,
+  paper: Color = PAPER,
 ) {
   val face = Path().apply { follow(outline, size.width, size.height) }
   clipPath(face) {
-    drawRect(color = Color.White)
-    marks.forEach { mark -> drawMark(mark) }
+    drawRect(color = paper)
+    marks.forEach { mark -> drawMark(mark, paper) }
   }
 }
 
@@ -83,9 +88,12 @@ internal fun DrawScope.drawFace(
  * given is whatever shape enclosed the tap — the canvas square for the face
  * itself, and the player's own outline for anything smaller (`FaceFill`).
  */
-internal fun DrawScope.drawMark(mark: Mark) {
+internal fun DrawScope.drawMark(
+  mark: Mark,
+  paper: Color = PAPER,
+) {
   when (mark) {
-    is Stroke -> drawStroke(mark)
+    is Stroke -> drawStroke(mark, paper)
     is Fill -> drawFill(mark)
     is Rings -> drawStamp(mark)
   }
@@ -131,14 +139,17 @@ internal fun DrawScope.drawFill(fill: Fill) {
   drawPath(path = path, color = Color(fill.colorArgb))
 }
 
-internal fun DrawScope.drawStroke(stroke: Stroke) {
+internal fun DrawScope.drawStroke(
+  stroke: Stroke,
+  paper: Color = PAPER,
+) {
   val path = Path().apply { trace(stroke.dots, size.width, size.height) }
   drawPath(
     path = path,
-    // The eraser paints the canvas's own white rather than cutting a hole:
+    // The eraser paints the canvas's own paper rather than cutting a hole:
     // the drawing is a list of strokes and a hole would be a fourth kind of
     // thing to store, to undo and to rasterise.
-    color = if (stroke.erases) Color.White else Color(stroke.colorArgb),
+    color = if (stroke.erases) paper else Color(stroke.colorArgb),
     style = DrawStroke(width = stroke.width * size.width, cap = StrokeCap.Round),
   )
 }

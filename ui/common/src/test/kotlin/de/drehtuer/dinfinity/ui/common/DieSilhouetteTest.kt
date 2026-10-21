@@ -1,27 +1,44 @@
 package de.drehtuer.dinfinity.ui.common
 
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.notation.Sides
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 
 /**
  * Which picture each die wears on the picker row
  * (`design/dInfinity.dc.html`, option 1h).
  *
  * The picture is what a player picks a die out of a row by, so the mapping is
- * worth asserting even though the drawing itself — three Compose calls — is
- * not. These are the prototype's outlines, and the test that matters is that
+ * asserted on its own, and the drawing — three Compose calls — once, on the
+ * pixels. These are the prototype's outlines, and the test that matters is that
  * each die still gets its own one: two dice sharing a silhouette is a row that
  * cannot be read.
  */
 @RunWith(RobolectricTestRunner::class)
 class DieSilhouetteTest {
+  @get:Rule
+  val compose = createComposeRule()
+
   @Test
   fun `the coin is the one die with no corners`() {
     assertNull("the coin was given corners", outlineOf(Sides.Numeric(COIN)))
@@ -85,11 +102,44 @@ class DieSilhouetteTest {
     assertEquals(bounds.width, bounds.height, TOLERANCE)
   }
 
+  /**
+   * The drawing, read off the pixels, at the one place the two kinds of
+   * picture differ: a little way in from the corner, which is inside the
+   * cube's square and on the coin's rim. A coin drawn as a cube — or a cube
+   * whose corners came out round — fails here.
+   */
+  @Test
+  @GraphicsMode(GraphicsMode.Mode.NATIVE)
+  @Config(qualifiers = "xxhdpi")
+  fun `the coin is drawn round and the cube square, both filled in`() {
+    compose.setContent {
+      Row {
+        DieSilhouette(Sides.Numeric(COIN), fill = FILL, ink = INK, modifier = Modifier.size(SIDE).testTag("coin"))
+        DieSilhouette(Sides.Numeric(6), fill = FILL, ink = INK, modifier = Modifier.size(SIDE).testTag("cube"))
+      }
+    }
+
+    val coin = compose.onNodeWithTag("coin").captureToImage().toPixelMap()
+    val cube = compose.onNodeWithTag("cube").captureToImage().toPixelMap()
+    val near = (coin.width * NEAR_THE_CORNER).toInt()
+
+    assertEquals("the coin is not filled in", FILL, coin[coin.width / 2, coin.height / 2])
+    assertEquals("the cube is not filled in", FILL, cube[cube.width / 2, cube.height / 2])
+    assertEquals("the cube has no corner where a cube has one", FILL, cube[near, near])
+    assertNotEquals("the coin has a corner", FILL, coin[near, near])
+  }
+
   private companion object {
     const val COIN = 2
     const val UNKNOWN = 30
     const val DRAWN = 100f
     const val BOX = 64f
     const val TOLERANCE = 0.01f
+
+    /** Inside the cube's square (inset 14 of 100) and past the fill of the coin's disc. */
+    const val NEAR_THE_CORNER = 0.19f
+    val SIDE = 100.dp
+    val FILL = Color(0xFFEC3013)
+    val INK = Color(0xFF101010)
   }
 }

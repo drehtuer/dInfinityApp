@@ -198,8 +198,10 @@ class DInfinityAppTest {
     // that decides whether an existing roll is being edited.
     assertEquals("editor?formula=2d6%20%2B%203", editorRoute(null, "2d6 + 3"))
     assertEquals("editor?roll=fireball", editorRoute("fireball"))
+    // Not in the menu: it is about one roll, and the way to it is that roll.
     assertEquals("editor", editorRoute(null))
     assertEquals(Destination.SavedRollEditor, Destination.ofRoute(editorRoute(null, "2d6 + 3")))
+    assertEquals(Destination.SavedRollEditor, Destination.ofRoute(editorRoute("fireball")))
   }
 
   @Test
@@ -229,14 +231,6 @@ class DInfinityAppTest {
     assertEquals("roll?formula=mine%3A1d20&die=d20", rollRoute("mine:1d20", drawing = "d20"))
     assertEquals("roll?formula=2d6", rollRoute("2d6"))
     assertEquals(Destination.Roll, Destination.ofRoute(rollRoute("mine:1d20", drawing = "d20")))
-  }
-
-  @Test
-  fun `the editor is opened on a roll, or on a new one`() {
-    // Not in the menu: it is about one roll, and the way to it is that roll.
-    assertEquals("editor?roll=fireball", editorRoute("fireball"))
-    assertEquals("editor", editorRoute(null))
-    assertEquals(Destination.SavedRollEditor, Destination.ofRoute(editorRoute("fireball")))
   }
 
   @Test

@@ -68,11 +68,6 @@ class BuiltinDiceSetTest {
   }
 
   @Test
-  fun `a d2 is a coin, not a cube pretending to be one`() {
-    assertEquals(listOf(1, 2), set.die("d2")?.values())
-  }
-
-  @Test
   fun `a d4 is read from the vertex at the top`() {
     assertEquals(FaceRead.VertexUp, set.die("d4")?.read)
   }

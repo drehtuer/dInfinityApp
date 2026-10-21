@@ -51,6 +51,18 @@ class SignedDistanceFieldTest {
     assertTrue(field.at(16, 6) > SignedDistanceField.EDGE, "the ring itself is not ink")
   }
 
+  /**
+   * An outline that names a corner twice has a segment of no length in it.
+   * Measured naively that is a nought divided by nought, and one NaN in the
+   * nearest-distance search turns the whole field to garbage.
+   */
+  @Test
+  fun `a corner given twice draws the same field as the corner given once`() {
+    val doubled = listOf(doubleArrayOf(0.25, 0.25, 0.75, 0.25, 0.75, 0.25, 0.75, 0.75, 0.25, 0.75))
+
+    assertTrue(SignedDistanceField.cell(doubled, size = 32).contentEquals(SignedDistanceField.cell(middle, size = 32)))
+  }
+
   @Test
   fun `a cell with no ink is a cell of zeroes`() {
     val field = SignedDistanceField.cell(emptyList(), size = 8)

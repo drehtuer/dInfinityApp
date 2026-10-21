@@ -192,6 +192,34 @@ class GraphMachineTest {
   }
 
   @Test
+  fun `a total the distribution cannot come to is not marked`() {
+    // The formulas agree, so the mark would be shown — but a line at 99 on a
+    // chart that runs from 2 to 12 is a line drawn off the edge of it.
+    val machine = machine()
+    machine.type("2d6")
+
+    machine.rolled(total = 99, formula = "2d6")
+
+    assertNull((machine.state as GraphState.Graphed).rolled)
+  }
+
+  @Test
+  fun `an exploding formula carries the probability its chains ran out of depth for`() {
+    // Under 1e-15 for a d6, and zero for anything that cannot explode. Worth
+    // carrying because it is the one place the exact graph is not quite exact
+    // (`docs/probability.md`).
+    val machine = machine()
+
+    machine.type("1d6!")
+    val exploding = (machine.state as GraphState.Graphed).truncatedMass
+    machine.type("2d6")
+    val plain = (machine.state as GraphState.Graphed).truncatedMass
+
+    assertTrue("an exploding chain reported no truncated tail", exploding > 0.0)
+    assertEquals(0.0, plain, 0.0)
+  }
+
+  @Test
   fun `a throw the table would refuse still graphs`() {
     // The graph is about the formula. `500d6` is refused at the tray and
     // nowhere else (`docs/probability.md`, `docs/tables.md`).

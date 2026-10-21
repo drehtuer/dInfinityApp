@@ -21,6 +21,13 @@ Done apart from boxes that wait on other projects; none blocks anything.
 - [ ] *Optional:* a `DEPENDABOT_METADATA_TOKEN` secret, so the metadata commit
       starts the checks without the *Approve workflows to run* banner
       (`docs/build-setup.md`)
+- [ ] **The emulator's readback aborts.** Every `render/filament` device test
+  that reads a frame back (`AtlasTextureTest`, `PrintedNumbersDeviceTest`, …)
+  kills the test process on the container's emulator: Filament's `blitLow`
+  program does not compile on SwiftShader (`cannot convert from 'float' to
+  'out mediump 4-component vector'`). The Pixel 10a passes them. Find which
+  change brought it (Filament 1.76.1, the emulator image, or the room light)
+  and either fix it or skip those tests on the emulator by name.
 - [ ] Drop `VerifyDeviceTestResultsTask` and `ignoreFailures` on
       `connectedDebugAndroidTest` once AGP stops failing runs on devices whose
       adb serial contains a colon (`docs/build-setup.md`)
@@ -41,6 +48,12 @@ Design `1a`–`1j`, `2a`, `3a`–`3c`, `4a`, `4b`, `6d`, `6f`, `9a`, `9c`, `1z`.
 Spec: `docs/dice-notation.md`, `docs/tables.md`,
 `docs/physics-and-rendering.md` ("What is drawn over the table").
 
+- [ ] **Show better when a shake can start** (owner, 2026-10-11). Nothing on
+      the tray says clearly that it is ready for the next throw — after a
+      roll has settled, while the board's dice are still dropping, or once a
+      formula has been typed. Decide what says "shake now" (the ready plate,
+      the shake prompt of decision 84, a haptic, the dice themselves) and
+      draw it in the prototype first.
 - [ ] **Stagger the spawn**, 85 ms between dice, the result sheet waiting
       `min(2400, 950 + (n − 1) × 85)` ms for the last landing. The prototype's
       collision shove is **not** ported: a settled die moved by code is the
@@ -127,6 +140,10 @@ and read here, and a seed gives the same result with the renderer on and off.
 
 ### 4.4 Dice sets — `feature/sets`
 
+- [ ] *Judge on the phone:* install the four `sample-sets/` from a file (the
+      zips) and from a link (their GitHub folders). Does marble read as stone
+      with its numbers cut in, steel as metal, green resin as half see-through
+      and red glass as clear? Does each refusal or note say something useful?
 - [ ] **Decide the built-in set's `size_mm`.** It is the width across the
       corners, so the built-in 16 mm d6 is a 9.2 mm cube weighing **0.9 g**
       against the design's 4.2 g. Something near `size_mm = 28` changes every
@@ -144,8 +161,25 @@ and read here, and a seed gives the same result with the renderer on and off.
       thrown die edge to edge, nothing spilling onto the neighbouring faces?
       A drawing made on a kite die before the change shows larger in the
       editor than it was drawn — is that read as the die's size or as a fault?
-- [ ] Should the Solid tab draw pen strokes (as thin filled outlines)? Today it
-      says what it does not draw
+- [ ] *Judge on the phone:* the three steps (decision 99) — is it clear where
+      you are, and do Back, Next and **Roll it** feel right? A die drawn on
+      some faces: drawn faces show no number, the others do (96). A dark body
+      colour: edges and corners in it, undrawn faces printed white (97). The
+      pen's lines on the Solid tab, foreshortened as the face turns. In the
+      dark theme, does **Guide** show and hide the faint number?
+- [ ] *Judge on the phone:* the **Opacity** slider (decision 102). Is "75 %
+  opaque: 25 % of the light goes through" the right way to say it, are five
+  per cents fine enough, and does a die between Pearl and Resin look like
+  one on the tray?
+- [ ] *Judge on the phone:* the **Material** menu and the **Edges** slider
+      (decisions 94, 98). Make a d20 each of Plastic, Pearl, Resin, Glass,
+      Metal and Stone and **Roll it**: does each look like its name on the
+      felt and on the oak — Pearl milky rather than faded, Resin clear enough
+      to see the felt bent through it, Glass clear, Metal metal rather than
+      grey plastic, Stone matte? Does the swatch beside the menu hint at the
+      right one? Then a d6 and a d4 at 6 %: do the edges look round
+      and do they still read as dice, and do the numbers near a d4's edges
+      still read where they wrap onto the bend?
 - [ ] *Judgement:* named personal sets (decision 79). A drawing saved into a
       named set is a copy and also stays in "My dice" — is that what somebody
       expects, or should a set-only drawing leave "My dice" alone? Does the
@@ -204,6 +238,12 @@ re-throws 5.11 % → 2.64 %, none gave up, slowest roll 10.5 s (4.7 s before).
 
 Fairness is done on the Pixel 10a (the d18 held to the worst-face bound), and
 `ModesAgreeTest` holds power-saving and drawn modes to the same faces.
+
+- [ ] Fairness at the roundest edges at full strength: 100,000 rolls with
+      `edgeRounding=0.06` and `0.015` (20,000 a shape passed at both,
+      decision 100; `docs/physics-and-rendering.md`, "How round a die may
+      be"), and the harness with coins (`-s d2`), which the sweep did not
+      throw and which is what gave first
 
 - [ ] Identical outcomes for identical seeds across JVM, emulator and device at
       ten thousand rolls and on a second phone. The golden suite already holds
@@ -373,9 +413,7 @@ keeps them comparable.
       the oak as warm oak — a little darker than before — and its walls as
       wood, is the felt's crinkle too strong — its normal map can be
       softened — and does it shimmer as the dice settle, and is plain
-      unchanged), the dice reflected faintly in the dark glass (93 — is the
-      reflection soft and dim enough, and does it look right that the walls
-      are not reflected). Judged with `tools/gallery.sh` before and after each
+      unchanged). Judged with `tools/gallery.sh` before and after each
       step, and merged to `main` once the owner likes it on the phone
 
 ### 5.7 Performance on the Pixel 10a
@@ -392,6 +430,34 @@ measured"). Re-run after any change to the renderer or the physics step.
 
 **Done when** every target is met on the Pixel 10a and the user agrees the
 dice look right. Wrong numbers become the new numbers in the docs.
+
+### 5.8 The hand tosses the dice
+
+Decision 105, adopted by the owner on 2026-10-20.
+
+- [ ] Tune `Release.GAIN`, `LEAST_MM_PER_SECOND`, `MOST_MM_PER_SECOND`,
+  `ShakeDriver.LET_GO_STEPS`, `PAUSE_MARGIN`, `MOST_LET_GO_STEPS` and `Toss`'s lift and spreads against the owner's
+  slow-motion recordings of real throws (every shape, from straight above,
+  with a scale in frame), and re-run `tools/harness.sh --release`.
+- [ ] **Shaking along the phone's length (y) still jumps now and then.** x and
+  z are fixed (owner, on the Pixel 10a). On y the let-go now comes at the
+  right moment and once per throw, and dice against a wall are tossed away
+  from it, yet a hop still shows on some shakes and not others. Next: record
+  a run with the full shake record logged per roll and line the hop up with
+  the frames.
+- [ ] Toss a crowded throw gentler: twenty d20 tossed one way are re-thrown
+  3.9 % of the time against 1.2 %.
+- [ ] Score the turns *after the hand lets go*: the harness counts from the
+  first touch, which for a shaken throw is under the hand.
+- [ ] *Judge on the phone:* shake slowly, two strokes a second or less — do
+  the dice keep moving until the hand stops, and is the toss after a slow
+  shake late enough to be the hand's and soon enough not to read as a pause?
+- [ ] *Judge on the phone:* does the toss go the way the hand went, does it
+  come at the moment the hand stops, and does the tumble look like the
+  recordings?
+- [ ] Fold "The hand lets go" into "Shake input" and decisions 65 and 87, and
+  make the golden cases toss (a physics change: goldens re-recorded,
+  `FairnessTest` re-run).
 
 ## Step 6 — v1 release
 
@@ -416,13 +482,35 @@ dice look right. Wrong numbers become the new numbers in the docs.
 
 ## Coverage
 
-Branch coverage is **~71.4 %** against a floor of 62; about seven in ten missed
+Branch coverage is **~75.4 %** against a floor of 62; about seven in ten missed
 branches are Compose skip branches a single-pass test reaches one side of.
 What helps: extract decisions from draw lambdas, test shared components on
 their own, add recomposition tests. Figures go in every PR description.
 
 - [ ] Should the floor track the drift? A question for a person — moving a
       floor to make a check pass is what `.claude/CLAUDE.md` forbids
+
+Found by the test pass of 2026-10-05, each left as it was so no test locks a
+wrong answer in:
+
+- [ ] **`SafeExtractor` lets a tar device or FIFO entry through** as an empty
+      file: `TarArchiveEntry.isFile` is true for anything not a directory, so
+      the documented refusal of "a link or a device" never fires for them.
+      Not exploitable (the extractor writes the bytes itself), but the
+      validator should refuse anything but a regular file or a directory
+- [ ] `ReferencedFile.staysInsidePackage` refuses a path with an empty segment,
+      `textures/` included — check a zip's directory entries never reach it
+- [ ] `InstallSource.gitea` drops a `src/branch/<ref>/<folder>` subfolder and
+      installs from the repository root; GitHub and GitLab honour one. A
+      `blob/…` link on either becomes a subfolder named `blob/…`
+- [ ] `GraphMachine.redraw()` rebuilds the distribution with
+      `truncatedMass = 0`, so an exploding formula loses its tail after a tap
+      or a mode switch (nothing shows the value yet)
+- [ ] Dead code: `Solids.trapezohedronRadiusPerEdge`, `order(directions)` in
+      `Solids.kt`, `RollColour.argbs`, `SessionsState.active`, the public
+      getter of `RollMachine.cameFrom`, and the guards `GraphBars.of`'s
+      `tallest > 0.0` and `GraphMachine.redraw`'s `formula ?: return` that
+      cannot be false
 
 ## Open questions
 
@@ -466,11 +554,6 @@ their own, add recomposition tests. Figures go in every PR description.
 - [ ] How should a photo sit on the tray — centre, fit width, fit height
       (`1u`)? It is drawn now (decision 92), stretched over the floor by
       `[1, 1]` tiling
-- [ ] A glossy look that also names pictures (a polished stone photograph)
-      is drawn from its pictures and shows no dice in it: pictures win over
-      the reflection (`DiceMaterial.variantOf`). Showing both needs a fifth
-      material with the table's maps and the glass's picture; build it when a
-      package asks for one
 
 ### Sets and collections
 

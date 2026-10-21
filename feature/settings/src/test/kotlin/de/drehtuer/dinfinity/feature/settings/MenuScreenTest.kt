@@ -1,9 +1,11 @@
 package de.drehtuer.dinfinity.feature.settings
 
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -16,6 +18,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.GraphicsMode
 
 /**
  * The menu (`design/dInfinity.dc.html`, option 1q).
@@ -86,6 +89,26 @@ class MenuScreenTest {
     compose.onNodeWithContentDescription("Menu").performClick()
 
     assertEquals(1, opened.size)
+  }
+
+  /**
+   * The three lines are drawn rather than fetched — the app ships no icon set —
+   * so the drawing is the one thing that can be wrong without any word on the
+   * screen changing. Read down the middle of the glyph: three separate runs
+   * of ink, which is what makes it the menu rather than a bar or a box.
+   */
+  @Test
+  @GraphicsMode(GraphicsMode.Mode.NATIVE)
+  fun `the way in is drawn as three lines`() {
+    compose.setContent { MenuButton(onOpen = {}) }
+
+    val drawn = compose.onNodeWithTag(MenuTestTags.BUTTON).captureToImage().toPixelMap()
+    // The button's corner is outside the 22 dp glyph, so it is the ground.
+    val ground = drawn[0, 0]
+    val middle = drawn.width / 2
+    val inked = (0 until drawn.height).map { y -> drawn[middle, y] != ground }
+    val runs = inked.indices.count { y -> inked[y] && (y == 0 || !inked[y - 1]) }
+    assertEquals("the menu glyph is not three lines", 3, runs)
   }
 
   private fun show(

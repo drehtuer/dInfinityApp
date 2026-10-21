@@ -150,6 +150,20 @@ class DiePhysicalTest {
     assertEquals(small, small.clampedToLimits())
   }
 
+  /**
+   * The stepper's whole range is inside what the file format accepts, which is
+   * what lets an edited set be written out without clamping anything.
+   */
+  @Test
+  fun `every size the stepper can reach is a size a set file may carry`() {
+    val smallest = DiePhysical.sizeMmOf(DiePhysical.SizePercentRange.start)
+    val largest = DiePhysical.sizeMmOf(DiePhysical.SizePercentRange.endInclusive)
+
+    assertTrue(smallest in DieMaterial.SizeMmRange, "$smallest mm")
+    assertTrue(largest in DieMaterial.SizeMmRange, "$largest mm")
+    assertEquals(0.0..100.0, DiePhysical.TranslucencyPercentRange)
+  }
+
   @Test
   fun `a set says what is true of every die in it`() {
     val dice =

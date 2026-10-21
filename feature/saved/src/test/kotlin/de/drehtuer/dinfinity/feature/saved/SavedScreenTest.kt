@@ -14,6 +14,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTouchInput
@@ -152,6 +153,28 @@ class SavedScreenTest {
 
     assertEquals(
       listOf("first", "third", "second"),
+      runBlocking { repository.inGroup(SavedRollGroup.UNFILED_ID).first() }.map { it.id },
+    )
+  }
+
+  @Test
+  fun `the grip's other action moves a row down, and is written down too`() {
+    // The half of the pair a screen reader reaches for at the top of a list.
+    // Only "Move up" was ever pressed, so a "Move down" stepping the wrong way
+    // would have gone unnoticed.
+    given(roll("first"), roll("second"), roll("third"))
+    show()
+
+    compose
+      .onNodeWithTag(SavedTestTags.gripOf("first"), useUnmergedTree = true)
+      .fetchSemanticsNode()
+      .config[SemanticsActions.CustomActions]
+      .first { action -> action.label == "Move down" }
+      .action()
+    compose.waitForIdle()
+
+    assertEquals(
+      listOf("second", "first", "third"),
       runBlocking { repository.inGroup(SavedRollGroup.UNFILED_ID).first() }.map { it.id },
     )
   }
@@ -392,6 +415,64 @@ class SavedScreenTest {
   }
 
   @Test
+  fun `the group name opens the switcher and a second tap puts it away`() {
+    // The arrow beside the name is the only thing that says which of the two
+    // a tap will do.
+    runBlocking { groupRepository.save(SavedRollGroup(id = "thorin", name = "Thorin")) }
+    given(roll("loose"))
+    show()
+
+    compose.onNodeWithTag(SavedTestTags.SWITCHER).performClick()
+    compose.onNodeWithTag(SavedTestTags.SWITCHER).assertTextContains("▴", substring = true)
+    compose.onNodeWithTag(SavedTestTags.groupOf("thorin")).assertIsDisplayed()
+
+    compose.onNodeWithTag(SavedTestTags.SWITCHER).performClick()
+
+    compose.onNodeWithTag(SavedTestTags.SWITCHER).assertTextContains("▾", substring = true)
+    compose.onNodeWithTag(SavedTestTags.groupOf("thorin")).assertDoesNotExist()
+  }
+
+  @Test
+  fun `a long press on a group in the switcher opens it for editing rather than opening it`() {
+    // The same gesture a roll's row has: a tap is the everyday thing, a long
+    // press is the change.
+    runBlocking { groupRepository.save(SavedRollGroup(id = "thorin", name = "Thorin")) }
+    given(roll("axe", groupId = "thorin"), roll("loose"))
+    val opened = mutableListOf<String>()
+    show(onActiveGroup = opened::add)
+    compose.onNodeWithTag(SavedTestTags.SWITCHER).performClick()
+
+    compose.onNodeWithTag(SavedTestTags.groupOf("thorin")).performTouchInput { longClick() }
+
+    compose.onNodeWithTag(GroupTestTags.SHEET).assertIsDisplayed()
+    compose.onNodeWithTag(GroupTestTags.NAME).assertTextContains("Thorin", substring = true)
+    assertEquals("a long press also opened the group", emptyList<String>(), opened)
+  }
+
+  @Test
+  fun `a roll wears its own mark, and one with none wears the dot`() {
+    given(roll("fireball").copy(icon = "🔥"), roll("plain"))
+
+    show()
+
+    compose.onNodeWithTag(SavedTestTags.rollOf("fireball")).assertTextContains("🔥", substring = true)
+    compose.onNodeWithTag(SavedTestTags.rollOf("plain")).assertTextContains("●", substring = true)
+  }
+
+  @Test
+  fun `a new roll is asked for from the bar and from an empty group alike`() {
+    // The empty group's button is the one somebody meets first; the bar's is
+    // the one they use ever after. Neither may be a button that does nothing.
+    var asked = 0
+    show(onNew = { asked++ })
+
+    compose.onNodeWithTag(SavedTestTags.NEW).performClick()
+    compose.onNodeWithText("New saved roll").performClick()
+
+    assertEquals(2, asked)
+  }
+
+  @Test
   fun `rolling something does not move it, because the order is the player's`() {
     given(roll("first"), roll("second"), roll("third"))
     show()
@@ -415,6 +496,7 @@ class SavedScreenTest {
     onRoll: (SavedEntry) -> Unit = {},
     onEdit: (SavedEntry) -> Unit = {},
     onActiveGroup: (String) -> Unit = {},
+    onNew: () -> Unit = {},
   ) {
     val presenter =
       SavedPresenter(
@@ -432,7 +514,7 @@ class SavedScreenTest {
         unfiledName = "Unfiled",
       )
     compose.setContent {
-      SavedScreen(presenter = presenter, groups = groups, onRoll = onRoll, onEdit = onEdit)
+      SavedScreen(presenter = presenter, groups = groups, onRoll = onRoll, onEdit = onEdit, onNew = onNew)
     }
   }
 

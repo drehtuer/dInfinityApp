@@ -103,17 +103,6 @@ class SettingsScreenTest {
   }
 
   @Test
-  fun `the whole row is the switch, not just the switch`() {
-    // A 56 dp target at the right-hand edge of the screen is a target for a
-    // right thumb and nobody else.
-    compose.setContent {
-      SettingsScreen(settings = AppSettings(powerSaving = true), onAccentSelected = {})
-    }
-
-    compose.onNodeWithTag(SettingsTestTags.POWER_SAVING).assertHasClickAction()
-  }
-
-  @Test
   fun `choosing an accent reports it once`() {
     val chosen = mutableListOf<AccentChoice>()
     compose.setContent {
@@ -525,10 +514,42 @@ class SettingsScreenTest {
       .assertHeightIsAtLeast(TOUCH_TARGET)
   }
 
+  /**
+   * The rest of the screen is as stateless as the swatches: every control a
+   * caller leaves unwired still takes a tap, and none of them moves until a
+   * new [AppSettings] comes down. A switch that flipped itself on a screen
+   * nobody was saving from would be a setting that looked changed and was not.
+   */
+  @Test
+  fun `no control changes what it shows until the caller feeds the change back`() {
+    compose.setContent { SettingsScreen(settings = AppSettings(), onAccentSelected = {}) }
+
+    listOf(
+      SettingsTestTags.appearanceOf(Appearance.Light),
+      SettingsTestTags.tableViewOf(TableView.Angled),
+      SettingsTestTags.HAPTICS,
+      SettingsTestTags.SOUND,
+      SettingsTestTags.roundingOf(Rounding.Nearest),
+      SettingsTestTags.POWER_SAVING,
+      SettingsTestTags.DEVELOPER,
+      SettingsTestTags.REPOSITORY,
+    ).forEach { tag -> compose.onNodeWithTag(tag).performScrollTo().performClick() }
+
+    compose.onNodeWithTag(SettingsTestTags.appearanceOf(Appearance.System)).performScrollTo().assertIsSelected()
+    compose.onNodeWithTag(SettingsTestTags.tableViewOf(TableView.StraightDown)).performScrollTo().assertIsSelected()
+    compose.onNodeWithTag(SettingsTestTags.roundingOf(Rounding.Down)).performScrollTo().assertIsSelected()
+    compose.onNodeWithTag(SettingsTestTags.HAPTICS).performScrollTo().assertIsOn()
+    compose.onNodeWithTag(SettingsTestTags.SOUND).performScrollTo().assertIsOn()
+    compose.onNodeWithTag(SettingsTestTags.POWER_SAVING).performScrollTo().assertIsOff()
+    compose.onNodeWithTag(SettingsTestTags.DEVELOPER).performScrollTo().assertIsOff()
+  }
+
   @Test
   fun `a switch is still the whole row, sentence and all`() {
     // The boolean settings are rows like every other now — the name on the
-    // left, Off / On on the right — so the tap has to cover the sentence too.
+    // left, Off / On on the right — so the tap has to cover the sentence too,
+    // and a 56 dp target at the right-hand edge of the screen is a target for
+    // a right thumb and nobody else.
     var explanation = ""
     compose.setContent {
       explanation = stringResource(R.string.settings_power_explanation)

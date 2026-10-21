@@ -1,6 +1,7 @@
 package de.drehtuer.dinfinity.simulation.harness
 
 import de.drehtuer.dinfinity.core.model.DieShape
+import de.drehtuer.dinfinity.simulation.api.Release
 import de.drehtuer.dinfinity.simulation.api.Seeds
 import de.drehtuer.dinfinity.simulation.api.TableCapacity
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
@@ -62,6 +63,7 @@ class HarnessRequestTest {
     assertTrue(requireNotNull(HarnessRequest.from(arguments("10", frames = "true"))).framePaced)
     assertFalse(requireNotNull(HarnessRequest.from(arguments("10", frames = "0"))).framePaced)
     assertFalse(requireNotNull(HarnessRequest.from(arguments("10", frames = "false"))).framePaced)
+    assertFalse(requireNotNull(HarnessRequest.from(arguments("10", frames = " No "))).framePaced)
     assertFalse(requireNotNull(HarnessRequest.from(arguments("10", frames = " "))).framePaced)
   }
 
@@ -194,6 +196,43 @@ class HarnessRequestTest {
     val again = requireNotNull(HarnessRequest.from(arguments("3", seed = "7"))).plan()
 
     assertEquals(first.specFor(2), again.specFor(2))
+  }
+
+  @Test
+  fun `a run asked to release its throws from a hand throws every roll that way`() {
+    val asked = mapOf(HarnessRequest.ROLLS to "3", HarnessRequest.RELEASE to "1200")
+    val request = requireNotNull(HarnessRequest.from { asked[it] })
+
+    assertEquals(1_200.0, request.releaseMmPerSecond)
+    assertEquals("20d20-release1200", request.label)
+    val spec = request.plan().specFor(0)
+    assertTrue(spec.toss)
+    assertEquals(HandStroke.of(1_200.0, spec.seed), spec.shake)
+  }
+
+  @Test
+  fun `a run asked for nothing about a hand makes the grid throw`() {
+    val request = requireNotNull(HarnessRequest.from(arguments("3")))
+
+    assertNull(request.releaseMmPerSecond)
+    assertFalse(request.plan().specFor(0).toss)
+    assertTrue(
+      request
+        .plan()
+        .specFor(0)
+        .shake
+        .isEmpty(),
+    )
+  }
+
+  @Test
+  fun `a release the app cannot make is refused, not measured`() {
+    assertNull(HarnessRequest.releaseOf(null))
+    assertNull(HarnessRequest.releaseOf("  "))
+    assertEquals(Release.LEAST_MM_PER_SECOND, HarnessRequest.releaseOf(" ${Release.LEAST_MM_PER_SECOND} "))
+    assertFailsWith<IllegalArgumentException> { HarnessRequest.releaseOf("fast") }
+    assertFailsWith<IllegalArgumentException> { HarnessRequest.releaseOf("${Release.MOST_MM_PER_SECOND + 1}") }
+    assertFailsWith<IllegalArgumentException> { HarnessRequest.releaseOf("100") }
   }
 
   @Suppress("LongParameterList")

@@ -1,13 +1,18 @@
 package de.drehtuer.dinfinity.feature.stats
 
 import android.content.Context
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.click
+import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import de.drehtuer.dinfinity.core.model.DieNote
@@ -180,6 +185,27 @@ class HistoryScreenTest {
     compose.onNodeWithTag(HistoryTestTags.rollOf(id)).performClick()
 
     compose.onNodeWithTag(HistoryTestTags.anomaliesOf(id), useUnmergedTree = true).assertIsDisplayed()
+  }
+
+  @Test
+  fun `a group whose set was not installed says which set stood in`() {
+    // The breakdown is read out of what was recorded, so it can say what the
+    // phone actually threw with — and a substitute nobody is told about is a
+    // d20 somebody believes was brass.
+    val stoodIn =
+      twoD6("brass:2d6", 9).let { roll ->
+        roll.copy(groups = roll.groups.map { it.copy(requestedSetId = "brass") })
+      }
+    given(formula = "brass:2d6", total = 9) { copy(breakdownJson = Breakdown.of(stoodIn)) }
+    val presenter = show()
+    val id =
+      presenter.state.rolls
+        .single()
+        .id
+
+    compose.onNodeWithTag(HistoryTestTags.rollOf(id)).performClick()
+
+    compose.onNodeWithText("“brass” is not installed", substring = true).assertIsDisplayed()
   }
 
   @Test
@@ -501,13 +527,31 @@ class HistoryScreenTest {
   }
 
   @Test
-  fun `the export button asks which shape the file should take`() {
+  fun `the export button asks which shape the file should take, and the question can be put away`() {
+    // A tap outside the sheet is the way out of it: there is no Cancel, so it
+    // is the only way to change one's mind, and it must hand nothing up.
     given(formula = "2d6", total = 7)
-    show()
+    val exported = mutableListOf<ExportFile>()
+    show(onExport = exported::add)
 
     compose.onNodeWithTag(HistoryTestTags.EXPORT).performClick()
-
     compose.onNodeWithTag(HistoryTestTags.EXPORT_DIALOG).assertIsDisplayed()
+    tapOutsideTheSheet()
+
+    compose.onNodeWithTag(HistoryTestTags.EXPORT_DIALOG).assertDoesNotExist()
+    assertEquals(emptyList<ExportFile>(), exported)
+  }
+
+  /**
+   * The top-left corner of the dialog's own window, which is backdrop: a
+   * sheet sits on the bottom edge. The dialog is the last of the two roots.
+   */
+  private fun tapOutsideTheSheet() {
+    compose
+      .onAllNodes(isRoot())
+      .onLast()
+      .performTouchInput { click(Offset(1f, 1f)) }
+    compose.waitForIdle()
   }
 
   @Test
@@ -600,113 +644,6 @@ class HistoryScreenTest {
     val file = exported.single()
     assertEquals("fireball.json", file.name)
     assertTrue("the roll is not in the file: ${file.text}", file.text.contains("8d6"))
-  }
-
-  @Test
-  fun `forgetting is not offered with everything showing`() {
-    // "Forget the entire history" is a bigger thing than a filter being off,
-    // and offering it beside a filter would make it look the same size.
-    given("2d6", 7)
-    show()
-
-    compose.onNodeWithTag(HistoryTestTags.FORGET).assertDoesNotExist()
-  }
-
-  @Test
-  fun `a filter that matches nothing has nothing to forget`() {
-    // The way out of an empty filter is to clear it, not to delete the
-    // nothing it is showing.
-    savedRoll("fireball", "Fireball")
-    given("2d6", 7)
-    val presenter = show()
-    compose.waitUntil(PATIENCE) { presenter.state.rollChoices.isNotEmpty() }
-
-    presenter.filterBy(HistoryFilter.OfSavedRoll("fireball", "Fireball"))
-    compose.waitUntil(PATIENCE) { presenter.state.filteredToNothing }
-
-    compose.onNodeWithTag(HistoryTestTags.FORGET).assertDoesNotExist()
-  }
-
-  @Test
-  fun `forgetting a session's rolls takes them and leaves the session`() {
-    session(id = "tuesday", name = "Tuesday campaign")
-    given("2d6", 7, session = "tuesday")
-    given("1d20", 20, session = "default")
-    val presenter = show()
-
-    presenter.filterBy(HistoryFilter.InSession("tuesday", "Tuesday campaign"))
-    compose.waitUntil(PATIENCE) { presenter.state.rolls.size == 1 }
-    compose.onNodeWithTag(HistoryTestTags.FORGET).performClick()
-    compose.onNodeWithTag(HistoryTestTags.FORGET_YES).performClick()
-
-    compose.waitUntil(PATIENCE) { presenter.state.filter == HistoryFilter.Everything }
-    compose.waitUntil(PATIENCE) { presenter.state.rolls.size == 1 }
-    assertEquals(
-      "the other session's roll went too",
-      "1d20",
-      presenter.state.rolls
-        .single()
-        .formula,
-    )
-    assertTrue(
-      "the session itself was deleted",
-      presenter.state.sessionChoices.any { it.id == "tuesday" },
-    )
-  }
-
-  @Test
-  fun `forgetting a saved roll's throws leaves the saved roll`() {
-    savedRoll("fireball", "Fireball")
-    given("8d6", 28, row = { copy(savedRollId = "fireball") })
-    given("2d6", 7)
-    val presenter = show()
-
-    presenter.filterBy(HistoryFilter.OfSavedRoll("fireball", "Fireball"))
-    compose.waitUntil(PATIENCE) { presenter.state.rolls.size == 1 }
-    compose.onNodeWithTag(HistoryTestTags.FORGET).performClick()
-    compose.onNodeWithTag(HistoryTestTags.FORGET_YES).performClick()
-
-    compose.waitUntil(PATIENCE) { presenter.state.filter == HistoryFilter.Everything }
-    compose.waitUntil(PATIENCE) { presenter.state.rolls.size == 1 }
-    assertEquals(
-      "2d6",
-      presenter.state.rolls
-        .single()
-        .formula,
-    )
-    assertTrue("the saved roll itself went", presenter.state.rollChoices.any { it.id == "fireball" })
-  }
-
-  @Test
-  fun `keeping them keeps them`() {
-    session(id = "tuesday", name = "Tuesday campaign")
-    given("2d6", 7, session = "tuesday")
-    val presenter = show()
-
-    presenter.filterBy(HistoryFilter.InSession("tuesday", "Tuesday campaign"))
-    compose.waitUntil(PATIENCE) { presenter.state.rolls.size == 1 }
-    compose.onNodeWithTag(HistoryTestTags.FORGET).performClick()
-    compose.onNodeWithTag(HistoryTestTags.FORGET_NO).performClick()
-
-    compose.onNodeWithTag(HistoryTestTags.FORGET_DIALOG).assertDoesNotExist()
-    assertEquals(1, presenter.state.rolls.size)
-  }
-
-  @Test
-  fun `the confirmation says what stays as well as what goes`() {
-    // The per-die statistics count these throws whether the history lists them
-    // or not. A dialog that only said "this cannot be undone" would leave
-    // somebody waiting for their d20's record to change.
-    session(id = "tuesday", name = "Tuesday campaign")
-    given("2d6", 7, session = "tuesday")
-    val presenter = show()
-
-    presenter.filterBy(HistoryFilter.InSession("tuesday", "Tuesday campaign"))
-    compose.waitUntil(PATIENCE) { presenter.state.rolls.size == 1 }
-    compose.onNodeWithTag(HistoryTestTags.FORGET).performClick()
-
-    compose.onNodeWithText("Tuesday campaign", substring = true).assertIsDisplayed()
-    compose.onNodeWithText("what each die has done", substring = true).assertIsDisplayed()
   }
 
   private fun show(

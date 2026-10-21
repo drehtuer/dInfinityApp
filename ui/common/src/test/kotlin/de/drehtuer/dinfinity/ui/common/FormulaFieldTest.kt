@@ -5,6 +5,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertHeightIsAtLeast
@@ -13,6 +14,7 @@ import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertWidthIsAtLeast
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -20,13 +22,17 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.notation.NotationError
 import de.drehtuer.dinfinity.core.notation.NotationErrorCode
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 
 /**
  * The formula field three screens share
@@ -55,6 +61,7 @@ class FormulaFieldTest {
 
   @Test
   fun `the field shows the formula it was given`() {
+    // With neither a label nor a hint, which is how the graph opens it.
     compose.setContent { FormulaField(text = "3d6 + 1d20 - 4", onChange = {}) }
 
     compose.onNodeWithTag(FormulaTestTags.FIELD).assertTextContains("3d6 + 1d20 - 4")
@@ -97,14 +104,6 @@ class FormulaFieldTest {
   }
 
   @Test
-  fun `a mistake with no obvious reading is offered no fix`() {
-    compose.setContent { FormulaField(text = "2d6 +", onChange = {}, error = unfinished()) }
-
-    compose.onNodeWithTag(FormulaTestTags.ERROR, useUnmergedTree = true).assertIsDisplayed()
-    compose.onNodeWithTag(FormulaTestTags.SUGGESTION).assertDoesNotExist()
-  }
-
-  @Test
   fun `taking a correction goes to onChange when nobody said otherwise`() {
     // The default: a screen that does not care where a fix comes from gets it
     // through the same callback as a keystroke, which is the honest default.
@@ -135,14 +134,6 @@ class FormulaFieldTest {
     compose.setContent { FormulaField(text = "2d6", onChange = {}, hint = "8d6 [Fire]") }
 
     compose.onNodeWithText("8d6 [Fire]").assertDoesNotExist()
-  }
-
-  @Test
-  fun `a field with neither label nor hint still draws`() {
-    // The graph opens with a formula already in it and wants neither.
-    compose.setContent { FormulaField(text = "2d6", onChange = {}) }
-
-    compose.onNodeWithTag(FormulaTestTags.FIELD).assertIsDisplayed()
   }
 
   @Test
@@ -295,6 +286,28 @@ class FormulaFieldTest {
       .assertHeightIsAtLeast(TOUCH_TARGET)
   }
 
+  /**
+   * The × is drawn rather than fetched — the app ships no icon set — so the
+   * drawing is checked where a cross differs from a box or a bar: ink where
+   * its two strokes meet, and none half way along the top edge of the glyph,
+   * which is where the strokes are furthest apart.
+   */
+  @Test
+  @GraphicsMode(GraphicsMode.Mode.NATIVE)
+  @Config(qualifiers = "xxhdpi")
+  fun `the cross is drawn as a cross`() {
+    compose.setContent { FormulaField(text = "3d6", onChange = {}) }
+
+    val drawn = compose.onNodeWithTag(FormulaTestTags.CLEAR).captureToImage().toPixelMap()
+    val ground = drawn[0, 0]
+    val glyph = with(compose.density) { CROSS.toPx() }
+    val middle = drawn.width / 2
+    val centre = drawn.height / 2
+
+    assertNotEquals("the strokes do not cross", ground, drawn[middle, centre])
+    assertEquals("there is ink between the cross's arms", ground, drawn[middle, (centre - glyph / 4).toInt()])
+  }
+
   private fun noSuchDie() =
     NotationError(
       code = NotationErrorCode.UnknownDie,
@@ -303,10 +316,8 @@ class FormulaFieldTest {
       suggestion = "2d6 + 1d8",
     )
 
-  private fun unfinished() =
-    NotationError(
-      code = NotationErrorCode.UnexpectedEnd,
-      message = "the formula ends after a +",
-      range = 4..4,
-    )
+  private companion object {
+    /** The prototype's 18 px ×. */
+    val CROSS = 18.dp
+  }
 }

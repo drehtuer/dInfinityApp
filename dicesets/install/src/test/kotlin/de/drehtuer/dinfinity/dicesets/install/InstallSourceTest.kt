@@ -111,6 +111,57 @@ class InstallSourceTest {
   }
 
   @Test
+  fun `the www name of github is github too`() {
+    assertEquals(InstallSource.Kind.GitHub, source("https://www.github.com/ada/brass-and-bone").kind)
+  }
+
+  @Test
+  fun `a tree with no ref after it is the default branch`() {
+    // What a browser shows for a URL cut short; HEAD is the forge's own
+    // answer to "no ref", where an empty one would be an API path that 404s.
+    assertEquals("HEAD", source("https://github.com/ada/brass-and-bone/tree").reference)
+    assertEquals("HEAD", source("https://gitlab.com/ada/brass-and-bone/-/tree").reference)
+    assertEquals("HEAD", source("https://codeberg.org/ada/brass-and-bone/src").reference)
+  }
+
+  @Test
+  fun `a gitlab project linked without a tree is fetched at its default branch`() {
+    val gitlab = source("https://gitlab.com/ada/brass-and-bone")
+
+    assertEquals(InstallSource.Kind.GitLab, gitlab.kind)
+    assertEquals("HEAD", gitlab.reference)
+    assertNull(gitlab.subfolder)
+    assertEquals(
+      "https://gitlab.com/api/v4/projects/ada%2Fbrass-and-bone/repository/archive.tar.gz?sha=HEAD",
+      gitlab.archiveUrl,
+    )
+  }
+
+  @Test
+  fun `a gitlab folder installs from that folder`() {
+    val gitlab = source("https://gitlab.com/ada/brass-and-bone/-/tree/main/sets/skulls")
+
+    assertEquals("main", gitlab.reference)
+    assertEquals("sets/skulls", gitlab.subfolder)
+  }
+
+  @Test
+  fun `a gitlab link with no project before the dash is refused`() {
+    assertNull(InstallSource.of("https://git.example.org/-/tree/main"))
+    assertNull(InstallSource.of("https://gitlab.com/"))
+  }
+
+  @Test
+  fun `a gitea url with no repository in it is refused`() {
+    assertNull(InstallSource.of("https://codeberg.org/ada"))
+  }
+
+  @Test
+  fun `an archive is recognised whatever case its suffix is written in`() {
+    assertEquals(InstallSource.Kind.Archive, source("https://example.org/dice/BRASS.ZIP").kind)
+  }
+
+  @Test
   fun `the archive suffixes are the ones the document names`() {
     assertEquals(listOf(".zip", ".tar.gz", ".tgz"), InstallLimits.ARCHIVE_SUFFIXES)
   }

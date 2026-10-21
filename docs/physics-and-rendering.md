@@ -1,7 +1,8 @@
 # Physics and rendering
 
 > **Design:** the tray, a settled roll and the power-saving result are
-> options 1a and 1z of the [clickable design](../design/dInfinity.dc.html) ([design/](../design/)).
+> options 1a and 1z of the [clickable design](../design/dInfinity.dc.html) ([design/](../design/));
+> "Preparing the dice", over the tray while a material compiles, is option 1za.
 > The dice there are flat silhouettes standing in for the 3D render.
 
 ## Overview
@@ -14,7 +15,8 @@ come to rest. Rendering is a passive observer of the simulation.
 
 One right-handed system, shared by the tray, the solver and the renderer:
 **`+z` is up**, the tray's long side runs along `+x` and its short side along
-`+y`, and the origin is the middle of the floor. Distances are millimetres
+`+y`, and the origin is the middle of the floor. On the screen `+x` is up and
+`+y` is to the **left**. Distances are millimetres
 everywhere above the bridge; the solver runs in centimetres on the far side of
 it and converts in one place (decision 41).
 
@@ -86,15 +88,27 @@ Every die is a **convex** rigid body:
   which it is, and which also gave every contact after the first landing a
   restitution of exactly zero, so a die bounced once and then dead-dropped.
 - Rounded edges: shapes with sharp corners (d4 especially) get a hull margin of
-  3 % of the die's nominal size (`HullMargin.SHARE`, 0.48 mm on a 16 mm die),
-  so they tumble instead of catching on the floor. It is Jolt's *convex
-  radius*: the hull's face planes are pulled in by it and the smaller solid is
-  grown back out by a ball of the same size, so the die that collides has
-  every edge a strip of a cylinder and every corner a patch of a sphere. Jolt
-  gives less than is asked where a corner is sharp — no rounded corner may
-  stand more than 0.5 mm inside the sharp one (`HullMargin.MAX_ERROR_MM`),
-  which cuts a d4 to 0.25 mm — and never more than half the die's thinnest
-  width. The share is of the *nominal* size, clamped to the set file's limits,
+  3 % of the die's nominal size by default (`HullMargin.SHARE`, 0.48 mm on a
+  16 mm die), so they tumble instead of catching on the floor. **The share is
+  each die's own**: a set may ask for 1.5 % to 6 % with `edge_rounding`
+  (`docs/dice-sets.md`), and the face designer's **Edges** control writes it
+  (`docs/face-designer.md`, "Material, colour and edges"; decision 94). It is Jolt's
+  *convex radius*: the hull's face planes are pulled in by it and the smaller
+  solid is grown back out by a ball of the same size, so the die that collides
+  has every edge a strip of a cylinder and every corner a patch of a sphere.
+  Jolt gives less than is asked where a corner is sharp — no rounded corner may
+  stand more than `mMaxErrorConvexRadius` inside the sharp one — and never more
+  than half the die's thinnest width. That error is set per die, **in
+  proportion to the share asked for** (`HullMargin.maxErrorMm`): Jolt's own
+  0.5 mm at the default 3 %, which cuts a d4 to 0.25 mm, and 1 mm at 6 %,
+  which cuts it to 0.5 mm. Held at 0.5 mm, a rounder die would have got what it
+  asked for only where its corners are blunt — a d6 would stop at 0.68 mm and
+  a d4 would not get rounder at all — so the error grows with the share and
+  every shape is rounded in the proportions it has at the default: the d4
+  half of what it asks for at every value, everything else all of it. At the
+  default the bridge hands Jolt exactly the floats it always did
+  (`HullRoundingTest`), so the built-in set and every golden are the same
+  bodies. The share is of the *nominal* size, clamped to the set file's limits,
   and not of the size the capacity rule shrank the die to: a die thrown at
   half size asks for the same radius in millimetres. The renderer draws the
   same rounding ("Rounded edges", under Rendering).
@@ -221,6 +235,13 @@ power-saving mode; there is no other one.
   hauling them about and there is nothing but gravity left. A slower roll is
   also a slower *answer*, so the number is meant to be judged on a phone and
   changed.
+- **A roll a hand has just let go of eases into the pace** (`RollPace.eased`):
+  from real speed down to the pace over `RollPace.EASE_STEPS` (36 steps, 0.3 s
+  of the roll, about half a second on the screen), along a smoothstep, so there
+  is no corner at either end. Switched in one frame, the dice lurched from fast
+  to slow motion as the hand let go. `TrayLoop` remembers the last step a hand
+  drove the roll and hands the pace how long ago that was; like everything
+  else here it decides when steps are taken, never what they are.
 - **A roll being driven is never paced.** While a hand is throwing the dice the
   player is not watching the roll, they are steering it, and dice that answer a
   hand a beat late are the only way this could make the app worse. The question
@@ -268,9 +289,10 @@ power-saving mode; there is no other one.
 **A shake is the throw.** It is the only way to put dice in the air, and every
 other control in the app stops at filling the formula field. That is absolute
 (`docs/architecture.md`, decision 66): no button, no key, no accessibility
-action and no setting that switches shaking off. The dice are
-spawned when the shake begins and are driven by the phone's motion until the
-hand stops, then released ("Shake input", below).
+action and no setting that switches shaking off. The dice are spawned when
+the shake begins and are driven by the phone's motion until the hand stops
+("Shake input", below), and the hand then tosses them ("The hand lets go",
+below).
 
 There was a Roll button, and it is gone. It was not a second way to throw so
 much as a way of making the shake optional: a tap on a saved roll threw, the
@@ -301,6 +323,108 @@ shake to throw again ("Picking a die up and throwing it again"), and a surface
 that threw the whole formula the moment it is touched would have nowhere left
 to put either. A roll is also not something to start by
 accident — it replaces a result somebody may still be reading.
+
+### The hand lets go
+
+Decision 105; what is still to tune is `docs/TODO.md`, Step 5.8.
+
+**Shaking a box is not throwing dice.** Put side by side with a slow-motion
+film of four real d6 being thrown, the tray showed the difference plainly: the
+real dice leave a hand with height, speed and spin, land hard, bounce several
+of their own heights and tumble over two to four faces before they stop. On the
+Pixel 10a, four d6 shaken in the tray raced about while the phone moved and
+were all still about 0.3 s after it stopped — the last stroke braked them into
+a wall or each other, and nothing was left to tumble with.
+
+So **the shake is as it was, and the hand tosses the dice when it stops.**
+The dice are spawned when the shake begins and rattle about the tray under
+it, in sight, as they always did ("Shake input") — the first version of the
+toss, tried on a branch, took them off the table while the phone was
+shaken, and the owner rejected it: with nothing on the table, nothing said the
+shake was reaching the dice. Then:
+
+- **The hand lets go once, a moment after its last hard stroke**
+  (`ShakeDriver.lettingGo`): 8 steps, a fifteenth of a second, after the last
+  hard moment — over the shake detector's 0.6 g and at least a quarter of the
+  recent peak — and never before the shake has gone on for 0.3 s. **A slow
+  shake waits for its own rhythm** (`ShakeDriver.quietToLetGo`): a hand that
+  has already gone quiet between two of its strokes for longer than that has
+  to stay quiet half as long again before it has stopped, up to 0.3 s. Far sooner than the detector's 0.4 s of quiet, which is right
+  for deciding a roll may end and too late for a throw. **Once per throw, and
+  for good**: a shake after the toss drives nothing and tosses nothing. Two
+  other rules were tried on the Pixel 10a and dropped. Let go only after the
+  hand had fallen under 0.6 g, a hand braking from several gravities was let go
+  of a quarter of a second after it stopped, from a heap the stop had slammed
+  into a wall, and the dice jumped. Let go once it fell under a quarter of its
+  own recent peak, slow strokes along the phone's length counted as stopping —
+  six let-gos in one throw, the dice tossed and grabbed back on every stroke,
+  each a hop and a lurch from real speed to slow motion and back. And with
+  the fixed wait alone, a slow shake was let go of mid-shake: at two strokes
+  a second the acceleration stays under 0.6 g for about a tenth of a second
+  in the middle of every stroke, the hand let go there, and the dice settled
+  while the phone was still being shaken (the owner, 2026-10-20).
+- **Which way, and how hard, is the hand's last stroke** (`Release.of`). The
+  moments are the phone's acceleration in the tray's frame; summed over time
+  they are its velocity, with the drift taken out as a straight line because a
+  phone picked up still and stopped still begins and ends at rest. The throw
+  is the last stroke in the final 0.35 s before the hand went quiet — the last
+  run of moments at 60 % or more of the fastest there, and its peak — not the
+  fastest moment, which in a window one stroke long is as likely to be the
+  stroke before, going the other way. The dice leave at 1.5 times the hand's
+  speed, held to 600–1,600 mm/s, tapered for a crowded tray as the spawn
+  throw is. A shake straight at the glass has no direction along the floor; its
+  toss takes one from the seed.
+- **Every die is tossed from where it lies** (`Toss`): up, at the speed that
+  would lift it 15–60 mm, and along the stroke within 17° and 15 % of its
+  speed, with a fresh spin of 60–120 rad/s. Its pose is kept exactly. **One
+  after another**: each die leaves the hand on its own step, within a tenth of
+  a second of the let-go (`Toss.Handful`). And **onward**: a die already
+  sliding is tossed the way it is going, at the hand's speed or its own if
+  faster; only a die barely moving takes the stroke's direction — tossed along
+  the stroke whatever it was doing, a sliding heap reversed. And **never into
+  a wall it is against** (`Toss.offTheWalls`): within 30 mm of a wall, the part
+  of a toss aimed at it is turned back. A stroke that stops slams the heap into
+  the wall it was heading for, and tossed along the stroke the dice bounced off
+  it as one. Tossed on one step and lifted
+  40–90 mm, every die hopped together and the owner saw the dice jump. Every
+  die, because every die is still in the hand: no die is read before the table
+  has settled and the hand is off it, and a die lying still under a hand that
+  is still shaking is a roll caught at the top of a swing, not a die at rest —
+  nothing touches a die that has come to rest, and none has.
+- **Then nothing but gravity.** The hand drives nothing after it lets go, the
+  roll stops counting as driven, and the settle rule no longer waits on the
+  quiet tail of the shake. The watched pace takes over **eased**, over 0.3 s of
+  the roll ("The simulation clock"): dropped in one frame, the dice went from
+  fast to slow motion just as they flew their fastest, which the owner read as
+  the roll lagging and catching up.
+
+It is a function of the record and nothing else: the let-go step and the toss
+are read off the moments `ShakeDriver` already files by step, so a live roll and
+its replay toss on the same step, the same way. A throw thrown by a shake says
+so (`ThrowSpec.toss`); a throw recorded before there was a toss — every golden
+case — does not, and replays exactly as it did.
+
+Measured on the Pixel 10a with `tools/harness.sh --release 1200`, which shakes
+each roll with a synthetic hand (`HandStroke`: four strokes along a line the
+roll's seed draws, then quiet) and tosses it as a live one is, 500 rolls a row:
+
+| | re-thrown | median / p99 settle | deepest overlap | turns after first touch |
+| --- | --- | --- | --- | --- |
+| 4d6, grid throw, no shake | 0.20 % | 0.80 / 1.03 s | 4.8 mm | 2.96 |
+| 4d6, shaken and tossed | 0.40 % | 1.53 / 2.13 s | 5.8 mm | 10.5 |
+| 20d20, grid throw, no shake | 1.17 % | 0.96 / 1.99 s | 5.9 mm | 2.67 |
+| 20d20, shaken and tossed | 3.93 % | 1.81 / 2.86 s | 6.4 mm | 9.1 |
+
+The settle times include the synthetic shake, about half a second, and the
+turns include the tumbling under it, so neither column is yet the figure that
+matters — the turns *after the hand lets go* (`docs/TODO.md`, Step 5.8). What
+does read straight off: twenty dice tossed one way pile against the far wall
+and are thrown again three times as often, so a crowded toss needs less speed.
+On the phone, four d6 shaken by hand rattled in sight while the phone moved,
+left the felt as it stopped and tumbled for about a second before they rested. The owner's first verdict, on the phone: "The tumbling looks much better.
+Dice twirl around and tilt over."
+Every constant here is a first guess, to be set from the owner's recordings of
+real throws.
 
 ### No way in that is not a hand
 
@@ -601,6 +725,11 @@ longer do: at the current throw they leave the shaken heap exactly where it
 was, as the table above says.)
 
 ## Shake input
+
+> **The hand also lets go** ("The hand lets go", under "Starting a roll";
+> decision 105). Everything below holds while the phone is shaken; a moment
+> after the last hard stroke the hand tosses the dice and drives them no more
+> for the rest of the throw.
 
 - Sensors: linear acceleration (gravity removed) and gyroscope, at
   `SENSOR_DELAY_GAME`. Registered while the roll screen is resumed and let go
@@ -1119,6 +1248,72 @@ claim above needs the hundred thousand and is run deliberately:
   -Pandroid.testInstrumentationRunnerArguments.class=de.drehtuer.dinfinity.simulation.jolt.FairnessTest \
   -Pandroid.testInstrumentationRunnerArguments.rolls=100000
 ```
+
+**A rounder die is asked about the same way.** Rounding is symmetric — every
+edge of a solid is rounded by the same radius, so its faces stay alike and
+nothing in the construction favours one — but a rounder die rolls on further
+and cocks differently, and a claim about the built-in die is not a claim about
+it. `edgeRounding` throws every shape at that share of its size instead of the
+default, through the same check (`HarnessRequest.edgeRoundingOf`, refusing
+anything outside what a set file may say); the harness takes the same with
+`tools/harness.sh --rounding 0.06`:
+
+```sh
+./gradlew :simulation:jolt:connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=de.drehtuer.dinfinity.simulation.jolt.FairnessTest \
+  -Pandroid.testInstrumentationRunnerArguments.rolls=100000 \
+  -Pandroid.testInstrumentationRunnerArguments.edgeRounding=0.06
+```
+
+Where the range stops, and why, is the next section.
+
+### How round a die may be
+
+**1.5 % to 6 % of the die's size**, measured on the Pixel 10a on 2026-10-05
+(`DieMaterial.EdgeRoundingRange`; decision 100). The face designer's
+**Edges** slider runs over exactly that range in half per cents
+(`docs/face-designer.md`, "Material, colour and edges"; decision 98), and a
+set file asking for more is clamped to it with a warning
+(`docs/dice-sets.md`). Rounding is symmetric, so between two values that
+pass nothing new can happen — the radius moves the bodies smoothly — and the
+ends are the measurement. The range was 1.5 % to 12 % until this run, chosen
+on geometry; the run said no to the top of it.
+
+**Fairness**, every catalogue shape, 20,000 throws each
+(`FairnessTest`, `-e rolls 20000 -e edgeRounding <share>`):
+
+| Rounding | Coin throws that never settled (bar: 2) | d18 worst face (bound: 1 %) | Every other shape |
+| --- | --- | --- | --- |
+| 1.5 % | 0 | 0.50 % | fair |
+| 6 % | 0 | 0.62 % | fair |
+| 8 % | **2** — on the bar | 0.68 % | fair; the d10's χ² 24.6 against 27.9 |
+| 12 % | **42** — fails | 0.98 % | fair |
+
+The coin is what gives first: rounded enough, its rim is a wheel, and a
+throw that leaves it rolling runs out the twelve-second backstop. The d18's
+worst face drifts towards its bound as it rounds (0.39 % at the default).
+6 % — twice the default — is the last value with both well clear, and 8 % is
+not a margin.
+
+**Settling**, 200 throws of 20 dice each (`tools/harness.sh -n 200 -c 20
+-s <shape> --rounding <share>`):
+
+| | d4 | d6 | d20 |
+| --- | --- | --- | --- |
+| re-thrown at 1.5 % / 3 % / 12 % | 2.43 / 2.35 / 0.00 % | 0.88 / 0.48 / 0.20 % | 1.10 / 1.28 / 1.20 % |
+| median settle at 1.5 % / 3 % / 12 % | 0.76 / 0.76 / 0.73 s | 0.85 / 0.85 / 0.85 s | 0.96 / 0.96 / 0.94 s |
+| turns after landing at 1.5 % / 3 % / 12 % | 1.97 / 2.03 / 2.27 | 2.44 / 2.52 / 2.86 | 2.64 / 2.69 / 2.78 |
+
+No throw gave up, none was forced to settle and no die came to rest on
+another at any of the nine; the overlap and re-throw bars fail at every
+value exactly as they do at the default (Step 5.4 and 5.5). Rounder dice
+tumble a little longer and are re-thrown *less*, so the harness would have
+allowed 12 % — it throws no coins.
+
+To measure past 6 % again, widen `DieMaterial.EdgeRoundingRange` on a
+branch first: the harness's `--rounding` and `FairnessTest`'s `edgeRounding`
+refuse anything a set file may not say, which is what makes their figures
+claims about dice a player can have.
 
 **The seeds are stirred, not counted.** A roll's seed becomes a
 `kotlin.random.Random`, and two seeds differing only in their low bits do not
@@ -2005,9 +2200,10 @@ impact sounds rather than a crash in the middle of a roll.
   than rolling highlights off, so the exposure leaves room for it — a white
   floor facing up lands at **0.95** (`TrayLighting.WHITE_LEVEL`), what it
   receives from the key, the room and the fill worked out by
-  `TrayLighting.whiteFloorLuminance`. What reaches white is the lamp's
-  reflection in the lacquer and a pure white face turned to the key and the
-  window (1.13); the built-in set's bone resin, a felt and a table do not.
+  `TrayLighting.whiteFloorLuminance`. What reaches white is a pure white
+  face turned to the key and the window (1.13); the built-in set's bone
+  resin, a felt, a table and — since the lacquer was roughened (decision
+  103) — the lamp's reflection in a die's face do not.
   That exposure, about 2.1 × 10⁻⁵, is within a fifth of Filament's default
   (f/16, 1/125 s, ISO 100) and is reached the way a photographer would: f/16
   and 1/125 s kept, ISO 80 (`TrayLighting.sensitivity`). **Not** through
@@ -2050,9 +2246,27 @@ impact sounds rather than a crash in the middle of a roll.
   smooth at all — which is exactly what a clear coat is. Without one the only
   way to make a die shine is to make the resin itself glossy, and glossy resin
   reflects its own colour where a varnish reflects the room. The coat is not a
-  mirror either (`DIE_COAT_ROUGHNESS` is 0.12): a die has been in a bag with
+  mirror either (`DIE_COAT_ROUGHNESS` is 0.4): a die has been in a bag with
   other dice. Felt with a clear coat is a table nobody owns, so the tray has
   none, and the shader skips the whole path when there is none to apply.
+- **A face does not blink as it turns through the key light.** The key is a
+  lamp with no size, the camera looks straight down and a flat face has one
+  normal, so a polished face mirrors the lamp over the whole face at once.
+  At the coat's first roughness, 0.12, half a d6's face — and a third of a
+  dark one's — drew pure white within a few degrees of the mirror angle
+  (13° for this key), and a tumbling die turns through a few degrees in a
+  frame: the owner saw the dice "almost blink". A rougher coat spreads the
+  same reflected light over a wider cone, so the highlight swells and fades
+  over twenty degrees and its peak stays under white; 0.25 was *worse*
+  (most of the face white over more degrees), and white went away
+  between 0.3 and 0.35. 0.4 keeps a margin over that edge. Giving the lamp a
+  size instead does not work in Filament: its sun disc exists only at the
+  HIGH shader quality, and it moves the reflection *onto* the peak inside the
+  disc, which makes the white patch larger, not dimmer. The body's own
+  roughness (the built-in set's 0.1) adds nothing visible under the coat.
+  `DieGlintDeviceTest` turns a d6 and a dark d6 through the mirror angle,
+  half a degree at a time, and fails if more than 1 % of a face is blown out
+  at any tilt; at 0.12 it fails by 50 % and 34 % (decision 103).
 - **Only the dice cast a shadow.** The one shadow-casting light stands off to
   one side, so the wall and the six-millimetre band of rim on top of it threw
   a hard-edged stripe down the inside of their own felt — and a stripe down
@@ -2334,6 +2548,11 @@ impact sounds rather than a crash in the middle of a roll.
   - the table material is made the same way, the first time a table drawn
     from pictures is shown ("The table's surface", below). Plain and dark
     glass never ask for it.
+
+  What is left — the compiles after an install or update, and the first
+  translucent die or textured table — is no longer a black tray nobody
+  explains: the roll screen puts "Preparing the dice" over it, with a bar and
+  the time left ("Preparing the dice", below; decision 95).
 - **One material** draws every die but a translucent one, and every surface
   of a tray drawn in colours alone: a lit, opaque, physically based one with a
   base colour, a roughness and a metalness, with an atlas laid over it. Dice
@@ -2344,12 +2563,18 @@ impact sounds rather than a crash in the middle of a roll.
   "Table looks"; `docs/TODO.md`, After v1).
 - **The artwork is composited, not multiplied.** The body colour is worked out
   first, with the die's printed label mixed into it, and the atlas is then laid
-  over that by its own alpha. Where the artwork is opaque the result is
-  `baseColor × atlas`, which is what it always was and what keeps a table's
-  floor tinted by its floor colour; where the author left the cell clear the
-  label shows through. A multiply could not do the second half — multiplying by
-  a transparent pixel gives black, not the die (`docs/dice-sets.md`,
-  "Textures").
+  over that by its own alpha. Where the artwork is opaque the face is **the
+  artwork's colour**; where the author left the cell clear the body shows
+  through (`docs/dice-sets.md`, "Textures"). Until decision 101 an opaque pixel
+  came out as `baseColor × atlas`, kept from when a table's floor picture went
+  through this material; tables have their own now, and on a die the multiply
+  drew yellow pips on a black die black — the face designer's ink never
+  reached the tray. `AtlasTextureTest` holds a black die wearing an opaque red
+  atlas to the frame a red die draws.
+- **The atlas is uploaded as sRGB**, like a table's colour picture and for the
+  same reason: its pixels are sRGB, and the body colour they are mixed with
+  has already been made linear. Read as linear, an ink of `#C01010` was 75 %
+  red rather than 52 % and every drawing came to the tray paler than drawn.
 - **A die's artwork is decoded once per package and destroyed with the
   engine**, not with a surface or a throw. Filament hands out native handles,
   so an atlas re-uploaded on every rotation is a leak the JVM cannot see. Which
@@ -2393,14 +2618,18 @@ impact sounds rather than a crash in the middle of a roll.
   (`docs/architecture.md`, decision 45). Face textures are applied via a
   per-face UV atlas (see `docs/dice-sets.md`); a coin's rim belongs to neither
   face and carries no cell: it is drawn in the die's own colour.
-- **Every die prints its labels**, in the set's `number_color` on the set's
-  body colour, laid out in that same per-face atlas grid — so a printed die and
-  a painted one are the same surface with the same coordinates and the renderer
-  samples them the same way. A die with artwork is printed too, and the artwork
-  covers the printing wherever it is opaque: which of the two a face shows is
-  the alpha's to say, per pixel, and nothing above the material decides it. A
-  d4 draws three numbers per triangle, one at each corner, because its values
-  belong to corners rather than to faces (`docs/dice-sets.md`, "The d4").
+- **Every face the artwork leaves clear prints its label**, in the set's
+  `number_color` on the set's body colour, laid out in that same per-face
+  atlas grid — so a printed die and a painted one are the same surface with
+  the same coordinates and the renderer samples them the same way. **A face
+  the artwork draws on is not printed**: which faces those are is read off the
+  decoded atlas once, when it is uploaded (`AtlasCoverage`), asked of the
+  stage before a die is added (`Stage.drawnCells`), and those cells are left
+  out of the die's number field (`PrintedDice`, keyed by the die and the
+  faces drawn). A d4 draws three numbers per triangle, one at each corner,
+  because its values belong to corners rather than to faces
+  (`docs/dice-sets.md`, "The d4"); a drawn triangle drops its three
+  (`docs/architecture.md`, decision 96).
 - **How big a number is, is solved rather than chosen.** A cell is the circle
   drawn round a face, and how much of one a face fills depends on what polygon
   it is: a dodecahedron's pentagon nearly all of it, a d20's triangle half, a
@@ -2569,8 +2798,8 @@ map giving the surface its sheen — moved to average out at the look's
 `roughness` when the look is in `color_mode = "average"`, in place of it when
 the look multiplies. Everything else — plain, a look
 whose package is gone — is drawn through the dice's opaque material exactly
-as before, and dark glass's floor through the glass material ("The dice in a
-glossy table"), so the cheapest tray is still the cheapest, and the dice's
+as before, and so is dark glass ("A glossy table"), so the cheapest tray is
+still the cheapest, and the dice's
 own materials are not touched at all: their source, their compiled packet and
 every pixel of them are what they were.
 
@@ -2701,124 +2930,76 @@ is a numeral's edge (worst 0.09 on a d10, 0.30 on a d18, nought on a d12 and a
 d20; `RoundedEdgesTest`), and a bone die with *black* numbers showed a *light*
 line on the same edge. They were the lacquer's glint. A bend turns the normal
 through up to 90° in under 0.8 mm — two to four pixels of a gallery frame —
-and a coat of roughness 0.12 reflects a light from only a few of those
-degrees, so the glint is thinner than a pixel and each pixel either lands on
+and a coat as polished as it then was (0.12; 0.4 since decision 103)
+reflects a light from only a few of those degrees, so the glint is thinner than a pixel and each pixel either lands on
 it or misses it: a dashed line, nearly white against a dark resin body. Both
 dice materials are compiled with Filament's *geometric specular
 anti-aliasing* (`DiceMaterial.SPECULAR_AA_VARIANCE`, Filament's defaults),
 which raises the roughness — of the body and of the lacquer — by how fast the
 normal changes between neighbouring pixels. On a bend that spreads the glint
 into a soft, unbroken highlight; a flat face's normal does not change, so the
-faces, their numbers and the tray are drawn exactly as before. The glass
-floor has it too; the table drawn from pictures does not ("The table's
-surface"). The settings
+faces, their numbers and the tray are drawn exactly as before. A floor drawn
+in its colour alone has it too, being the dice's own opaque material; the
+table drawn from pictures does not ("The table's surface"). The settings
 are part of the material cache's key (`DiceMaterial.Variant.fingerprint`), so a
 packet compiled without them is not read back.
+
+**A rounder die is the same construction at a larger radius** (decision 94).
+`RoundedEdges.radiusFor` reads the die's own `edge_rounding` and the error
+Jolt is given for it, so the picture follows the solver at every value a set
+may ask for. At the roundest, 6 % of a 16 mm die, every solid but the d4 is
+rounded by the 0.96 mm it asks for — the coin too, which is thick enough to
+take twice that across — and the d4 by 0.5 mm. `RoundedEdgesRoundnessTest`
+holds the mesh to the same promises at 1.5 %, 3 % and 6 % as
+`RoundedEdgesTest` does at 3 %:
+closed, every flat face on its own plane and inside the sharp one, a die on a
+face on the felt, never outside its hull, its corners in by exactly what the
+solver's are. Meshes are cached per shape and radius, so a set of rounder
+dice is one more mesh per shape, not one per die. What is printed is still
+sized against the sharp face, so on a rounder die more of a numeral that runs
+close to an edge is painted round the start of the bend.
 
 **It can be turned off**: `DieMesh.of(shape, rounding = 0.0)` is the sharp
 mesh, surface for surface, and `DieMesh.of(die, scale)` is the rounded one
 the tray draws. Nothing of the physics reads any of this — the hull, the
 radius it asks for and what Jolt makes of them are unchanged.
 
-### The dice in a glossy table
+### A glossy table
 
-A die on dark glass shows faintly in it — a bit, not a mirror: a soft,
-dim copy of the die under it that is plainly a reflection, whose numbers are
-a smudge and never compete with the real ones. Felt, oak and the plain table
-show nothing, and are drawn exactly as they were.
+**Dark glass is drawn like the plain table: one opaque surface, at its own
+roughness (0.1) and colours**, through the dice's opaque material. What a
+player sees in it is the room — the window and the lamps, sharp because the
+surface is smooth — and nothing of the dice. Its physics, its sound and its
+look in the picker are those of `docs/tables.md`, "Table looks".
 
-**Which tables reflect is read off their roughness**, not a field of its own
-(`Reflection.of`): a table rougher than **0.3** shows no die at all, and below
-it the strength rises in a straight line to one at a perfect polish. Of the
-bundled looks only `dark-glass` (0.1) is under the line, at **two-thirds**;
-felt (0.9), plain (0.8) and oak (0.75) are well over. How glossy a surface is
-*is* how much it reflects, so the table format does not grow
-(`docs/tables.md`, "Table looks"). Only the floor reflects: the walls and the
-rim take the opaque or the picture material whatever the look. **A floor
-drawn from pictures shows no dice either, however glossy**: the pictures win
-(`DiceMaterial.variantOf`), the stage then draws no picture of the dice for
-it (`DiceMaterial.reflects`), and showing both is a material of its own that
-no bundled look needs (`docs/TODO.md`, "Tables and photos").
+**There is no reflection of the dice in it.** One was built (decision 93): the
+dice drawn a second time, small, from the camera turned over in the floor, and
+the glass floor adding that picture at glass's own strength. It was withdrawn
+(decision 104) because from this app's camera there is nothing of it to see.
+The camera looks straight down — by default, and never more than the angled
+Table view's 22° off it; lower, oblique shots are ruled out — so a die's
+reflection lies directly beneath the die and is hidden by it; and glass
+looked at square on reflects about **4 %** — 2.7 % at the strength dark
+glass's roughness gave it. On the Pixel 10a the owner looked for it and saw
+none, and the render gallery shows none. So it went, with the second view of
+the dice, its target and a material to compile on first use.
 
-**What is drawn is a planar reflection of the dice and nothing else.** When the
-floor is glossy, every frame draws the dice twice:
+**It was not removed for speed, and it saved none.** The floor of dark glass
+is now drawn by the dice's opaque material, as plain's is, and that material
+costs more over a whole floor than the glass one did: at 20d20 on the Pixel
+10a, GPU p99 was **11.87 ms** with the reflection (2026-10-19) and is
+**13.20 ms** without it, against plain's 13.0 ms and felt's 11.34 ms
+(`tools/harness.sh --rendered`, 2026-10-20). Every table still draws at 60
+fps. A cheaper floor for the flat looks is the open question on the clear
+coat they wear (`docs/TODO.md`, "Open questions").
 
-```mermaid
-flowchart LR
-  shot["The camera's shot"] --> under["Turned over in the floor:<br/>a camera under it, looking up"]
-  under --> small["The dice alone, a quarter<br/>of the screen each way,<br/>no shadows, no post pass,<br/>clear where there is no die"]
-  small --> floor["The glass floor samples it<br/>where it stands on the screen,<br/>turned round across it"]
-  shot --> frame["The frame, as before"]
-  floor --> frame
-```
-
-The camera under the floor is the real one with its position, target and up
-turned over in the plane of the floor, so it sees every die along the ray the
-floor reflects — from below, through a floor it does not draw — and sees it the
-other way round across the screen, which the floor undoes when it reads the
-picture (`Reflection.mirrored`). The tray is on a layer of its own that this
-camera does not see: the line is the one the shadows already draw, **what
-casts is what the glass shows** (`Stage.add`). It is exposed exactly as the
-real camera is, so its picture is in the units the frame is lit in.
-
-**The strength is glass's own.** Where a die is reflected the floor adds the
-picture times the Fresnel term of its surface — about **4 %** looking straight
-down at a dielectric, rising at a glance, the base colour for a metal — times
-the table's strength; and it takes away the room it was reflecting there by as
-much, because the die is in front of it (`DiceMaterial.GLASS_SOURCE`). So a
-white die adds a pale patch to the glass and a dark one a darker one, as on a
-real table. Where no die is reflected the picture is clear and the floor is
-the opaque surface to the bit.
-
-**The blur is the size of the picture.** It is drawn a quarter of the screen's
-size on each side — a sixteenth of the pixels — and stretched back over the
-floor with linear filtering, which softens a die's reflection to the gloss of
-a polished table rather than the edge of a mirror, and is also most of why it
-is cheap. A reflection does not soften further with the height above the
-glass; at four per cent it does not need to.
-
-**No band along the walls, by construction.** The tray is not in the picture,
-so the floor at the foot of a wall reflects the room exactly as it did before
-— a reflected wall would lay a dark band along every side of the table, the
-same band that turning ambient occlusion off took away (above), and read the
-same way, as the rim throwing a shadow. The walls and rim reflect nothing of
-their own. The cost of that is honesty about a small
-thing: a real glass table would show the wall in it too.
-
-**Why not Filament's screen-space reflections**, which reflect what is on the
-screen and are a view option and a material flag away. Read off Filament
-1.76.1's shaders, three things stand against them here (`docs/architecture.md`,
-decision 93):
-
-- They reflect *everything on screen*, the walls included, so the band above
-  comes back.
-- The blur they take from a surface's roughness is computed in world units,
-  and this scene is in millimetres: at dark glass's roughness it comes out
-  sharp — a mirror.
-- They fade out a ray that turns back towards the camera, which is every ray
-  off a table seen from straight above — the default view — so the
-  reflection would show at the edges of the screen and not in the middle.
-
-They also need the previous frame (the first frame of a still picture has
-none) and the post pass, and cost a depth pass of the whole scene and a
-full-screen ray march over the floor every frame. The planar picture costs
-the dice drawn again, small, with no shadow pass — and nothing at all on a
-table that is not glossy.
-
-**What it costs** is measured with the rendered harness on the glass:
-`tools/harness.sh --rendered -n 10 -c 100 -s d6 --table dark-glass` against
-the same run without `--table` (Pixel 10a; not yet run). The dice are drawn
-twice and shadowed once, at a sixteenth of the pixels the second time, so
-the GPU's extra is the vertex work of the dice again and the CPU's extra is
-Filament culling and sorting them for a second view.
-
-`ReflectionDeviceTest` holds it to the device: a white d6 held above a
-polished metal floor, then above the bundled dark glass, changes at least 30 %
-of the patch of floor where its reflection has to appear — on the side away
-from its shadow and clear of the die — and the same scene on a matte floor of
-the same colours changes at most 2 % of it. What it cannot say is whether the
-reflection looks right; `tools/gallery.sh` draws `dark-glass` among its
-scenes for that.
+**Why not Filament's screen-space reflections** either, read off Filament
+1.76.1's shaders before the planar one was built: they reflect everything on
+screen, so each wall would lay a dark band along its foot; their blur is
+computed in world units and this scene is in millimetres, so it comes out
+sharp; and they fade every ray that turns back towards the camera, which from
+straight above is every ray off the table. They would show nothing in the
+middle of the screen, for a depth pass and a full-screen ray march.
 
 ### Performance, and how it is measured
 
@@ -3057,6 +3238,65 @@ with the gesture and the drawing. A flick wins over a position — a sheet throw
 at the bottom edge from an inch below the top means down — and "a flick" is
 measured in sheet heights per second rather than pixels, so it is the same
 gesture on every phone and for a one-line breakdown as for a twenty-die one.
+
+### Preparing the dice
+
+**While a dice material is being compiled, the tray says so.** The first
+launch after an install or an update compiles the opaque material before the
+first frame can be drawn — about 2.4 s of black tray on the Pixel 10a — and a
+translucent die or a table drawn from pictures compiles
+one more material the first time one is shown, about two seconds in which the
+roll thread draws nothing and the dice stand still in the air. Nothing about
+either is broken, and without a word on the screen both look as if it were.
+
+So a plate stands in the middle of the tray for exactly as long as a compile
+runs (`feature/roll`'s `PreparingTheDice`; `design/dInfinity.dc.html`, option
+`1za`):
+
+- a title naming what is being prepared, in the player's words — *the dice*,
+  *the translucent dice*, *the table*;
+- one sentence of why: the shaders are being compiled for this phone, and it
+  happens once after an install or update;
+- the counting plate's 3 dp rule, filling as the compile goes;
+- "About N seconds left", or "Almost done" once the estimate has run out.
+
+**The bar is an estimate, and it may only be wrong on the slow side.**
+`libfilamat` says nothing until it is done, so how far it has got is the time
+since it started against how long the same material took on this phone last
+time (`ShaderWork.Compiling`). The fill stops at 95 % until the compiler
+finishes, and the plate goes when it does, so a phone slower than its estimate
+sees a bar waiting near the end rather than a full bar that is still waiting.
+The seconds are rounded up — the last one reads "1", not "0".
+
+**What this phone took is remembered** (`ShaderTimingStore`), in
+`noBackupFilesDir` rather than beside the materials: the material cache is in
+`codeCacheDir`, which an update empties, and an update is exactly when the
+figure is wanted. Every compile that finishes replaces its material's figure.
+Until a phone has compiled a material once, the estimate is the Pixel 10a's:
+opaque 2.4 s and resin 2 s, measured; table **assumed** at 2 s, the same as
+resin, because it has not been timed alone. A figure an earlier version kept
+for the glass table's material, which is gone (decision 104), is skipped like
+any line the reader does not know. A missing,
+unreadable or garbled file reads as those defaults, line by line, and a figure
+under a tenth of a second or over two minutes is not a measurement of the
+compiler and is not learnt.
+
+A launch whose materials were on disk reports nothing, because nothing is
+compiled — `FilamentEngine` tells `ShaderProgress` about a compile inside the
+cache's miss path and nowhere else — so a normal start shows no plate at all.
+**Power-saving mode never shows it**, because it opens no engine.
+
+It sits over the tray and under every control, so the menu and the formula are
+there to be used while it waits, and it takes no touch. For a screen reader it
+is three things: the title and the sentence as one **polite live region**,
+heard once when the plate appears; the rule, which is a progress bar, its
+value in whole per cent; and the time left. Only the first announces itself —
+a bar that spoke every time it moved would talk over the whole compile.
+
+The table picker's thumbnails are drawn with the same engine, so a phone that
+opens the picker before the tray compiles the material there, under the
+picker's own placeholder swatches, with no plate; the tray afterwards finds it
+compiled.
 
 ### Two pull-ups, one bottom edge
 
@@ -3414,7 +3654,11 @@ to draw outlines over pictures that already show where the dice are. A plan says
 what the pictures cannot: which die is standing on another, which is against a
 wall, and which has not stopped yet. So nothing was added to `Stage`, and
 `TrayPlan` — the arithmetic that turns a position in millimetres into a place on
-the plan — is plain Kotlin with a JVM test (decision 56).
+the plan — is plain Kotlin with a JVM test (decision 56). The plan has the
+picture's left and right: the tray's `+y` is the screen's **left** (with `+x`
+up the screen and `+z` out of it, nowhere else is right-handed), and the test
+asks `TrayCamera` which side a point lands on rather than trusting that
+sentence. The plan once drew `+y` on the right and showed the tray mirrored.
 
 **The frame rate is measured, not estimated, and only while it is shown.**
 `TrayLoop.frame` hands the overlay the time between two frame callbacks in a

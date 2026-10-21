@@ -1,23 +1,31 @@
 package de.drehtuer.dinfinity.ui.common
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertWidthIsAtLeast
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -29,16 +37,19 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 
 /**
  * One option of a wrapping set: what it says it is, and how big it is.
  *
- * What a test can hold is the behaviour and the geometry. Whether the chosen
- * one is filled in the accent is the theme's business and `InkTest`'s; what
- * matters here is that a tap reports the option, that a screen reader is told
- * the right thing about a set that can be emptied, and that every option is
- * big enough to press — which is the one thing `FilterChip` used to supply for
- * free and a hand-drawn box does not.
+ * What a test can hold is the behaviour and the geometry: that a tap reports
+ * the option, that a screen reader is told the right thing about a set that
+ * can be emptied, and that every option is big enough to press — which is the
+ * one thing `FilterChip` used to supply for free and a hand-drawn box does
+ * not. Which colour the theme calls the accent is `InkTest`'s; which of the
+ * two roles a chosen box is filled with is this box's own decision, and is
+ * read off the pixels below.
  */
 @RunWith(RobolectricTestRunner::class)
 class OptionBoxTest {
@@ -357,6 +368,71 @@ class OptionBoxTest {
 
     compose.onNodeWithContentDescription("An eighteen-sided die").assertIsNotSelected()
     compose.onNodeWithTag("pictured").assertIsSelected()
+  }
+
+  @Test
+  fun `a set a tap can empty is read as checkboxes, and a set of one choice as radio buttons`() {
+    // A screen reader promises a choice that cannot be unmade when it says
+    // "radio button", so the marks — where tapping the chosen one clears it —
+    // must not say it.
+    compose.setContent {
+      Row {
+        OptionBox(text = "Fine", selected = true, onClick = {}, modifier = Modifier.testTag("radio"))
+        OptionBox(
+          text = "\ud83c\udfb2",
+          selected = false,
+          onClick = {},
+          square = true,
+          contentDescription = "Dice",
+          role = Role.Checkbox,
+          modifier = Modifier.testTag("checkbox"),
+        )
+      }
+    }
+
+    compose.onNodeWithTag("radio").assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.RadioButton))
+    compose.onNodeWithTag("checkbox").assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Checkbox))
+  }
+
+  /**
+   * The two fills, read off the pixels: a chosen ordinary option is filled
+   * with the accent, a chosen mark with the ink — because the mark already
+   * carries the accent and a red square behind a red mark would be the two
+   * saying the same thing over each other — and an option that is not chosen
+   * is not filled at all.
+   */
+  @Test
+  @GraphicsMode(GraphicsMode.Mode.NATIVE)
+  @Config(qualifiers = "xxhdpi")
+  fun `a chosen option is filled with the accent, a chosen mark with the ink, and the rest with nothing`() {
+    val accent = Color(0xFF0F7A50)
+    val ink = Color(0xFF101010)
+    val paper = Color(0xFFFAFAFA)
+    compose.setContent {
+      MaterialTheme(colorScheme = lightColorScheme(primary = accent, onBackground = ink, background = paper)) {
+        Row(Modifier.background(paper)) {
+          OptionBox(text = "Fine", selected = true, onClick = {}, modifier = Modifier.testTag("accent"))
+          OptionBox(
+            text = "!",
+            selected = true,
+            onClick = {},
+            fill = OptionFill.Ink,
+            modifier = Modifier.testTag("ink"),
+          )
+          OptionBox(text = "Broad", selected = false, onClick = {}, modifier = Modifier.testTag("plain"))
+        }
+      }
+    }
+
+    assertEquals("the chosen option is not filled with the accent", accent, insideTheEdge("accent"))
+    assertEquals("the chosen mark is not filled with the ink", ink, insideTheEdge("ink"))
+    assertEquals("an option nobody chose is filled", paper, insideTheEdge("plain"))
+  }
+
+  /** A pixel a few dp in from the corner: inside the 1 dp border, clear of the words. */
+  private fun insideTheEdge(tag: String): Color {
+    val inset = with(compose.density) { 4.dp.roundToPx() }
+    return compose.onNodeWithTag(tag).captureToImage().toPixelMap()[inset, inset]
   }
 
   private companion object {

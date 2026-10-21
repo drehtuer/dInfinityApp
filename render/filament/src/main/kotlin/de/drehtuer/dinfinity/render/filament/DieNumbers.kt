@@ -80,14 +80,22 @@ object DieNumbers {
    * Null rather than a blank image, because "this die prints nothing" is a
    * thing the renderer has to know: it is the difference between drawing a
    * plain resin d6 and drawing one with an invisible number on it.
+   *
+   * [drawn] are the faces the die's artwork draws on, and they are **not
+   * printed**: a face somebody drew carries the drawing and nothing else, and
+   * a number showing through the clear parts of a drawing is a number nobody
+   * drew (`docs/dice-sets.md`, "Labels, and the artwork over them";
+   * `docs/architecture.md`, decision 96). On a d4 that is the three numbers
+   * at the corners of that one triangle; its neighbours keep theirs.
    */
   fun fieldOf(
     die: Die,
     mesh: DieMesh = DieMesh.of(die.shape),
     cellPixels: Int = SignedDistanceField.DEFAULT_SIZE,
     face: Typeface = BuiltinFont.face,
+    drawn: Set<Int> = emptySet(),
   ): NumberField? {
-    val cells = plan(die, mesh, face).filter { it.marks.isNotEmpty() }
+    val cells = plan(die, mesh, face).filter { it.marks.isNotEmpty() && it.index !in drawn }
     if (cells.isEmpty()) return null
     val grid = ShapeAtlas.gridFor(die.shape)
     val width = grid.columns * cellPixels
@@ -256,7 +264,7 @@ class NumberField(
 class PrintedDice(
   private val cellPixels: Int = SignedDistanceField.DEFAULT_SIZE,
 ) {
-  private val known = mutableMapOf<Die, NumberField?>()
+  private val known = mutableMapOf<Pair<Die, Set<Int>>, NumberField?>()
 
   /** How many dice have been built, which is what a test asks to see the cache work. */
   val built: Int get() = known.size
@@ -264,19 +272,20 @@ class PrintedDice(
   /**
    * What [die] has printed on it, or null for one that prints nothing.
    *
-   * **A die with artwork is printed too.** An atlas may leave a face's cell
-   * clear, and `docs/dice-sets.md` ("Textures") says that face carries its
-   * label — so the field is built whatever the die's `texture` says, and which
-   * of the two a face actually shows is settled in the material, by the
-   * artwork's alpha, per pixel ([DiceMaterial.SOURCE]). Deciding it here
-   * instead would mean deciding it per *cell*, from pixels this side of the
-   * renderer has never seen.
+   * **A die with artwork is printed where the artwork leaves a face clear.**
+   * [drawn] are the faces its atlas draws on, which the stage reads off the
+   * decoded pixels ([Stage.drawnCells]); those faces carry the drawing alone
+   * and every other face carries its label (`docs/dice-sets.md`, "Labels,
+   * and the artwork over them"). Within a printed face the material still
+   * lays the artwork over the label by its alpha ([DiceMaterial.SOURCE]) —
+   * which, on a face the atlas leaves clear, is the label.
    *
-   * Null is still an answer: a die every one of whose labels is empty has
-   * nothing to print, which is what [DieNumbers.fieldOf] says about it.
+   * Null is still an answer: a die every one of whose labels is empty, or
+   * every one of whose faces is drawn, has nothing to print.
    */
   fun of(
     die: Die,
     mesh: DieMesh = DieMesh.of(die.shape),
-  ): NumberField? = known.getOrPut(die) { DieNumbers.fieldOf(die, mesh, cellPixels) }
+    drawn: Set<Int> = emptySet(),
+  ): NumberField? = known.getOrPut(die to drawn) { DieNumbers.fieldOf(die, mesh, cellPixels, drawn = drawn) }
 }

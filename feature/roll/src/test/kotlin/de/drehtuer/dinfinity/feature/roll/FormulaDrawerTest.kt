@@ -1,16 +1,24 @@
 package de.drehtuer.dinfinity.feature.roll
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PixelMap
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
@@ -19,10 +27,13 @@ import de.drehtuer.dinfinity.core.notation.NotationError
 import de.drehtuer.dinfinity.core.notation.NotationErrorCode
 import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.GraphicsMode
 
 /**
  * The formula behind a tab at the side (`design/dInfinity.dc.html`, option
@@ -102,6 +113,35 @@ class FormulaDrawerTest {
       )
   }
 
+  /**
+   * The other half of the badge: a sighted player sees it as the tab turning
+   * the accent, word and chevron both. The theme maps `error` onto the
+   * system's one red, so that is the ink it must be drawn in — and only when
+   * there is something wrong, or it is a tab that is always alarmed.
+   */
+  @Test
+  @GraphicsMode(GraphicsMode.Mode.NATIVE)
+  fun `and is drawn in the accent when it does not read, and in the ink when it does`() {
+    compose.setContent {
+      MaterialTheme(colorScheme = lightColorScheme(error = ACCENT, onBackground = INK)) {
+        Column {
+          FormulaDrawer(text = "3d6 +", onChange = {}, open = false, onOpen = {}, error = unfinished())
+          FormulaDrawer(text = "3d6", onChange = {}, open = false, onOpen = {})
+        }
+      }
+    }
+    val (wrong, right) =
+      compose
+        .onAllNodesWithTag(RollTestTags.FORMULA_TAB)
+        .fetchSemanticsNodes()
+        .indices
+        .map { compose.onAllNodesWithTag(RollTestTags.FORMULA_TAB)[it].captureToImage().toPixelMap() }
+
+    assertTrue("a formula that does not read left the tab in the ink", wrong.has(ACCENT))
+    assertFalse("a formula that reads put the accent on the tab", right.has(ACCENT))
+    assertTrue("a formula that reads left the tab with no ink on it", right.has(INK))
+  }
+
   @Test
   fun `open, it says it is open`() {
     show(text = "3d6", open = true)
@@ -151,6 +191,9 @@ class FormulaDrawerTest {
     assertEquals("the action key did not reach the screen", 1, done)
   }
 
+  private fun PixelMap.has(colour: Color): Boolean =
+    (0 until height).any { y -> (0 until width).any { x -> this[x, y] == colour } }
+
   /** `3d6 +` — the commonest way to get a squiggle, and the one 9c draws. */
   private fun unfinished() =
     NotationError(code = NotationErrorCode.UnexpectedEnd, message = "Nothing after the +", range = 4..5)
@@ -171,5 +214,10 @@ class FormulaDrawerTest {
       )
     }
     compose.waitForIdle()
+  }
+
+  private companion object {
+    val ACCENT = Color(0xFFD62828)
+    val INK = Color(0xFF14213D)
   }
 }

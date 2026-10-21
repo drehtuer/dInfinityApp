@@ -14,3 +14,12 @@ dependencies {
 
   testImplementation(project(":test-fixtures"))
 }
+
+// The tests read `examples/` from the repository: declared, so a changed
+// example re-runs them rather than replaying a cached pass from before it.
+tasks.withType<Test>().configureEach {
+  inputs
+    .dir(rootDir.resolve("examples"))
+    .withPropertyName("examples")
+    .withPathSensitivity(PathSensitivity.RELATIVE)
+}

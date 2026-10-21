@@ -81,20 +81,12 @@ class GroupSheetTest {
   }
 
   @Test
-  fun `the switcher offers a way to make a group, which the list had no way to do`() {
+  fun `the switcher offers a way to make a group, and one typed in is written`() {
+    // The list had no way to make a group before the switcher offered one.
     show()
-
     compose.onNodeWithTag(SavedTestTags.SWITCHER).performClick()
     compose.onNodeWithTag(GroupTestTags.NEW).performClick()
-
     compose.onNodeWithTag(GroupTestTags.SHEET).assertIsDisplayed()
-  }
-
-  @Test
-  fun `a group typed in is written and appears in the switcher`() {
-    show()
-    compose.onNodeWithTag(SavedTestTags.SWITCHER).performClick()
-    compose.onNodeWithTag(GroupTestTags.NEW).performClick()
 
     compose.onNodeWithTag(GroupTestTags.NAME).performTextInput("Curse of Strahd")
     compose.onNodeWithTag(GroupTestTags.SAVE).performClick()
@@ -165,6 +157,52 @@ class GroupSheetTest {
       "1 roll",
       substring = true,
     )
+  }
+
+  @Test
+  fun `deleting from the sheet takes the group and keeps its rolls, in Unfiled`() {
+    // A folder being removed must not remove what somebody put in it; the
+    // sheet said beforehand that the roll would move, and this is it moving.
+    given(SavedRollGroup(id = "dnd", name = "D&D"))
+    runBlocking { repository.save(SavedRoll(id = "axe", groupId = "dnd", name = "Axe", formula = "1d12")) }
+    show()
+    compose.onNodeWithTag(SavedTestTags.SWITCHER).performClick()
+    compose.onNodeWithTag(GroupTestTags.editOf("dnd")).performClick()
+
+    compose.onNodeWithTag(GroupTestTags.DELETE).performClick()
+
+    compose.waitUntil(PATIENCE) { groups().none { it.id == "dnd" } }
+    compose.onNodeWithTag(GroupTestTags.SHEET).assertDoesNotExist()
+    assertEquals(SavedRollGroup.UNFILED_ID, runBlocking { repository.byId("axe") }?.groupId)
+  }
+
+  @Test
+  fun `a group inside another can be taken back out to the top level`() {
+    given(
+      SavedRollGroup(id = "dnd", name = "D&D"),
+      SavedRollGroup(id = "thorin", name = "Thorin", parentId = "dnd"),
+    )
+    show()
+    compose.onNodeWithTag(SavedTestTags.SWITCHER).performClick()
+    compose.onNodeWithTag(GroupTestTags.editOf("thorin")).performClick()
+
+    compose.onNodeWithTag(GroupTestTags.parentOf(null)).performScrollTo().performClick()
+    compose.onNodeWithTag(GroupTestTags.SAVE).performClick()
+
+    compose.waitUntil(PATIENCE) { groups().any { it.id == "thorin" && it.parentId == null } }
+  }
+
+  @Test
+  fun `the chosen mark tapped again is taken off the group`() {
+    given(SavedRollGroup(id = "dnd", name = "D&D", icon = "🐉"))
+    show()
+    compose.onNodeWithTag(SavedTestTags.SWITCHER).performClick()
+    compose.onNodeWithTag(GroupTestTags.editOf("dnd")).performClick()
+
+    compose.onNodeWithTag(GroupTestTags.iconOf("🐉")).performClick()
+    compose.onNodeWithTag(GroupTestTags.SAVE).performClick()
+
+    compose.waitUntil(PATIENCE) { groups().any { it.id == "dnd" && it.icon.isEmpty() } }
   }
 
   @Test

@@ -1,6 +1,5 @@
 package de.drehtuer.dinfinity.feature.roll
 
-import android.view.Surface
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
@@ -12,15 +11,8 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.dp
-import de.drehtuer.dinfinity.core.model.TableLook
-import de.drehtuer.dinfinity.render.filament.Tray
 import de.drehtuer.dinfinity.render.filament.TrayView
-import de.drehtuer.dinfinity.render.headless.Renderer
-import de.drehtuer.dinfinity.render.headless.WatchedRoll
-import de.drehtuer.dinfinity.simulation.api.ShakeSample
-import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
-import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -311,39 +303,6 @@ class DiceTrayTest {
       )
     }
     compose.waitForIdle()
-  }
-
-  /** A tray that draws nothing: the surface is not what is being asked about. */
-  private class SilentTray : Tray {
-    override fun surfaceAvailable(
-      surface: Surface,
-      width: Int,
-      height: Int,
-    ) = Unit
-
-    override fun surfaceLost() = Unit
-
-    override fun roll(
-      start: (Renderer) -> WatchedRoll,
-      onCounted: (Map<Int, Int>) -> Unit,
-      onStalled: (List<Int>) -> Unit,
-      onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
-    ) = Unit
-
-    override fun waiting(spec: ThrowSpec) = Unit
-
-    override fun shake(sample: ShakeSample) = Unit
-
-    override fun table(
-      geometry: TableGeometry,
-      look: TableLook,
-    ) = Unit
-
-    override fun look(view: TrayView) = Unit
-
-    override fun clear() = Unit
-
-    override fun close() = Unit
   }
 
   private companion object {

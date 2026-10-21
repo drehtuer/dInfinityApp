@@ -28,14 +28,21 @@ object DiceMaterial {
    * **The artwork is composited, not multiplied.** The body is worked out
    * first — the die's colour with its label printed into it — and the atlas is
    * then laid over it *by its own alpha*. Where an author drew something, that
-   * is what the face carries; where they left the cell clear, the label shows
-   * through, which is what `docs/dice-sets.md` ("Textures") has always
-   * promised and what a plain multiply could not do: multiplying by a
-   * transparent pixel gives black, not the die.
+   * is what the face carries; where they left it clear, the body shows
+   * through, which is what a plain multiply could not do: multiplying by a
+   * transparent pixel gives black, not the die. Which faces have a label to
+   * show at all is decided before this runs — a face the artwork draws on is
+   * left out of the number field ([PrintedDice]; `docs/dice-sets.md`,
+   * "Labels, and the artwork over them").
    *
-   * Where the artwork *is* opaque the result is the old one exactly —
-   * `baseColor * atlas` — which is what keeps a table's floor texture tinted
-   * by its floor colour (`docs/tables.md`, "Table looks").
+   * **Where the artwork is opaque it is the artwork's colour, not a tint of
+   * the body.** It used to be `baseColor * atlas`, from when a table's floor
+   * picture went through this material and had to be tinted by its floor
+   * colour; tables have their own material now ([TABLE_SOURCE]), and on a die
+   * the multiply turned yellow pips on a black die black and red numbers on
+   * a blue die nearly so — the face designer's colour never reached the tray
+   * (`docs/face-designer.md`, "Material, colour and edges"). The atlas is
+   * uploaded as sRGB, so `art.rgb` is linear here, as `base.rgb` is.
    */
   private const val SURFACE: String = """
         void material(inout MaterialInputs material) {
@@ -63,7 +70,7 @@ object DiceMaterial {
                 // Straight alpha, uploaded unpremultiplied on purpose: a cell
                 // an author left clear is a cell the label shows through.
                 vec4 art = texture(materialParams_atlas, getUV0());
-                colour = mix(body, base.rgb * art.rgb, art.a);
+                colour = mix(body, art.rgb, art.a);
                 printed = max(printed, art.a);
             }
             material.baseColor = vec4(colour, 1.0);
@@ -136,41 +143,6 @@ object DiceMaterial {
     """ + COAT
 
   /**
-   * The floor of a glossy table: the opaque surface, with the dice seen in it.
-   *
-   * [FilamentStage] draws the dice a second time, small, from a camera under
-   * the floor, into a picture this samples where it stands on the screen —
-   * turned round across it, because that camera sees the reflection from the
-   * other side ([Reflection.mirrored]). The picture is clear where there is
-   * no die, and a clear pixel changes nothing: everywhere no die is reflected
-   * this is [SOURCE] exactly.
-   *
-   * What a die adds is glass's own share of it: the Fresnel term of the
-   * surface — four per cent looking straight down for a dielectric, the base
-   * colour for a metal, more at a glance — times the table's
-   * [Reflection.strength]. And what it takes away is the room: where a die is
-   * reflected, the room the floor reflected there is behind it, so the
-   * surface's reflectance falls by as much. A dark die makes a dark
-   * reflection in a table that was showing a bright ceiling, as it does on a
-   * real one.
-   *
-   * The reflection is added as emissive light that is *not* scaled by the
-   * exposure again: the picture was drawn by a camera with the same exposure,
-   * so it is already in the units this pass writes.
-   */
-  const val GLASS_SOURCE: String =
-    SURFACE + """
-            material.roughness = materialParams.roughness;
-            vec2 seen = uvToRenderTargetUV(getNormalizedViewportCoord().xy);
-            vec4 mirrored = texture(materialParams_reflected, vec2(1.0 - seen.x, seen.y));
-            float strength = materialParams.reflectionStrength;
-            vec3 f0 = mix(vec3(0.04), material.baseColor.rgb, material.metallic);
-            vec3 fresnel = f0 + (1.0 - f0) * pow(1.0 - getNdotV(), 5.0);
-            material.reflectance = 0.5 * sqrt(max(1.0 - mirrored.a * strength, 0.0));
-            material.emissive = vec4(mirrored.rgb * fresnel * strength, 0.0);
-    """ + COAT
-
-  /**
    * The material of a table drawn from pictures: felt, oak, a photograph
    * (`docs/tables.md`, "Textures").
    *
@@ -238,9 +210,6 @@ object DiceMaterial {
     /** A die a set called translucent. */
     RESIN(RESIN_SOURCE, "resin"),
 
-    /** The floor of a table glossy enough to show the dice ([Reflection]). */
-    GLASS(GLASS_SOURCE, "glass"),
-
     /**
      * A surface of the tray drawn from pictures. Only ever compiled on a
      * phone that has drawn such a table: plain and dark glass never ask.
@@ -297,32 +266,13 @@ object DiceMaterial {
   /** The most [SPECULAR_AA_VARIANCE] may add to a roughness squared, Filament's default. */
   const val SPECULAR_AA_THRESHOLD: Float = 0.2f
 
-  /**
-   * Which of the [Variant]s [parameters] are drawn with.
-   *
-   * **Pictures win over a reflection.** A glossy look that also names
-   * pictures — a polished marble photograph, say — is drawn from its
-   * pictures and shows no dice in it: drawing both needs a material that has
-   * the table's three maps and the glass's reflected picture at once, and no
-   * table this app ships asks for one (dark glass names no pictures, and every
-   * look that does is far too rough to reflect). A floor whose variant is not
-   * [Variant.GLASS] takes no reflection pass either ([reflects]).
-   */
+  /** Which of the [Variant]s [parameters] are drawn with. */
   fun variantOf(parameters: Parameters): Variant =
     when {
       parameters.resin != null -> Variant.RESIN
       parameters.maps != null -> Variant.TABLE
-      parameters.reflection != null -> Variant.GLASS
       else -> Variant.OPAQUE
     }
-
-  /**
-   * Whether a surface drawn with [parameters] shows the dice in it, which is
-   * what the stage draws the picture of the dice from under the floor for.
-   * Only a [Variant.GLASS] surface samples that picture, so a reflection
-   * [variantOf] set aside for a table's pictures costs nothing.
-   */
-  fun reflects(parameters: Parameters): Boolean = variantOf(parameters) == Variant.GLASS
 
   /**
    * What a surface of the tray's floor is drawn with.
@@ -337,7 +287,6 @@ object DiceMaterial {
       roughness = look.roughness,
       metallic = look.metallic,
       texturePath = null,
-      reflection = Reflection.of(look),
       maps = SurfaceMaps.of(look.packageId, look.floorTexturePath, look.floorNormalPath, look.floorRoughnessPath),
       averaged = look.colorMode == TableColorMode.Average,
     )
@@ -402,11 +351,11 @@ object DiceMaterial {
    *
    * A die is drawn in its own colour with its labels printed over it in
    * [DieMaterial.numberColorArgb], and its author's artwork laid on top of
-   * that where the author drew any. The two are not alternatives: an atlas may
-   * leave a face's cell clear, and that face is then printed exactly as a die
-   * with no atlas at all would be (`docs/dice-sets.md`, "Textures"). So
-   * [numbers] is supplied for a textured die too, and which of the two a face
-   * ends up showing is the artwork's alpha's to say, per pixel, in [SOURCE].
+   * that where the author drew any. A face whose cell the atlas leaves clear
+   * is printed exactly as a die with no atlas at all would be, and a face it
+   * draws on is not (`docs/dice-sets.md`, "Labels, and the artwork over
+   * them"): [numbers] carries only the faces to print, and the artwork is laid
+   * over the body by its alpha in [SOURCE].
    *
    * @param texturePath the atlas, as an [AtlasKey] — the package and the path
    *   inside it — or null for a die whose author supplied none.
@@ -443,12 +392,6 @@ object DiceMaterial {
    * @param clearCoat the lacquer over the body, nought for a surface with
    *   none. A tray has none: varnished felt is a table nobody owns.
    * @param clearCoatRoughness how polished that lacquer is.
-   * @param reflection how strongly this surface shows the dice, or null for
-   *   one that does not — which is everything but the floor of a glossy table
-   *   ([Reflection.of]). Not the walls: what a player looks into in a glass
-   *   table is its top, and a wall in the glass is the band along its foot
-   *   that `docs/physics-and-rendering.md` keeps off the table. Set aside
-   *   when there are [maps] as well ([variantOf]).
    * @param maps the pictures a surface of the tray is drawn from, or null for
    *   everything else — a die, and a table drawn in its colours alone.
    * @param averaged whether [colour] is what the colour picture in [maps]
@@ -464,7 +407,6 @@ object DiceMaterial {
     val resin: Resin? = null,
     val clearCoat: Double = 0.0,
     val clearCoatRoughness: Double = DIE_COAT_ROUGHNESS,
-    val reflection: Reflection? = null,
     val maps: SurfaceMaps? = null,
     val averaged: Boolean = false,
   ) {
@@ -480,9 +422,16 @@ object DiceMaterial {
    *
    * Not nought: a perfect mirror reflects the room as a hard-edged picture of
    * it, and a die is a moulded thing that has been in a bag with other dice.
-   * Low enough that the reflection is still a reflection rather than a sheen.
+   *
+   * And not much below this. The key light is a lamp with no size, so a
+   * lacquer that reflects it from only a degree or two turns a whole face
+   * white for the frame in which a tumbling die passes through that angle —
+   * the dice "blinked" at 0.12 (`DieGlintDeviceTest`, which found half a d6's
+   * face and most of a white one blown out). Anywhere from 0.35 the highlight
+   * swells and fades over twenty degrees and never reaches white; this keeps
+   * a margin over that edge.
    */
-  const val DIE_COAT_ROUGHNESS: Double = 0.12
+  const val DIE_COAT_ROUGHNESS: Double = 0.4
 
   /** And how much of one there is. A die is varnished; nothing else here is. */
   const val DIE_COAT: Double = 1.0

@@ -1,5 +1,6 @@
 package de.drehtuer.dinfinity.dicesets.install
 
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -125,6 +126,44 @@ class SafeExtractorTest {
     val result = refused(extractor.extract(hostile, workspace))
     assertEquals(RejectionReason.NotAPlainFile, result.reason)
     assertNothingLeftBehind()
+  }
+
+  @Test
+  fun `a hard link is refused like a symbolic link`() {
+    // A hard link names another entry rather than carrying bytes of its own,
+    // so it can point a texture at a file the archive wrote a moment earlier,
+    // or at one it never wrote at all.
+    val hostile =
+      Archives.tarGz(
+        workspace,
+        entries = mapOf("pkg/diceset.toml" to Archives.MINIMAL_TOML.encodeToByteArray()),
+        special = mapOf("pkg/textures/d20.png" to TarArchiveEntry.LF_LINK),
+      )
+
+    val result = refused(extractor.extract(hostile, workspace))
+
+    assertEquals(RejectionReason.NotAPlainFile, result.reason)
+    assertNothingLeftBehind()
+  }
+
+  @Test
+  fun `a file too short to say what it is is refused, not misread`() {
+    // One byte cannot be the two-byte gzip signature, so it goes to the zip
+    // reader, which finds nothing in it.
+    val stub = File(workspace, "stub.tar.gz").also { it.writeBytes(byteArrayOf(0x1F)) }
+
+    assertEquals(RejectionReason.Unreadable, refused(extractor.extract(stub, workspace)).reason)
+    assertNothingLeftBehind()
+  }
+
+  @Test
+  fun `somewhere to unpack that cannot be made is a refusal rather than a crash`() {
+    // A file where the folder should go: nothing can be made inside it.
+    val blocked = File(workspace, "blocked").also { it.writeText("in the way") }
+
+    val result = refused(extractor.extract(Archives.wellFormed(workspace), blocked))
+
+    assertEquals(RejectionReason.Unreadable, result.reason)
   }
 
   @Test

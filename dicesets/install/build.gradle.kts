@@ -32,3 +32,12 @@ dependencies {
 tasks.named<de.drehtuer.dinfinity.build.VerifyTextIsAResourceTask>("verifyTextIsAResource") {
   exempt.addAll("AtlasDecoder.kt", "InstalledSets.kt")
 }
+
+// The tests read `sample-sets/` from the repository: declared, so a changed
+// set re-runs them rather than replaying a cached pass from before it.
+tasks.withType<Test>().configureEach {
+  inputs
+    .dir(rootDir.resolve("sample-sets"))
+    .withPropertyName("sampleSets")
+    .withPathSensitivity(PathSensitivity.RELATIVE)
+}

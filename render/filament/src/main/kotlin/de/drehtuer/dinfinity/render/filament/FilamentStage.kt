@@ -7,7 +7,6 @@ import com.google.android.filament.Filament
 import com.google.android.filament.IndexBuffer
 import com.google.android.filament.LightManager
 import com.google.android.filament.MaterialInstance
-import com.google.android.filament.RenderTarget
 import com.google.android.filament.RenderableManager
 import com.google.android.filament.Scene
 import com.google.android.filament.SwapChain
@@ -68,7 +67,7 @@ class FilamentStage(
   override val height: Int,
   surface: Any? = null,
   postProcessing: Boolean = true,
-  private val atlases: (String) -> Texture? = { null },
+  private val atlases: (String) -> DieArtwork<Texture>? = { null },
   shared: FilamentEngine? = null,
 ) : Stage,
   AutoCloseable {
@@ -101,18 +100,6 @@ class FilamentStage(
 
   private val glyphSampler: TextureSampler get() = parts.glyphSampler
 
-  /**
-   * How the floor reads the picture of the dice in it: smoothly, which is the
-   * blur ([Reflection.SHRINK]), and clamped, so the edge of the screen does
-   * not reflect the opposite edge.
-   */
-  private val mirrorSampler =
-    TextureSampler(
-      TextureSampler.MinFilter.LINEAR,
-      TextureSampler.MagFilter.LINEAR,
-      TextureSampler.WrapMode.CLAMP_TO_EDGE,
-    )
-
   private val instances = mutableListOf<MaterialInstance>()
 
   /**
@@ -127,27 +114,12 @@ class FilamentStage(
   private val indices = mutableListOf<IndexBuffer>()
   private val entities = mutableListOf<Int>()
 
-  /**
-   * The dice as a glossy table sees them, made the first time one is shown
-   * and kept until this surface goes ([Reflection]).
-   */
-  private var mirror: Mirror? = null
-
-  /** Whether the table in the scene now is one that shows the dice. */
-  private var reflecting = false
-
-  /** Where the camera was last aimed, for a [mirror] made after it was. */
-  private var shot: CameraShot? = null
-
   init {
     view.scene = scene
     view.camera = camera
     view.viewport = Viewport(0, 0, width, height)
     view.isPostProcessingEnabled = postProcessing
     photograph()
-    // Both layers: the tray is on one of its own only so that the picture a
-    // glossy table reflects can leave it out (`Reflection`).
-    view.setVisibleLayers(LAYERS, DICE or TRAY)
   }
 
   /**
@@ -198,15 +170,6 @@ class FilamentStage(
 
   /** Points the camera where [shot] says, for this viewport. */
   override fun aim(shot: CameraShot) {
-    this.shot = shot
-    point(camera, shot)
-    mirror?.let { point(it.camera, Reflection.mirrored(shot)) }
-  }
-
-  private fun point(
-    camera: com.google.android.filament.Camera,
-    shot: CameraShot,
-  ) {
     camera.setProjection(
       shot.verticalFieldOfViewDegrees,
       width.toDouble() / height,
@@ -279,6 +242,11 @@ class FilamentStage(
     scene.removeEntity(entity)
   }
 
+  override fun drawnCells(
+    atlas: String,
+    faces: Int,
+  ): Set<Int> = DieArtwork.drawnBy(atlases(atlas), faces)
+
   override fun put(entity: Int) {
     if (entity == Stage.NOTHING || scene.hasEntity(entity)) return
     scene.addEntity(entity)
@@ -294,16 +262,16 @@ class FilamentStage(
     if (mesh.triangleCount == 0 || mesh.vertexCount == 0) return Stage.NOTHING
     val vertices = verticesOf(mesh)
     val triangles = indicesOf(mesh)
-    // Only a surface drawn with the glass material samples the picture of the
-    // dice; a glossy look drawn from pictures sets its reflection aside
-    // (`DiceMaterial.variantOf`) and costs no reflection pass.
-    val reflected = if (DiceMaterial.reflects(parameters)) mirrorOf().colour else null
     val maps = parameters.maps
     val instance =
       if (maps != null) {
         tableInstanceOf(parameters, maps)
       } else {
-        instanceOf(parameters, parameters.texturePath?.let(atlases), parameters.numbers?.let(::glyphsOf), reflected)
+        instanceOf(
+          parameters,
+          parameters.texturePath?.let(atlases)?.texture,
+          parameters.numbers?.let(::glyphsOf),
+        )
       }
     val entity = EntityManager.get().create()
 
@@ -317,14 +285,8 @@ class FilamentStage(
       // (`docs/physics-and-rendering.md`, "What is drawn over the table").
       .castShadows(casts)
       .receiveShadows(true)
-      // And the same line again for what a glossy table shows: the dice, and
-      // none of the tray — the picture is taken from under the floor, which
-      // would hide every die, and a wall in it is a dark band along the foot
-      // of the wall (`Reflection`).
-      .layerMask(LAYERS, if (casts) DICE else TRAY)
       .build(engine, entity)
 
-    if (reflected != null) reflecting = true
     scene.addEntity(entity)
     entities += entity
     buffers += vertices
@@ -360,7 +322,6 @@ class FilamentStage(
    */
   fun draw(capture: ByteBuffer?): Boolean {
     if (!frames.beginFrame(swapChain, 0)) return false
-    mirror?.takeIf { reflecting }?.let(::reflect)
     frames.render(view)
     capture?.let {
       frames.readPixels(0, 0, width, height, Texture.PixelBufferDescriptor(it, Texture.Format.RGBA, Texture.Type.UBYTE))
@@ -443,10 +404,6 @@ class FilamentStage(
     buffers.clear()
     indices.clear()
     textures.clear()
-    // The floor went with the rest, and the next one says again whether it
-    // shows the dice. The picture's target is kept: it is a surface's, not a
-    // roll's, and a felt table never draws into it.
-    reflecting = false
   }
 
   /**
@@ -458,8 +415,6 @@ class FilamentStage(
    */
   override fun close() {
     clear()
-    mirror?.close(engine)
-    mirror = null
     engine.destroyView(view)
     engine.destroyScene(scene)
     engine.destroyRenderer(frames)
@@ -488,101 +443,10 @@ class FilamentStage(
     entities += entity
   }
 
-  /**
-   * The dice as the glass sees them, drawn before the frame that samples it.
-   *
-   * The camera under the floor is exposed as the real one is, whatever that
-   * is now, because the floor adds this picture to its own light as it
-   * stands ([DiceMaterial.GLASS_SOURCE]). The target is cleared to nothing
-   * first — a transparent pixel is a pixel with no die in it, which the floor
-   * reads as "change nothing" — and the renderer's own clearing is put back
-   * for the frame itself, so a felt table and this one start the frame alike.
-   */
-  private fun reflect(mirror: Mirror) {
-    mirror.camera.setExposure(camera.aperture, camera.shutterSpeed, camera.sensitivity)
-    val kept = frames.clearOptions
-    frames.clearOptions = CLEAR_TO_NOTHING
-    frames.render(mirror.view)
-    frames.clearOptions = kept
-  }
-
-  /** The [mirror], made now if this is the first glossy table this surface has shown. */
-  private fun mirrorOf(): Mirror =
-    mirror ?: Mirror(engine, scene, Reflection.sizeOf(width, height)).also { made ->
-      mirror = made
-      shot?.let { point(made.camera, Reflection.mirrored(it)) }
-    }
-
-  /**
-   * Everything the picture of the dice in the glass is made with: a small
-   * target to draw into, a camera under the floor and a view that sees only
-   * the dice ([Reflection]).
-   *
-   * No shadows and no post-processing: the picture is a quarter of the size
-   * and is stretched back over the floor at a few per cent, where a shadow
-   * map of its own would cost a pass and show nothing, and tone mapping it
-   * would map the light twice — the frame that samples it does that once,
-   * for everything. Its colour keeps the frame's range (`RGBA16F`), and its
-   * alpha says where a die is.
-   */
-  private class Mirror(
-    engine: Engine,
-    scene: Scene,
-    size: Pair<Int, Int>,
-  ) {
-    val colour: Texture =
-      Texture
-        .Builder()
-        .width(size.first)
-        .height(size.second)
-        .levels(1)
-        .format(Texture.InternalFormat.RGBA16F)
-        .usage(Texture.Usage.COLOR_ATTACHMENT or Texture.Usage.SAMPLEABLE)
-        .build(engine)
-    private val depth: Texture =
-      Texture
-        .Builder()
-        .width(size.first)
-        .height(size.second)
-        .levels(1)
-        .format(Texture.InternalFormat.DEPTH24)
-        .usage(Texture.Usage.DEPTH_ATTACHMENT)
-        .build(engine)
-    private val target: RenderTarget =
-      RenderTarget
-        .Builder()
-        .texture(RenderTarget.AttachmentPoint.COLOR, colour)
-        .texture(RenderTarget.AttachmentPoint.DEPTH, depth)
-        .build(engine)
-    private val entity: Int = EntityManager.get().create()
-    val camera: com.google.android.filament.Camera = engine.createCamera(entity)
-    val view: View =
-      engine.createView().apply {
-        this.scene = scene
-        this.camera = this@Mirror.camera
-        viewport = Viewport(0, 0, size.first, size.second)
-        renderTarget = target
-        isPostProcessingEnabled = false
-        setShadowingEnabled(false)
-        setVisibleLayers(LAYERS, DICE)
-      }
-
-    fun close(engine: Engine) {
-      engine.destroyView(view)
-      engine.destroyCameraComponent(entity)
-      engine.destroyEntity(entity)
-      EntityManager.get().destroy(entity)
-      engine.destroyRenderTarget(target)
-      engine.destroyTexture(depth)
-      engine.destroyTexture(colour)
-    }
-  }
-
   private fun instanceOf(
     parameters: DiceMaterial.Parameters,
     atlas: Texture?,
     glyphs: Texture?,
-    reflected: Texture?,
   ): MaterialInstance =
     parts.materialFor(parameters).createInstance().apply {
       setParameter(
@@ -620,11 +484,6 @@ class FilamentStage(
           resin.tint.green.toFloat(),
           resin.tint.blue.toFloat(),
         )
-      }
-      // And only the glass floor has these (`DiceMaterial.GLASS_SOURCE`).
-      if (reflected != null) {
-        setParameter("reflected", reflected, mirrorSampler)
-        setParameter("reflectionStrength", requireNotNull(parameters.reflection).strength.toFloat())
       }
     }
 
@@ -788,22 +647,6 @@ class FilamentStage(
 
     /** Red, green, blue and alpha, a byte each. */
     const val PIXEL_BYTES: Int = 4
-
-    /**
-     * The layer the dice are on — Filament's default, so a renderable nobody
-     * placed is a die — and the one the tray is on. Every view sees both but
-     * the one under a glossy floor, which sees the dice alone.
-     */
-    private const val DICE = 0x1
-    private const val TRAY = 0x2
-    private const val LAYERS = DICE or TRAY
-
-    /** What the picture of the dice in the glass starts each frame as: nothing at all. */
-    private val CLEAR_TO_NOTHING =
-      FilamentFrameRenderer.ClearOptions().apply {
-        clear = true
-        clearColor = doubleArrayOf(0.0, 0.0, 0.0, 0.0)
-      }
 
     /**
      * How the key light's shadow is drawn.

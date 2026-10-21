@@ -261,8 +261,16 @@ is left in the script, unreferenced, rather than unpicked by hand.
 
 ## Screens whose shape still differs
 
-None of these was changed by either side. They are structure, and structure is
-the design's.
+None of these was changed by either side, save the first. They are structure,
+and structure is the design's.
+
+**The designer's Material step has an Opacity slider** the prototype does not
+draw: between the Colour row and the Edges slider, glass to solid in steps of
+five per cent, with "75 % opaque: 25 % of the light goes through" under it
+(`docs/face-designer.md`, "Material, colour and edges"; decision 102). The
+owner asked for it. It wants drawing in `dzSteps` in the Edges slider's idiom,
+and whether the Material menu's names belong as ticks on it is the design's
+call.
 
 **Statistics** (`screen="stats"`) is one screen in the prototype: a set
 segmented control, a die segmented control, a grid of four figures, a vertical

@@ -60,6 +60,42 @@ internal fun rollPresenter(
   toTheScreen = { it() },
 )
 
+/**
+ * A tray that is handed a surface and does nothing with it, for the tests
+ * that are about the composable around the tray rather than about a roll.
+ */
+internal class SilentTray : Tray {
+  override fun surfaceAvailable(
+    surface: Surface,
+    width: Int,
+    height: Int,
+  ) = Unit
+
+  override fun surfaceLost() = Unit
+
+  override fun roll(
+    start: (Renderer) -> WatchedRoll,
+    onCounted: (Map<Int, Int>) -> Unit,
+    onStalled: (List<Int>) -> Unit,
+    onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
+  ) = Unit
+
+  override fun waiting(spec: ThrowSpec) = Unit
+
+  override fun shake(sample: ShakeSample) = Unit
+
+  override fun table(
+    geometry: TableGeometry,
+    look: TableLook,
+  ) = Unit
+
+  override fun look(view: TrayView) = Unit
+
+  override fun clear() = Unit
+
+  override fun close() = Unit
+}
+
 /** A tray that throws the dice where it stands and says it draws nothing. */
 internal class UndrawnTray : DirectTray() {
   override val draws: Boolean = false

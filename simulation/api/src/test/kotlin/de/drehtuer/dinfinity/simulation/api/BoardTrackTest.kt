@@ -72,7 +72,9 @@ class BoardTrackTest {
     val track = falling(steps = 3)
 
     assertFailsWith<IllegalArgumentException> { track.poseAt(1, 0) }
+    assertFailsWith<IllegalArgumentException> { track.poseAt(-1, 0) }
     assertFailsWith<IllegalArgumentException> { track.poseAt(0, 4) }
+    assertFailsWith<IllegalArgumentException> { track.poseAt(0, -1) }
   }
 
   @Test

@@ -38,6 +38,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -336,16 +337,23 @@ class EditorScreenTest {
   }
 
   @Test
-  fun `a roll that exists offers to delete it`() {
-    given(SavedRoll(id = "fireball", groupId = UNFILED, name = "Fireball", formula = "8d6"))
+  fun `a save or a delete pressed when there is nothing to do does nothing`() {
+    // The buttons are disabled or absent then, but a press can still arrive —
+    // through a stale frame or an accessibility service — and the presenter is
+    // the last thing between it and the database.
+    val presenter = show()
+    compose.waitUntil(PATIENCE) { presenter.state.loaded }
 
-    show(editing = "fireball")
+    presenter.save()
+    presenter.delete()
 
-    compose.onNodeWithTag(EditorTestTags.DELETE).performScrollTo().assertIsDisplayed()
+    assertTrue("an empty roll was written down", runBlocking { repository.all.first() }.isEmpty())
+    assertFalse(presenter.state.saved)
+    assertFalse(presenter.state.gone)
   }
 
   @Test
-  fun `deleting takes it away`() {
+  fun `a roll that exists offers to delete it, and deleting takes it away`() {
     given(SavedRoll(id = "fireball", groupId = UNFILED, name = "Fireball", formula = "8d6"))
     val presenter = show(editing = "fireball")
 
@@ -398,7 +406,7 @@ class EditorScreenTest {
   }
 
   @Test
-  fun `saving leaves the editor, and so does deleting`() {
+  fun `saving leaves the editor`() {
     val left = mutableListOf<Unit>()
     val presenter = show(onDone = { left += Unit })
     compose.onNodeWithTag(FormulaTestTags.FIELD).performTextInput("1d20")
@@ -408,6 +416,77 @@ class EditorScreenTest {
     compose.waitUntil(PATIENCE) { left.isNotEmpty() }
 
     assertTrue("the editor stayed open over a roll it had already written down", left.isNotEmpty())
+  }
+
+  @Test
+  fun `deleting leaves the editor as well`() {
+    // The other half of what the test above used to promise in its name and
+    // never pressed: an editor left open over a roll that is gone would save
+    // it straight back.
+    given(SavedRoll(id = "fireball", groupId = UNFILED, name = "Fireball", formula = "8d6"))
+    val left = mutableListOf<Unit>()
+    val presenter = show(editing = "fireball", onDone = { left += Unit })
+    compose.waitUntil(PATIENCE) { presenter.state.loaded }
+
+    compose.onNodeWithTag(EditorTestTags.DELETE).performScrollTo().performClick()
+    presenter.written()
+
+    compose.waitUntil(PATIENCE) { left.isNotEmpty() }
+  }
+
+  @Test
+  fun `choosing a group files the roll in it`() {
+    runBlocking { groupRepository.save(SavedRollGroup(id = "thorin", name = "Thorin")) }
+    val presenter = show()
+    compose.waitUntil(PATIENCE) { presenter.state.groups.any { it.id == "thorin" } }
+    compose.onNodeWithTag(FormulaTestTags.FIELD).performTextInput("1d12")
+
+    compose.onNodeWithTag(EditorTestTags.groupOf("thorin")).performScrollTo().performClick()
+    compose.onNodeWithTag(EditorTestTags.SAVE).performScrollTo().performClick()
+    presenter.written()
+
+    assertEquals("thorin", runBlocking { repository.all.first().single() }.groupId)
+  }
+
+  @Test
+  fun `tapping the chosen mark again takes it off`() {
+    // The marks are checkboxes, not a radio group: a roll can end up wearing
+    // none, and this is the only way back to that.
+    val presenter = show()
+
+    compose.onNodeWithTag(EditorTestTags.iconOf("🔥")).performScrollTo().performClick()
+    assertEquals("🔥", presenter.state.icon)
+    compose.onNodeWithTag(EditorTestTags.iconOf("🔥")).performScrollTo().performClick()
+
+    assertEquals("", presenter.state.icon)
+  }
+
+  @Test
+  fun `the swatch for no colour takes a chosen colour off again`() {
+    // No colour is not the absence of a choice but a choice of its own — the
+    // mark then follows the accent — so it has to be reachable after a tag.
+    val presenter = show()
+    compose.onNodeWithTag(EditorTestTags.colourOf(RollColour.Teal.argb)).performScrollTo().performClick()
+
+    compose.onNodeWithTag(EditorTestTags.colourOf(null)).performScrollTo().performClick()
+
+    assertNull(presenter.state.colourArgb)
+    compose.onNodeWithTag(EditorTestTags.COLOUR_HEX).assertTextContains("No colour", substring = true)
+  }
+
+  @Test
+  fun `a formula naming a set that is not installed reads, but cannot be saved`() {
+    // It parses, so the error is the planner's rather than the parser's: the
+    // dice it names are nowhere to be thrown. Saving it would make exactly the
+    // button this screen exists to prevent.
+    val presenter = show()
+
+    compose.onNodeWithTag(FormulaTestTags.FIELD).performTextInput("brass:1d20")
+
+    compose.waitUntil(PATIENCE) { presenter.state.error != null }
+    assertNull("a formula with nowhere to be thrown was given odds", presenter.state.odds)
+    compose.onNodeWithTag(EditorTestTags.SAVE).assertIsNotEnabled()
+    compose.onNodeWithTag(EditorTestTags.ROLL_NOW).assertIsNotEnabled()
   }
 
   @Test

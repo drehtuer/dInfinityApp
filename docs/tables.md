@@ -203,17 +203,12 @@ Rules:
 - `floor_tile_mm` and `wall_tile_mm` are clamped to 10–1000 mm. When one is
   given it replaces the matching `*_tiling`. `color_mode` is `multiply` or
   `average`; anything else is refused, like an unknown `sound`.
-- **`roughness` also decides whether the table shows the dice in it.** Below
-  0.3 the floor reflects them, faintly and softly — at a perfect polish as
-  strongly as glass reflects, which is four per cent looking straight down —
-  and from 0.3 up it shows none and is drawn exactly as a matte table. There
-  is no field of its own for it: how glossy a surface is is how much it
-  reflects (`docs/physics-and-rendering.md`, "The dice in a glossy table").
-  **A floor drawn from pictures shows no dice, however glossy:** the pictures
-  win, because showing both would need a material no bundled table needs
-  (`DiceMaterial.variantOf`; `docs/TODO.md`, "Tables and photos"). Dark glass
-  names no pictures; every bundled look that does is far too rough to
-  reflect.
+- **A glossy table does not show the dice in it**, however low its
+  `roughness`: a smooth floor reflects the room sharply and nothing else. Seen
+  from straight above, or the angled view's 22° off it, a die's reflection
+  would lie under the die and be hidden by it
+  (`docs/physics-and-rendering.md`, "A glossy table"; `docs/architecture.md`,
+  decision 104).
 - Physics values are clamped at validation and again at load, like dice.
   A table can be a bit slippery or a bit grippy; it cannot be frictionless.
 - **A table can make a die bouncier, never deader.** The solver takes the
@@ -326,10 +321,9 @@ colour, and the tray is drawn anyway.
 
 The bundled package ships `felt-green`, `felt-black`, `oak`, `dark-glass`
 and `plain` (a neutral grey that is easy on the eyes and on the battery — it
-is what power-saving mode's result screen echoes). `dark-glass` is the one
-glossy enough to show the dice in it, at two-thirds of a polished
-reflection; its walls and rim reflect nothing, so the foot of each wall
-looks as it does on felt.
+is what power-saving mode's result screen echoes). `dark-glass` is the glossy
+one, at roughness 0.1: it is drawn like `plain`, in its colours alone, and
+shows the room sharply in its floor and none of the dice.
 
 | Table | Floor | Walls and rim |
 | --- | --- | --- |

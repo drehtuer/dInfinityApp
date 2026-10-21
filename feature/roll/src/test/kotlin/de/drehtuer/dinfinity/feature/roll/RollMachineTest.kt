@@ -61,6 +61,18 @@ class RollMachineTest {
   }
 
   @Test
+  fun `a die no installed set has is an error, not a throw`() {
+    // It reads perfectly well, so the parser has nothing to say about it; it
+    // is the plan that cannot find the die (`docs/dice-notation.md`).
+    val machine = machine()
+
+    machine.type("1d7")
+
+    assertTrue("a die nobody has was not an error", machine.state is RollState.Invalid)
+    assertNull("a die nobody has produced a throw", machine.throwDice())
+  }
+
+  @Test
   fun `a formula that reads is ready, at the scale the table allows`() {
     val machine = machine()
 
@@ -385,6 +397,19 @@ class RollMachineTest {
     assertEquals(Rounding.Up, up.rounding)
     assertEquals("a seven divided by three rounds down to two", 2L, down)
     assertEquals("and up to three", 3L, up.total)
+  }
+
+  @Test
+  fun `asking for a rounding before anything has landed changes nothing`() {
+    // There is no total to round, and the one way to get one is a throw.
+    // Anything else here would be a number that came off no die.
+    val machine = machine()
+    machine.type("1d6 / 2")
+    val before = machine.state
+
+    machine.round(Rounding.Up)
+
+    assertEquals(before, machine.state)
   }
 
   @Test

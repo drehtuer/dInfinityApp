@@ -205,9 +205,12 @@ class FilamentDiceRenderer(
    * given is an [AtlasKey], and what fills it is on the far side of [Stage]
    * (`docs/dice-sets.md`, "Textures").
    *
-   * The labels are built whatever the die wears. An atlas may leave a face's
-   * cell clear and that face is then printed, which is a decision the material
-   * makes per pixel rather than one this side can make at all ([PrintedDice]).
+   * **A face the artwork draws on is not printed**, and every other face is.
+   * Which faces those are is read off the decoded atlas, on the far side of
+   * the stage ([Stage.drawnCells]): a face somebody drew carries the drawing
+   * alone, and a number showing through the clear parts of a drawing is a
+   * number nobody drew (`docs/dice-sets.md`, "Labels, and the artwork over
+   * them"; [PrintedDice]).
    */
   private fun addDie(
     die: Die,
@@ -215,14 +218,16 @@ class FilamentDiceRenderer(
     scale: Double,
   ): Int {
     val mesh = DieMesh.of(die, scale)
+    val atlas = die.texturePath?.let { AtlasKey.of(setId, it) }
+    val drawn = atlas?.let { stage.drawnCells(it, die.faces.size) }.orEmpty()
     return stage.add(
       // How far this shape reaches from its middle, at the throw's scale.
       mesh = GpuMesh.of(mesh.surfaces, scale = die.material.boundingRadiusMm * scale),
       parameters =
         DiceMaterial.dieOf(
           material = die.material,
-          texturePath = die.texturePath?.let { AtlasKey.of(setId, it) },
-          numbers = printed.of(die, mesh),
+          texturePath = atlas,
+          numbers = printed.of(die, mesh, drawn),
           scale = scale,
         ),
     )

@@ -57,9 +57,11 @@ object RoundedEdges {
    * It is Jolt's rule, repeated over the same faces (`ConvexHullShape`'s
    * constructor): the radius [material] asks for ([HullMargin.requestedMm]),
    * cut down until it fits twice across the thinnest part of the die, and
-   * until no corner stands more than [HullMargin.MAX_ERROR_MM] inside the
+   * until no corner stands more than [HullMargin.maxErrorMm] inside the
    * sharp one ([gapOf]). The last is what a d4's spike is limited by; every
-   * other catalogue solid gets what it asked for.
+   * other catalogue solid gets what it asked for. Both are the die's own, so
+   * a set's `edge_rounding` reaches the picture exactly as it reaches the
+   * solver (decision 94).
    */
   fun radiusFor(
     facets: List<Facet>,
@@ -72,7 +74,7 @@ object RoundedEdges {
       minOf(
         HullMargin.requestedMm(material),
         solid.thinnest * reachMm / 2,
-        HullMargin.MAX_ERROR_MM / solid.sharpness,
+        HullMargin.maxErrorMm(material) / solid.sharpness,
       )
     return radiusMm / reachMm
   }

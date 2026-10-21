@@ -6,6 +6,7 @@ import de.drehtuer.dinfinity.core.model.RollResult
 import de.drehtuer.dinfinity.core.model.TableView
 import de.drehtuer.dinfinity.data.FinishedRoll
 import de.drehtuer.dinfinity.data.RollContext
+import de.drehtuer.dinfinity.feature.designer.DesignerStep
 import de.drehtuer.dinfinity.feature.saved.Editing
 import de.drehtuer.dinfinity.feature.saved.EditorPresenter
 import kotlinx.coroutines.CoroutineScope
@@ -68,7 +69,7 @@ class ScreenWiringTest {
     // proves nothing about either: a `notationOf` closed over the wrong
     // catalogue and a designer with no library behind it both look exactly
     // like a designer that works until one of them is called
-    // (`docs/face-designer.md`, "Flow", step 4).
+    // (`docs/face-designer.md`, "Flow", Roll it).
     val designer = wiring().presenters().faceDesigner("d20")
 
     assertEquals("1d20", designer.rollable)
@@ -89,6 +90,26 @@ class ScreenWiringTest {
 
     val ids = designer.state.choosable.map { it.id }
     assertEquals("a die is offered twice", ids.size, ids.distinct().size)
+  }
+
+  @Test
+  fun `the designer opens on its first step from the menu and on the faces when a die is named`() {
+    // "Doodle this die" and the way back from a test throw already know the
+    // die and want it drawn on (`docs/face-designer.md`, "Flow").
+    assertEquals(
+      DesignerStep.Shape,
+      wiring()
+        .presenters()
+        .faceDesigner("")
+        .state.step,
+    )
+    assertEquals(
+      DesignerStep.Faces,
+      wiring()
+        .presenters()
+        .faceDesigner("d20")
+        .state.step,
+    )
   }
 
   @Test

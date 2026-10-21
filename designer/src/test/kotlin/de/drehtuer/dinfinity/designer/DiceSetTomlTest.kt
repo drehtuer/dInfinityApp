@@ -168,6 +168,25 @@ class DiceSetTomlTest {
   }
 
   @Test
+  fun `a set that is only clearer than standard still writes its defaults`() {
+    // The last of the three numbers is the one a person most often moves on
+    // its own, and a check that stopped at the first two would drop it.
+    val back =
+      read(
+        DiceSet(id = "mine", name = "My dice", version = "1.0.0", dice = listOf(d6)),
+        DieMaterial(translucency = 0.5),
+      )
+
+    assertEquals(
+      0.5,
+      back.dice
+        .single()
+        .material.translucency,
+      1e-12,
+    )
+  }
+
+  @Test
   fun `an atlas is pointed at by a relative path inside the package`() {
     val drawn = d6.copy(texturePath = DiceSetToml.texturePathOf("d6"))
     val text = DiceSetToml.write(DiceSet(id = "mine", name = "My dice", version = "1.0.0", dice = listOf(drawn)))
@@ -198,9 +217,9 @@ class DiceSetTomlTest {
     // raw newline inside a quoted TOML string is a syntax error, which would
     // be this object handing the validator a file it wrote itself and cannot
     // read back.
-    val set = DiceSet(id = "mine", name = "one\ntwo\tthree", version = "1.0.0", dice = listOf(d6))
+    val set = DiceSet(id = "mine", name = "one\ntwo\tthree\u007Ffour", version = "1.0.0", dice = listOf(d6))
 
-    assertEquals("one\ntwo\tthree", read(set).name)
+    assertEquals("one\ntwo\tthree\u007Ffour", read(set).name)
   }
 
   @Test
