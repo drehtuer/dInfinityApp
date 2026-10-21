@@ -413,7 +413,9 @@ keeps them comparable.
       the oak as warm oak — a little darker than before — and its walls as
       wood, is the felt's crinkle too strong — its normal map can be
       softened — and does it shimmer as the dice settle, and is plain
-      unchanged). Judged with `tools/gallery.sh` before and after each
+      unchanged; do satin metal dice at 0.6 read as metal, and is the
+      ivory metal's cream top face in the leaning view, red at 255, bright
+      enough to accept — decision 106). Judged with `tools/gallery.sh` before and after each
       step, and merged to `main` once the owner likes it on the phone
 
 ### 5.7 Performance on the Pixel 10a

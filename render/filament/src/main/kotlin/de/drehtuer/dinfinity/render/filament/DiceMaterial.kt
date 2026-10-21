@@ -79,15 +79,19 @@ object DiceMaterial {
 
   /** The lacquer, and the end of the function both materials share. */
   private const val COAT: String = """
-            if (materialParams.clearCoat > 0.0) {
-                // The lacquer on a die, which is a thin smooth layer over a
-                // body that is not smooth at all. Without it the only way to
-                // make a die shine is to make the resin itself glossy, and
-                // glossy resin reflects its own colour where a varnish
-                // reflects the room.
-                material.clearCoat = materialParams.clearCoat;
-                material.clearCoatRoughness = materialParams.clearCoatRoughness;
-            }
+            // The lacquer on a die, which is a thin smooth layer over a
+            // body that is not smooth at all. Without it the only way to
+            // make a die shine is to make the resin itself glossy, and
+            // glossy resin reflects its own colour where a varnish
+            // reflects the room.
+            //
+            // Set on every surface, nought included: a material that has a
+            // coat at all starts each pixel with a full one as smooth as a
+            // mirror (`clearCoat = 1.0`, `clearCoatRoughness = 0.0`), so a
+            // surface that skipped this was not uncoated but mirror-coated
+            // (decision 106).
+            material.clearCoat = materialParams.clearCoat;
+            material.clearCoatRoughness = materialParams.clearCoatRoughness;
         }
     """
 
@@ -280,16 +284,26 @@ object DiceMaterial {
    * A look that names no picture — plain, dark glass, a look made in code — is
    * the flat colour it always was, through the dice's own material, so the
    * cheapest table to draw is still the cheapest.
+   *
+   * That flat colour is what the floor draws as: the sheen the lamps put on
+   * top of it is taken back out ([SurfaceLight.baseFor]), as a look drawn
+   * from pictures in `average` has it taken out ([TableTint.colourFor]).
+   * Until decision 106 a mirror coat nobody asked for did that by accident —
+   * under a coat Filament reflects next to nothing off the body — and a
+   * plain green felt drew its red 13 over without it.
    */
-  fun floorOf(look: TableLook): Parameters =
-    Parameters(
-      colour = Colour.of(look.floorColorArgb),
+  fun floorOf(look: TableLook): Parameters {
+    val maps = SurfaceMaps.of(look.packageId, look.floorTexturePath, look.floorNormalPath, look.floorRoughnessPath)
+    val written = Colour.of(look.floorColorArgb)
+    return Parameters(
+      colour = if (maps == null) SurfaceLight.facingUp(look.roughness).baseFor(written) else written,
       roughness = look.roughness,
       metallic = look.metallic,
       texturePath = null,
-      maps = SurfaceMaps.of(look.packageId, look.floorTexturePath, look.floorNormalPath, look.floorRoughnessPath),
+      maps = maps,
       averaged = look.colorMode == TableColorMode.Average,
     )
+  }
 
   /** And its walls, including the rim, which is the top of the wall. */
   fun wallOf(look: TableLook): Parameters =
@@ -376,8 +390,20 @@ object DiceMaterial {
       numbers = numbers,
       ink = Colour.of(material.numberColorArgb),
       resin = Resin.of(material, scale),
-      clearCoat = DIE_COAT,
+      clearCoat = coatOver(material.metallic),
     )
+
+  /**
+   * How much lacquer a die whose body is [metallic] metal carries: all of
+   * [DIE_COAT] over a dielectric, none over a metal, and the share between
+   * for a body that is partly one and partly the other.
+   *
+   * A metal die is not varnished; its shine is the metal's own. And Filament
+   * never draws a body smoother than the coat over it, so with the lacquer a
+   * metal could not be any more polished than [DIE_COAT_ROUGHNESS] — a 0.3
+   * metal drew exactly as a 0.4 one (decision 106).
+   */
+  fun coatOver(metallic: Double): Double = DIE_COAT * (1.0 - metallic.coerceIn(0.0, 1.0))
 
   /**
    * What one surface's material instance is set to.
@@ -433,7 +459,7 @@ object DiceMaterial {
    */
   const val DIE_COAT_ROUGHNESS: Double = 0.4
 
-  /** And how much of one there is. A die is varnished; nothing else here is. */
+  /** And how much of one there is. A die is varnished, unless it is metal ([coatOver]); nothing else here is. */
   const val DIE_COAT: Double = 1.0
 }
 

@@ -7,16 +7,16 @@ format = 1
 [set]
 id = "steel"
 name = "Steel"
-version = "1.0.0"
+version = "1.0.1"
 author = "dInfinity"
 license = "CC0-1.0"
-description = "Machined steel: a fully metallic body, lightly brushed, with numbers filled black."
+description = "Machined steel: a fully metallic body, satin-finished, with numbers filled black."
 homepage = "https://github.com/drehtuer/dInfinityApp/tree/main/sample-sets/steel"
 
 [defaults]
 color = "#9ea2a6"
 number_color = "#1b1c1e"
-roughness = 0.3             # brushed, not mirror
+roughness = 0.6             # satin: smoother blows a face out under the lamp
 metallic = 1.0
 size_mm = 16
 density = 7.8               # steel

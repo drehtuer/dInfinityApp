@@ -865,7 +865,7 @@ the colour and the rounding alone:
 | Pearl | 0.35 | 0 | 25 % | Milky resin — a quarter of the light through, blurred to nothing in particular |
 | Resin | 0.15 | 0 | 60 % | Clear-ish resin: the felt bent through it and a little soft (84 % transmission) |
 | Glass | 0.05 | 0 | 100 % | Polished and wholly clear — the felt as through a lens |
-| Metal | 0.30 | 1 | 0 % | Brushed metal, mirroring the room |
+| Metal | 0.60 | 1 | 0 % | Satin metal, unlacquered; any smoother and a face burns white under the lamp (decision 106) |
 | Stone | 0.80 | 0 | 0 % | Matte and solid |
 
 The values are tuned against the resin the renderer draws ("A die you can see

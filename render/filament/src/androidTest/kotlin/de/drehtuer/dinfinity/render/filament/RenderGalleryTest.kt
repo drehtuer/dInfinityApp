@@ -139,7 +139,7 @@ class RenderGalleryTest {
 
     const val SEED = 20261004L
     const val PNG_QUALITY = 100
-    const val METAL_ROUGHNESS = 0.3
+    const val METAL_ROUGHNESS = 0.6
     const val CLEAR = 0.6
     const val MILKY = 0.2
     const val GLASSY_ROUGHNESS = 0.05

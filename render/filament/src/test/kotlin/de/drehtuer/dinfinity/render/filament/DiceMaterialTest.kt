@@ -391,6 +391,40 @@ class DiceMaterialTest {
   }
 
   @Test
+  fun `a floor in its colour alone has the lamps' sheen taken out of it, and one drawn from pictures does not`() {
+    // The built-in plain table's grey, brighter than the sheen in every channel.
+    val grey = PLAIN.copy(floorColorArgb = 0xFF6E6E6E.toInt(), roughness = 0.8)
+    val light = SurfaceLight.facingUp(grey.roughness)
+    val floor = DiceMaterial.floorOf(grey).colour
+    assertEquals(light.baseFor(Colour.of(grey.floorColorArgb)), floor)
+    // What it is handed draws as what the look wrote.
+    val drawn = light.drawn(floor)
+    val written = Colour.of(grey.floorColorArgb)
+    assertEquals(written.red, drawn.red, TOLERANCE)
+    assertEquals(written.blue, drawn.blue, TOLERANCE)
+    assertEquals(Colour.of(FELT.floorColorArgb), DiceMaterial.floorOf(FELT).colour)
+  }
+
+  @Test
+  fun `a metal die is not lacquered, and a die partly metal is lacquered in proportion`() {
+    assertEquals(0.0, DiceMaterial.dieOf(DieMaterial(metallic = 1.0), texturePath = null).clearCoat, TOLERANCE)
+    assertEquals(DiceMaterial.DIE_COAT * 0.75, DiceMaterial.coatOver(0.25), TOLERANCE)
+    // A metalness out of range is held to it rather than giving a negative coat or more than a full one.
+    assertEquals(0.0, DiceMaterial.coatOver(2.0), TOLERANCE)
+    assertEquals(DiceMaterial.DIE_COAT, DiceMaterial.coatOver(-1.0), TOLERANCE)
+  }
+
+  @Test
+  fun `every surface sets its coat, so none is left with Filament's mirror coat`() {
+    // A coated material starts each pixel with clearCoat 1 at roughness 0; a
+    // surface that skipped setting it was drawn under a mirror (decision 106).
+    listOf(DiceMaterial.SOURCE, DiceMaterial.RESIN_SOURCE).forEach { source ->
+      assertTrue(source.contains("material.clearCoat = materialParams.clearCoat;"))
+      assertFalse(source.contains("if (materialParams.clearCoat"))
+    }
+  }
+
+  @Test
   fun `the tray is never resin, however a die is drawn`() {
     assertEquals(DiceMaterial.Variant.OPAQUE, DiceMaterial.variantOf(DiceMaterial.floorOf(PLAIN)))
     assertEquals(DiceMaterial.Variant.OPAQUE, DiceMaterial.variantOf(DiceMaterial.wallOf(PLAIN)))

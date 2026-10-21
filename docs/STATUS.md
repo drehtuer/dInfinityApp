@@ -69,7 +69,10 @@ This is a snapshot, not a changelog — git history is the changelog.
   Dice no longer blink at some angles: the lacquer mirrored the sizeless
   key light over a whole face for a frame, and is rougher now (0.4, decision
   103; a device test fails by 50 % of a face at the old 0.12) — the owner
-  to judge whether they still look varnished.
+  to judge whether they still look varnished. Metal dice are satin and
+  unlacquered now (decision 106): their top faces burnt white in the
+  gallery, made worse by a shader that left every coat-less surface under
+  Filament's default mirror coat.
   It reaches `main` when the owner likes it on the phone.
 - **The hand tosses the dice** (decision 105, `docs/TODO.md` 5.8): shaken
   in sight as before, and tossed when the hand stops, after a comparison with

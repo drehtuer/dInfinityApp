@@ -359,6 +359,13 @@ or so, as dark as a dielectric felt can be; it keeps its cloth, because most
 of a felt's grain at screen size is the normal and roughness maps moving the
 sheen, not the colour picture. Oak's blue is lifted the same way.
 
+A floor drawn in its colour alone — plain, dark glass, any look that names no
+picture — has its sheen taken out the same way, whatever its `color_mode`,
+because a flat colour has nothing to multiply: its `floor_color` is what it
+draws as. Until decision 106 that happened by accident, under a mirror coat
+the dice material left on every surface it was not told to lacquer. Its walls
+are drawn in their colour as written.
+
 `TableTextureDeviceTest` holds each textured floor, straight down, with the
 real room and the post pass, to its `floor_color`: green felt within ten
 levels a channel, oak and black felt within twenty — what is left there is

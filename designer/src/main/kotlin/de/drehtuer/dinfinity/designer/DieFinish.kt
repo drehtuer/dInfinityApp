@@ -142,8 +142,12 @@ enum class MaterialPreset(
   /** Everything through, polished: the felt seen as through a lens. */
   Glass(roughness = 0.05, metallic = 0.0, translucency = 1.0),
 
-  /** A metal die: wholly metallic, brushed rather than mirror. */
-  Metal(roughness = 0.3, metallic = 1.0, translucency = 0.0),
+  /**
+   * A metal die: wholly metallic, satin rather than brushed. Any smoother and
+   * a face turning through the key light's mirror angle burns white, even in
+   * steel's grey (decision 106).
+   */
+  Metal(roughness = 0.6, metallic = 1.0, translucency = 0.0),
 
   /** Matte and solid, like a die cut from stone. */
   Stone(roughness = 0.8, metallic = 0.0, translucency = 0.0),
