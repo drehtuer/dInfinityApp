@@ -129,12 +129,23 @@ class FilamentEngine(
    */
   val tableMaterial: Material by table
 
-  /** Which of the three [parameters] is to be drawn with. */
+  private val tone =
+    lazy(LazyThreadSafetyMode.NONE) { loadMaterial(engine, materials, DiceMaterial.Variant.TONE, compiling) }
+
+  /**
+   * And the full-screen pass that turns the graded frame into the screen's
+   * picture ([ToneCurve]). Made the first time a stage draws with the post
+   * pass on, and read back from [MaterialCache] after that, like the rest.
+   */
+  val toneMaterial: Material by tone
+
+  /** Which of the three surface materials [parameters] is to be drawn with. */
   fun materialFor(parameters: DiceMaterial.Parameters): Material =
     when (DiceMaterial.variantOf(parameters)) {
       DiceMaterial.Variant.OPAQUE -> material
       DiceMaterial.Variant.RESIN -> resinMaterial
       DiceMaterial.Variant.TABLE -> tableMaterial
+      DiceMaterial.Variant.TONE -> toneMaterial
     }
 
   /**
@@ -270,9 +281,10 @@ class FilamentEngine(
    * gone, the blue halved.
    *
    * A linear mapper stops dead at one rather than rolling highlights off, so
-   * the exposure leaves the room for it ([TrayLighting.WHITE_LEVEL]): only a
-   * pure white face turned square to the lamp, and the lamp's own reflection
-   * in the lacquer, reach white. A set's colours are part of its design, and
+   * the exposure leaves the room for it ([TrayLighting.WHITE_LEVEL]), and the
+   * grading is run two stops darker so that its cut lands at four times white
+   * instead: what is past white is bent by the tone pass that follows
+   * ([ToneCurve], [TonePass]). A set's colours are part of its design, and
    * this is the mapper that keeps them.
    *
    * One for the engine, made with it: a colour grading is a small lookup
@@ -282,6 +294,9 @@ class FilamentEngine(
     ColorGrading
       .Builder()
       .toneMapper(ToneMapper.Linear())
+      // [ToneCurve.HEADROOM] times darker, so this grading's own cut at one
+      // keeps light up to four times white for the tone pass to bend.
+      .exposure(ToneCurve.GRADING_EV)
       .build(engine)
 
   /** What [room] is lit by, once it is made: true for the studio, false for the gradient. */
@@ -519,77 +534,89 @@ class FilamentEngine(
       MaterialBuilder.init()
       try {
         val packet =
-          MaterialBuilder()
-            .name(
-              when (variant) {
-                DiceMaterial.Variant.OPAQUE -> "dinfinity"
-                DiceMaterial.Variant.RESIN -> "dinfinity-resin"
-                DiceMaterial.Variant.TABLE -> "dinfinity-table"
-              },
-            ).material(variant.source)
-            // `LIT` for resin too, not `SUBSURFACE`. Filament's subsurface
-            // model is a wrap of the direct lights around the back of a thin
-            // object; it cannot refract, has no clear coat, and shows nothing
-            // of what is behind the die — which is the whole of what makes
-            // resin read as resin (`docs/architecture.md`, decision 90).
-            .shading(MaterialBuilder.Shading.LIT)
-            // Opaque for both. A refracting surface is *not* blended: Filament
-            // draws it after everything opaque, into the same depth buffer,
-            // and makes its see-through look by sampling a picture of the
-            // opaque scene rather than by letting the blend show it.
-            .blending(MaterialBuilder.BlendingMode.OPAQUE)
-            .apply { if (variant == DiceMaterial.Variant.RESIN) resin() }
-            // A rounded edge's glint is thinner than a pixel, and without this
-            // it is drawn as a broken white line along the edge rather than
-            // spread over the bend ([DiceMaterial.SPECULAR_AA_VARIANCE]). A
-            // flat surface's normal does not change, so nothing flat moves —
-            // which is why a table drawn from pictures goes without it
-            // ([DiceMaterial.Variant.TABLE]).
-            .apply { if (variant.specularAntiAliasing) spreadThinGlints() }
-            // **Off, and the numbers are upside down without it.**
-            //
-            // `MaterialBuilder` defaults this to true, which makes `getUV0()`
-            // hand the shader `1 - v` instead of the `v` the mesh supplied.
-            // That is a kindness to assets authored for a bottom-left origin,
-            // and this app has none: every image in it counts rows from the
-            // top — a die's printed numbers, a package's atlas, a table's
-            // floor, and the frames read back off the GPU ([Snapshot]).
-            //
-            // So there were three conventions and the code stated two.
-            // `NumberField` is top-down, `setImage` uploads it as it stands so
-            // buffer row 0 is `v = 0`, and `SolidFace.cellOf` computes `v`
-            // growing down the image to match. The builder then turned that
-            // over a second time, and every glyph on every die came out
-            // reflected — which a screenshot cannot pin down, because a
-            // reflection in `v` and a reflection in `u` differ by a half-turn
-            // and a die lands at an arbitrary orientation. The device suite
-            // pins it instead: a face turned square to the camera, the right
-            // way up, read back and asked which way its ink leans on each axis
-            // (`PrintedNumbersDeviceTest`). Turn this back on and the
-            // top-bottom question fails on every die.
-            //
-            // It governs the artwork atlas and the table's floor as well, and
-            // those were reflected too; nothing shipped an asymmetric one, so
-            // only the numbers showed it.
-            .flipUV(false)
-            .require(MaterialBuilder.VertexAttribute.UV0)
-            .require(MaterialBuilder.VertexAttribute.TANGENTS)
-            .uniformParameter(MaterialBuilder.UniformType.FLOAT4, "baseColor")
-            .uniformParameter(MaterialBuilder.UniformType.FLOAT, "roughness")
-            .uniformParameter(MaterialBuilder.UniformType.FLOAT, "metallic")
-            .apply { if (variant == DiceMaterial.Variant.TABLE) tableParameters() else diceParameters() }
-            .platform(MaterialBuilder.Platform.MOBILE)
-            // The driver that is actually here (`docs/architecture.md`,
-            // decision 46), and no other ([targetOf]).
-            .targetApi(target)
-            .optimization(MaterialBuilder.Optimization.PERFORMANCE)
-            .build()
-        check(packet.isValid) { "the dice material did not compile on this device" }
+          if (variant == DiceMaterial.Variant.TONE) {
+            MaterialBuilder().toneMaterial().targetApi(target).build()
+          } else {
+            surfaceMaterial(target, variant)
+          }
+        check(packet.isValid) { "the ${variant.key} material did not compile on this device" }
         return packet.buffer
       } finally {
         MaterialBuilder.shutdown()
       }
     }
+
+    /** One of the three materials a surface of the tray or a die is drawn with. */
+    private fun surfaceMaterial(
+      target: MaterialBuilder.TargetApi,
+      variant: DiceMaterial.Variant,
+    ): com.google.android.filament.filamat.MaterialPackage =
+      MaterialBuilder()
+        .name(
+          when (variant) {
+            DiceMaterial.Variant.OPAQUE -> "dinfinity"
+            DiceMaterial.Variant.RESIN -> "dinfinity-resin"
+            DiceMaterial.Variant.TABLE -> "dinfinity-table"
+            DiceMaterial.Variant.TONE -> error("the tone pass is not a surface")
+          },
+        ).material(variant.source)
+        // `LIT` for resin too, not `SUBSURFACE`. Filament's subsurface
+        // model is a wrap of the direct lights around the back of a thin
+        // object; it cannot refract, has no clear coat, and shows nothing
+        // of what is behind the die — which is the whole of what makes
+        // resin read as resin (`docs/architecture.md`, decision 90).
+        .shading(MaterialBuilder.Shading.LIT)
+        // Opaque for both. A refracting surface is *not* blended: Filament
+        // draws it after everything opaque, into the same depth buffer,
+        // and makes its see-through look by sampling a picture of the
+        // opaque scene rather than by letting the blend show it.
+        .blending(MaterialBuilder.BlendingMode.OPAQUE)
+        .apply { if (variant == DiceMaterial.Variant.RESIN) resin() }
+        // A rounded edge's glint is thinner than a pixel, and without this
+        // it is drawn as a broken white line along the edge rather than
+        // spread over the bend ([DiceMaterial.SPECULAR_AA_VARIANCE]). A
+        // flat surface's normal does not change, so nothing flat moves —
+        // which is why a table drawn from pictures goes without it
+        // ([DiceMaterial.Variant.TABLE]).
+        .apply { if (variant.specularAntiAliasing) spreadThinGlints() }
+        // **Off, and the numbers are upside down without it.**
+        //
+        // `MaterialBuilder` defaults this to true, which makes `getUV0()`
+        // hand the shader `1 - v` instead of the `v` the mesh supplied.
+        // That is a kindness to assets authored for a bottom-left origin,
+        // and this app has none: every image in it counts rows from the
+        // top — a die's printed numbers, a package's atlas, a table's
+        // floor, and the frames read back off the GPU ([Snapshot]).
+        //
+        // So there were three conventions and the code stated two.
+        // `NumberField` is top-down, `setImage` uploads it as it stands so
+        // buffer row 0 is `v = 0`, and `SolidFace.cellOf` computes `v`
+        // growing down the image to match. The builder then turned that
+        // over a second time, and every glyph on every die came out
+        // reflected — which a screenshot cannot pin down, because a
+        // reflection in `v` and a reflection in `u` differ by a half-turn
+        // and a die lands at an arbitrary orientation. The device suite
+        // pins it instead: a face turned square to the camera, the right
+        // way up, read back and asked which way its ink leans on each axis
+        // (`PrintedNumbersDeviceTest`). Turn this back on and the
+        // top-bottom question fails on every die.
+        //
+        // It governs the artwork atlas and the table's floor as well, and
+        // those were reflected too; nothing shipped an asymmetric one, so
+        // only the numbers showed it.
+        .flipUV(false)
+        .require(MaterialBuilder.VertexAttribute.UV0)
+        .require(MaterialBuilder.VertexAttribute.TANGENTS)
+        .uniformParameter(MaterialBuilder.UniformType.FLOAT4, "baseColor")
+        .uniformParameter(MaterialBuilder.UniformType.FLOAT, "roughness")
+        .uniformParameter(MaterialBuilder.UniformType.FLOAT, "metallic")
+        .apply { if (variant == DiceMaterial.Variant.TABLE) tableParameters() else diceParameters() }
+        .platform(MaterialBuilder.Platform.MOBILE)
+        // The driver that is actually here (`docs/architecture.md`,
+        // decision 46), and no other ([targetOf]).
+        .targetApi(target)
+        .optimization(MaterialBuilder.Optimization.PERFORMANCE)
+        .build()
 
     /**
      * One of a table's pictures, uploaded with every mip level.

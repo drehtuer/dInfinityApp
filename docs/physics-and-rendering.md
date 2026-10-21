@@ -2196,8 +2196,9 @@ impact sounds rather than a crash in the middle of a roll.
   nought: the Pixel 10a drew `#1f5e3a` as (0, 70, 22), and every shadowed face
   of a die lost the same few per cent of white, which on a face lit to a tenth
   is most of it. So the tone mapper is **linear** (`FilamentEngine.colorGrading`):
-  a colour lit to a level shows at that level. It stops dead at one rather
-  than rolling highlights off, so the exposure leaves room for it — a white
+  a colour lit to a level shows at that level, up to the knee of the curve in
+  the next point. A linear mapper stops dead at one rather than rolling
+  highlights off, so the exposure leaves room for it — a white
   floor facing up lands at **0.95** (`TrayLighting.WHITE_LEVEL`), what it
   receives from the key, the room and the fill worked out by
   `TrayLighting.whiteFloorLuminance`. What reaches white is a pure white
@@ -2216,6 +2217,39 @@ impact sounds rather than a crash in the middle of a roll.
   and ISO back off the camera, after Filament's clamps, and holds the felt
   within ten levels of `#1f5e3a` in each channel with the post pass and green
   and far under white without it.
+- **Highlights past white are bent, not cut** (decision 108). Filament
+  draws in floating point, so light brighter than white exists until the
+  linear mapper cuts it at one: a metal die's highlight at 1.8 of white and a
+  face at 1.02 both came out 255, a flat patch with nothing in it. The
+  grading now runs two stops darker (`ToneCurve.GRADING_EV`), so its cut lands
+  at four times white, into a half-float frame of the tray's own
+  (`TonePass`). One full-screen pass then brings the light back up, bends it,
+  encodes it for the screen and dithers it once.
+
+  ```mermaid
+  flowchart LR
+    tray["tray view<br/>4× MSAA, shadows, PCF"] --> grading["Filament's grading<br/>linear, −2 EV"]
+    grading --> frame["half-float frame<br/>light up to 4× white"]
+    frame --> pass["tone pass<br/>×4, curve, sRGB, dither"]
+    pass --> screen["screen"]
+  ```
+
+  The curve is the identity below **0.8**, so every table, felt and set
+  colour is drawn exactly as before (`StudioLightDeviceTest` and
+  `TableTextureDeviceTest` hold them to the same tolerances). Above 0.8 it is
+  the shoulder of Khronos' PBR Neutral and nothing else of it: the brightest
+  channel is rolled off so it meets one only at infinity, the others follow it
+  so the hue holds, and light far past the knee is let go towards white
+  (`ToneCurve.shown`). PBR Neutral's toe, which crushed the felt, is not
+  there. A highlight on ivory metal is cream; the lamp's own reflection is
+  white. On the Pixel 10a a polished metal face at the key's mirror angle is
+  kept at four times white in the frame and drawn with none of it at 255
+  (`DieGlintDeviceTest`). Over the gallery's metal throw, 5,462 clipped pixels
+  became none, and every floor read back the same. The pass costs a read of
+  the frame and a write of the screen: over 20 rolls of 20d20 on green felt,
+  the GPU's p50 went from 4.26 to 5.26 ms and its p99 from 6.91 to 7.77 ms,
+  still 60.0 fps. A stage with the post pass off (an emulator's software
+  backend) draws straight to the screen, as before.
 - **Edges are multisampled.** The aliasing the gallery showed is geometry — a
   die's silhouette against the felt, the rim against the floor — which is what
   4× MSAA is for and what FXAA, Filament's default, can only blur after the
@@ -3279,7 +3313,9 @@ The seconds are rounded up — the last one reads "1", not "0".
 figure is wanted. Every compile that finishes replaces its material's figure.
 Until a phone has compiled a material once, the estimate is the Pixel 10a's:
 opaque 2.4 s and resin 2 s, measured; table **assumed** at 2 s, the same as
-resin, because it has not been timed alone. A figure an earlier version kept
+resin, because it has not been timed alone; and the tone pass (decision 108),
+a few lines of unlit shader compiled with the opaque material on the first
+launch, assumed at 0.2 s and shown as *the dice*. A figure an earlier version kept
 for the glass table's material, which is gone (decision 104), is skipped like
 any line the reader does not know. A missing,
 unreadable or garbled file reads as those defaults, line by line, and a figure

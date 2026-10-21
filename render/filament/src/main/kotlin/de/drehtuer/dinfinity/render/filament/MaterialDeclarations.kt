@@ -67,6 +67,29 @@ internal fun MaterialBuilder.tableParameters(): MaterialBuilder =
     .sampler("normalMap")
     .sampler("roughnessMap")
 
+/**
+ * The whole of the tone pass ([DiceMaterial.Variant.TONE]): unlit, because it
+ * writes the colour it works out and nothing else; drawn as a triangle given
+ * in device coordinates that covers the screen, with no depth to test or
+ * write and no face to cull; and reading one frame, at full precision,
+ * because it holds light up to four times white ([ToneCurve.HEADROOM]).
+ */
+internal fun MaterialBuilder.toneMaterial(): MaterialBuilder =
+  name("dinfinity-tone")
+    .material(ToneCurve.SOURCE)
+    .shading(MaterialBuilder.Shading.UNLIT)
+    .vertexDomain(MaterialBuilder.VertexDomain.DEVICE)
+    .depthWrite(false)
+    .depthCulling(false)
+    .culling(MaterialBuilder.CullingMode.NONE)
+    .samplerParameter(
+      MaterialBuilder.SamplerType.SAMPLER_2D,
+      MaterialBuilder.SamplerFormat.FLOAT,
+      MaterialBuilder.ParameterPrecision.HIGH,
+      "frame",
+    ).platform(MaterialBuilder.Platform.MOBILE)
+    .optimization(MaterialBuilder.Optimization.PERFORMANCE)
+
 /** A two-dimensional texture the material samples, named [name] in its source. */
 internal fun MaterialBuilder.sampler(name: String): MaterialBuilder =
   samplerParameter(

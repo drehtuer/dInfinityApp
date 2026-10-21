@@ -4,7 +4,7 @@ Current state of the project in a few lines. Update it when a milestone moves, a
 decision is taken or something is blocked; prune anything no longer current.
 This is a snapshot, not a changelog — git history is the changelog.
 
-**Last updated:** 2026-10-21
+**Last updated:** 2026-10-22
 
 ## Where we are
 
@@ -28,8 +28,12 @@ This is a snapshot, not a changelog — git history is the changelog.
   four sample sets are in `sample-sets/`, and come installed on the first
   launch, resin, glass and metal on every shape (decision 107). On the Pixel 10a
   every library device suite passes, and the owner finds the throws look right.
-- **Next:** the tone curve and post-processing of our own (`docs/TODO.md`
-  5.9), and the lag the owner still sees on some throws (5.6). Everything since
+- **Light past white is bent, not cut** (decision 108): a tone pass of our
+  own, the identity below 0.8, about 1 ms of GPU a frame; metal highlights
+  are bright cream instead of flat white.
+- **Next:** glass and resin as the two materials they are, with lighter
+  shadows (`docs/TODO.md` 5.9), and the lag the owner still sees on some
+  throws (5.6). Everything since
   `v0.2.0` ships in `v0.3.0`, which needs only a tag.
 - **The hand tosses the dice** (decision 105, `docs/TODO.md` 5.8): shaken
   in sight as before, and tossed when the hand stops, after a comparison with
