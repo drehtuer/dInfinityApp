@@ -821,6 +821,42 @@ root and there may be only one, because a link names a repository rather than a
 file — an import that quietly chose between two would be choosing for
 somebody.
 
+## Sets that come installed
+
+Four finished sets come with the app and are installed on its first launch:
+marble, steel, green resin and red glass, the archives in
+[sample-sets/](../sample-sets/) (decision 107). Each defines the ten standard
+dice, so they show resin, glass and metal on every shape from the first roll:
+`steel:3d6`, `{red-glass:d20}`.
+
+They are installed, not bundled. The app carries their zips and installs each
+one through the same installer and validator as a file you pick (design `1s`
+shows them among the installed sets). After that they are yours like any other
+set: switched off, or removed. Only `Built-in` is bundled and can't be removed.
+
+```mermaid
+flowchart TD
+  launch["first launch of this install or update"] --> seen{"installed by the app before?"}
+  seen -- no --> have{"you already have it, same version or newer?"}
+  have -- no --> install["installed through the validator"]
+  have -- yes --> keep["left alone, noted as seen"]
+  seen -- yes --> there{"still installed?"}
+  there -- "no: you removed it" --> gone["stays removed"]
+  there -- yes --> newer{"the app's version newer?"}
+  newer -- yes --> install
+  newer -- no --> keep2["left alone"]
+```
+
+- **Once per version of the app.** The archives are checked on the first
+  launch after an install or an update, and not again. A later launch reads one
+  small file.
+- **A set you removed stays removed,** whatever version a later app carries.
+- **A newer version shipped with the app replaces an older installed copy**,
+  and a newer copy you installed yourself is never downgraded.
+- What the app has installed is recorded in `preinstalled-sets.txt`
+  (`docs/architecture.md`, "Storage layout"). An installed sample set's
+  source is `app:<name>.zip`.
+
 ## Validation
 
 The validator runs the same way for URL installs, local archive imports,

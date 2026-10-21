@@ -27,10 +27,12 @@ import de.drehtuer.dinfinity.designer.PersonalSets
 import de.drehtuer.dinfinity.designer.PhotoStore
 import de.drehtuer.dinfinity.designer.PhysicalStore
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
+import de.drehtuer.dinfinity.dicesets.builtin.SampleSets
 import de.drehtuer.dinfinity.dicesets.install.InstalledArtwork
 import de.drehtuer.dinfinity.dicesets.install.InstalledPackage
 import de.drehtuer.dinfinity.dicesets.install.InstalledSets
 import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
+import de.drehtuer.dinfinity.dicesets.install.PreinstalledSets
 import de.drehtuer.dinfinity.feature.sets.SetLibrary
 import de.drehtuer.dinfinity.simulation.api.DeveloperLog
 import de.drehtuer.dinfinity.simulation.api.DeveloperNotes
@@ -331,7 +333,32 @@ class DInfinityApplication : Application() {
    */
   override fun onCreate() {
     super.onCreate()
-    background.launch { runCatching { setLibrary.all() } }
+    background.launch {
+      // Before the first scan, so a fresh install's first catalogue has the
+      // sample sets in it. A failure installs fewer of them and is not fatal.
+      runCatching { seedSampleSets() }
+      runCatching { setLibrary.all() }
+    }
+  }
+
+  /**
+   * Installs the sample sets the app carries ([SampleSets]) on the first
+   * launch of this install or update, through the installer a picked file
+   * goes through (`docs/dice-sets.md`, "Sets that come installed").
+   */
+  private fun seedSampleSets() {
+    val info = packageManager.getPackageInfo(packageName, 0)
+    PreinstalledSets(
+      installer = PackageInstaller(File(filesDir, DICE_SETS_FOLDER)),
+      record = File(filesDir, PREINSTALLED_RECORD),
+      workspace = File(cacheDir, PREINSTALL_WORKSPACE),
+    ).seed(
+      stamp = "${info.versionName}@${info.lastUpdateTime}",
+      archives = SampleSets.ARCHIVES.map { name -> PreinstalledSets.Archive(name) { SampleSets.read(name) } },
+      installed = {
+        packages.scan().filterIsInstance<InstalledPackage.Ready>().associate { it.set.id to it.set.version }
+      },
+    )
   }
 
   /**
@@ -361,5 +388,7 @@ class DInfinityApplication : Application() {
 
   private companion object {
     const val DICE_SETS_FOLDER = "dicesets"
+    const val PREINSTALLED_RECORD = "preinstalled-sets.txt"
+    const val PREINSTALL_WORKSPACE = "preinstall"
   }
 }

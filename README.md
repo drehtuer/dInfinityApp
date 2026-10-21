@@ -98,8 +98,10 @@ a tumble; everything else is real.
   optional face textures; install sets from GitHub, GitLab, Codeberg or any
   `https` link to an archive. [examples/](examples/) is a working set to copy:
   every shape, every field commented, blank atlases to draw on.
-  [sample-sets/](sample-sets/) has four finished ones to install — marble,
-  steel, green resin and red glass.
+  Four finished ones come installed — marble, steel, green resin and red
+  glass, from [sample-sets/](sample-sets/) — so resin, glass and metal dice
+  roll on every shape from the first launch, and stay removed if you remove
+  them.
 - **Exchangeable tables** — swap the look of the dice tray (green or black
   felt, oak, dark glass, plain, your own photo) the same way you would swap a
   wallpaper. Felt and oak are drawn from real textures at real size; plain stays

@@ -71,6 +71,27 @@ class DInfinityApplicationTest {
     }
 
   @Test
+  fun `the sample sets are installed on the first launch, and written down`() {
+    // `onCreate` seeds them on a background job before its first scan; this
+    // waits for that job rather than calling the seeding a second time.
+    val folder = java.io.File(app.filesDir, "dicesets")
+    val record = java.io.File(app.filesDir, "preinstalled-sets.txt")
+    val deadline = System.currentTimeMillis() + SEED_WAIT_MS
+    while (System.currentTimeMillis() < deadline && !record.isFile) Thread.sleep(POLL_MS)
+
+    assertTrue("nothing was written down about the sample sets", record.isFile)
+    assertEquals(
+      setOf("green-resin", "marble", "red-glass", "steel"),
+      folder
+        .listFiles()
+        .orEmpty()
+        .filter { java.io.File(it, "diceset.toml").isFile }
+        .map { it.name }
+        .toSet(),
+    )
+  }
+
+  @Test
   fun `a formula starts out resolving against the bundled set`() {
     // Before anything has been read off disk, and after a scan that finds
     // nothing: the bundled set is the floor everything falls back to.
@@ -105,5 +126,10 @@ class DInfinityApplicationTest {
     // folder need not exist yet — a fresh install has installed nothing — but
     // reading it must answer rather than throw.
     assertEquals(emptyList<String>(), app.packages.scan().map { it.id })
+  }
+
+  private companion object {
+    const val SEED_WAIT_MS = 15_000L
+    const val POLL_MS = 50L
   }
 }

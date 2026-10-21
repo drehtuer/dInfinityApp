@@ -1,8 +1,11 @@
 # Sample dice sets
 
-Four finished dice sets to install, for trying the app's import — from a file
-and from a link — and for seeing what the set format's materials do on the
-tray. Each defines the ten standard dice (`d2` to `d20`, `d10-tens`, `df`), so
+Four finished dice sets, for seeing what the set format's materials do on the
+tray and for trying the app's import, from a file and from a link. **The app
+comes with all four installed**: it carries these zips and installs them on
+its first launch (`docs/dice-sets.md`, "Sets that come installed"). A set
+removed in the app stays removed; installing one again from here works as
+for any set. Each defines the ten standard dice (`d2` to `d20`, `d10-tens`, `df`), so
 plain notation rolls them once they are installed: `marble:d20`,
 `steel:3d6`.
 
