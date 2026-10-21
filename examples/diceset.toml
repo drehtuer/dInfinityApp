@@ -287,10 +287,11 @@ number_color = "#d9cbb0"
 # change how the tray looks without shipping an audio decoder's worth of attack
 # surface. A name the app does not have is an error.
 #
-# `floor_texture` and `wall_texture` exist and are validated exactly like a
-# die's `texture`, but nothing draws them yet — a table look is rendered in its
-# own colours for now (docs/tables.md, "Table looks"). They are left out here
-# rather than shipped as files that would go unused.
+# Pictures: `floor_texture`, `floor_normal` and `floor_roughness`, and the same
+# three for `wall_`, are paths inside this package, validated exactly like a
+# die's `texture` and drawn on the tray (docs/tables.md, "Textures"). They are
+# left out here so the example carries no image files; the sizes and the colour
+# mode below say how pictures would be laid if it had them.
 
 # Every field a table look has, with the ranges named.
 [[table]]
@@ -304,6 +305,9 @@ friction = 0.6              # 0.2 .. 1.0 — narrower than a die's
 restitution = 0.2           # 0.0 .. 0.6 — a tray bounces less than a die
 sound = "felt"
 light = "warm"
+floor_tile_mm = 80          # 10 .. 1000 — one copy of the floor's pictures, square
+wall_tile_mm = 300          # 10 .. 1000
+color_mode = "average"      # multiply | average — the colours and roughness are what the pictures average out to
 
 # And the other end of it: the two required fields and nothing else. This is a
 # complete, valid table look — everything unsaid is the app's default.

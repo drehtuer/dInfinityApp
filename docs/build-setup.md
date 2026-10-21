@@ -467,7 +467,10 @@ software backend (SwiftShader, feature level 1) that blit never reaches a
 readable headless swap chain: every pixel comes back opaque black while the
 same scene draws correctly on the Pixel 10a. Reading the frame before the post
 pass asks the question the test is for — was anything drawn — on both tiers
-rather than on one. A headless swap chain also has to be created with
+rather than on one. **As of 2026-10-10 that is the phone's alone again:** on
+the emulator the readback now aborts the test process, Filament's `blitLow`
+program failing to compile on SwiftShader, so run the pixel tests on the phone
+until `docs/TODO.md` (Step 2) is done. A headless swap chain also has to be created with
 `CONFIG_READABLE`; without it a real driver may hand the pixels over anyway,
 which is how that would have shipped unnoticed.
 
@@ -569,6 +572,7 @@ tools/harness.sh -n 200 -c 100 -s d4     # the worst case there is
 tools/harness.sh --soak 5m               # soak mode: roll for five minutes
 tools/harness.sh --frames -n 50          # what a frame's simulation costs
 tools/harness.sh --rendered              # what a drawn frame costs (Step 5.7)
+tools/harness.sh -n 1000 --rounding 0.06 # the roundest dice a set may ask for
 tools/harness.sh --capture 20            # twenty seconds of video to watch
 ```
 
@@ -585,6 +589,7 @@ emulator attached it refuses to guess — name one with `--device` or
 | `--soak` | roll for this long instead: `90`, `90s`, `5m`, `1h`. Soak mode |
 | `--frames` | step each roll at a frame's cadence and report what the frames cost. A paced run takes as long as the dice really take |
 | `--rendered` | draw each roll onto a screen-sized surface through the tray and Filament, and score the frame rows only ([below](#drawn-frames-the-rendered-harness)). Default 20 rolls |
+| `--table` | with `--rendered` only: throw onto this built-in table look (`felt-green`, `felt-black`, `oak`, `dark-glass`, `plain`) instead of the plain physics-only one — the look decides what a frame costs to draw, and one drawn from pictures has a material of its own ([`docs/tables.md`](tables.md#textures)) |
 | `--capture` | record the screen for this many seconds instead of scoring a run |
 | `-c`, `--dice` | dice per throw (default 20, which is where Step 5.5 states its settle targets) |
 | `-s`, `--shape` | `d20`, `icosahedron` or `20` — all three are accepted (default `d20`) |
@@ -703,6 +708,8 @@ seconds, so the default is twenty rolls, a few thousand frames.
 ```sh
 tools/harness.sh --rendered                # twenty rolls, scored
 tools/harness.sh --rendered -n 100         # a longer look
+tools/harness.sh --rendered -n 10 -c 100 -s d6 --table felt-green
+                                           # the capacity limit on felt
 ```
 
 What it measures, and how it is scored (`docs/architecture.md`, decision 80):
@@ -771,8 +778,10 @@ script:
 ```
 
 The other arguments are `harness.soak` (a duration), `harness.frames` (`1` to
-pace them), `harness.dice`, `harness.shape`, `harness.seed` and
-`harness.label`. What each one *means* — including which wins when both a roll
+pace them), `harness.dice`, `harness.shape`, `harness.seed`,
+`harness.label`, `harness.edgeRounding` (every die's `edge_rounding`, a
+share of its size from 0.015 to 0.06; `--rounding` in the script; decision 94)
+and — read by the rendered harness only — `harness.table`. What each one *means* — including which wins when both a roll
 count and a soak are given — is `HarnessRequest.from` and `RunLength.from` in
 `:simulation:harness`, tested on the JVM, so the script and a hand-typed run
 cannot come to disagree (`docs/architecture.md`, decision 53).
@@ -789,6 +798,25 @@ Like `connectedDebugAndroidTest`, the script takes its verdict from what the
 run produced rather than from the tooling around it — here the table the device
 wrote, for the same reason the [JUnit XML](#the-verdict-on-an-instrumented-run)
 decides there.
+
+### The render gallery
+
+`tools/gallery.sh` draws the same seeded throws on the same tables — every
+built-in shape twice on green felt, oak and dark glass, then on felt again in
+metal and see-through — settled by the real physics and drawn through the real
+renderer onto a surface the size of the Pixel 10a's screen, and pulls the PNGs
+into `build/gallery/` (`RenderGalleryTest`). Nothing is scored: the pictures are
+for a person to compare before and after a rendering change.
+
+```sh
+tools/gallery.sh                       # build, install, draw, pull
+tools/gallery.sh --out build/before    # keep a set to compare against
+```
+
+It installs only `render/filament`'s test APK, which is its own application,
+so the app on the phone and everything saved in it are left alone — which
+matters when the phone runs a release build that a debug one cannot replace.
+The test is opt-in (`-e gallery 1`) and the ordinary device suite skips it.
 
 ## Connecting a phone over WiFi
 

@@ -97,6 +97,20 @@ class FaceHistogramPoolTest {
   }
 
   @Test
+  fun `a thrown die with no values left to show stays out of the line`() {
+    // A die whose set has gone still has its throws on record but nothing to
+    // spread them over; sharing them across no faces would be a division by
+    // zero, and counting them in the pool's throws would thin every bar.
+    val fair = PooledDie((1..6).toList(), throws = 100)
+    val gone = PooledDie(emptyList(), throws = 50)
+
+    val bars = FaceHistogram.ofPool(listOf(fair, gone), tallies = emptyList())
+
+    assertEquals((1..6).toList(), bars.map { it.value })
+    bars.forEach { bar -> assertEquals(1.0 / 6, bar.fairShare, TOLERANCE, "value ${bar.value}") }
+  }
+
+  @Test
   fun `a pool nobody has thrown at all falls back to the values alone`() {
     // Before anything has been rolled there is no weight to go on, and an
     // empty histogram would be worse than an even one.

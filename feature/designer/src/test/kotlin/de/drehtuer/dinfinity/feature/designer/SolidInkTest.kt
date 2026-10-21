@@ -6,6 +6,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import de.drehtuer.dinfinity.designer.StageFace
@@ -93,6 +94,43 @@ class SolidInkTest {
 
     assertTrue("the ringed mark drew nothing", inked(drawn))
     assertEquals("the hole in a nought was painted in", 0, pixels(drawn)[SIDE / 2 * SIDE + SIDE / 2])
+  }
+
+  @Test
+  fun `a stroke's pieces are drawn as their union, so where they overlap is still ink`() {
+    // Two squares wound the same way, one inside the other: under even-odd
+    // the middle would be a hole; as a stroke's union it is ink.
+    val overlapping =
+      StageShape(
+        rings =
+          listOf(
+            listOf(StagePoint(0.1f, 0.1f), StagePoint(0.9f, 0.1f), StagePoint(0.9f, 0.9f), StagePoint(0.1f, 0.9f)),
+            listOf(StagePoint(0.3f, 0.3f), StagePoint(0.7f, 0.3f), StagePoint(0.7f, 0.7f), StagePoint(0.3f, 0.7f)),
+          ),
+        colorArgb = INK,
+        union = true,
+      )
+
+    val drawn = onACanvas { drawShape(overlapping) }
+
+    assertNotEquals("the middle of an overlap was cut out", 0, pixels(drawn)[SIDE / 2 * SIDE + SIDE / 2])
+  }
+
+  @Test
+  fun `the eraser is drawn in the face's paper, not in its ink`() {
+    val colours = colours()
+    val square = listOf(StagePoint(0.1f, 0.1f), StagePoint(0.9f, 0.1f), StagePoint(0.9f, 0.9f), StagePoint(0.1f, 0.9f))
+    val ink = StageShape(rings = listOf(square), colorArgb = INK)
+    val face =
+      StageFace(cell = 0, outline = square, marks = listOf(ink, ink.copy(erases = true)), light = 1f, depth = 1.0)
+
+    val drawn = onACanvas { drawFace(face, colours, selected = false) }
+
+    assertEquals(
+      "the eraser left the ink under it",
+      colours.lit(1f).toArgb(),
+      pixels(drawn)[SIDE / 2 * SIDE + SIDE / 2],
+    )
   }
 
   @Test

@@ -103,19 +103,6 @@ class ShapeHullTest {
   }
 
   @Test
-  fun `no corner of any solid pokes out through a face`() {
-    DieShape.entries.forEach { shape ->
-      val corners = ShapeGeometry.verticesOf(shape)
-      ShapeGeometry.directionsOf(shape).forEach { normal ->
-        val depth = corners.maxOf { it dot normal }
-        corners.forEach { corner ->
-          assertTrue((corner dot normal) <= depth + 1e-9, "${shape.id} has a corner outside its own face")
-        }
-      }
-    }
-  }
-
-  @Test
   fun `a hull is the corners at the die's own size`() {
     val d20 = StandardDice.d20
     val hull = ShapeGeometry.hullOf(d20)

@@ -275,7 +275,11 @@ class TrayLoop(
     stalling = onStalled
     lastFrameNanos = null
     played = 0
+    drivenUntil = null
   }
+
+  /** The last step a hand drove the roll in the air, or null when none has. */
+  private var drivenUntil: Int? = null
 
   /** One more moment of the shake, if there is a roll for it to drive. */
   fun shake(sample: ShakeSample) {
@@ -362,6 +366,10 @@ class TrayLoop(
     // this frame uses too.
     // A big roll's tail is quickened as its dice are read ([RollPace.paceFor]).
     val stillMoving = live.unsettled.size
+    // The last step a hand was driving the roll, so the pace can ease down
+    // from real speed when it lets go rather than drop in one frame
+    // ([RollPace.eased]).
+    if (live.driven) drivenUntil = live.stepsTaken
     live.advance(
       RollPace.secondsFor(
         secondsSince(nanos),
@@ -369,6 +377,7 @@ class TrayLoop(
         live.stepsTaken,
         stillMoving = stillMoving,
         dice = stillMoving + live.countedSoFar.size,
+        stepsSinceHand = drivenUntil?.let { live.stepsTaken - it },
       ),
     )
     hear(live)

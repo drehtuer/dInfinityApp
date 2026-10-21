@@ -7,6 +7,7 @@ import de.drehtuer.dinfinity.simulation.api.DieDiagnostic
 import de.drehtuer.dinfinity.simulation.api.FaceReader
 import de.drehtuer.dinfinity.simulation.api.Impact
 import de.drehtuer.dinfinity.simulation.api.Reading
+import de.drehtuer.dinfinity.simulation.api.Release
 import de.drehtuer.dinfinity.simulation.api.RestTracker
 import de.drehtuer.dinfinity.simulation.api.RestingPlace
 import de.drehtuer.dinfinity.simulation.api.RollDiagnostics
@@ -15,6 +16,8 @@ import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Tumble
+import de.drehtuer.dinfinity.simulation.api.Vector3
+import kotlin.math.roundToInt
 
 /**
  * One throw, from the first step to the reading
@@ -53,6 +56,8 @@ class RollLoop(
    */
   private val recorder: ImpactRecorder =
     ImpactRecorder(spec.dice.map { it.die.material.sizeMm * spec.dieScale }),
+  /** Where this roll says how its hand let go, or null for nowhere ([TossLog]). */
+  private val tossLog: ((String) -> Unit)? = TossLog.current(),
 ) {
   private val diceCount = spec.dice.size
   private val tracker = RestTracker(diceCount)
@@ -331,10 +336,32 @@ class RollLoop(
 
     val step = tracker.stepsTaken
     shake.advance(step)
+    // The hand lets go: every die is tossed from where the shake left it, one
+    // after another over a tenth of a second ([Toss]). Every die, because
+    // every die is still in the hand — none is read before the table has
+    // settled and the hand is off it ([count]).
+    if (shake.lettingGo(step)) {
+      val release = Release.of(shake.recordedUpTo(step))
+      handful.letGo(release, step)
+      tossed++
+      tossLog?.invoke(
+        "let go at step $step: ${shake.describe(step)}; toss ${release.speedMmPerSecond.roundToInt()} mm/s, " +
+          "dice moving at ${TossLog.medianOf(moving.map(Vector3::length)).roundToInt()} mm/s",
+      )
+    }
+    handful.step(step, states, moving, handOn = shake.stillShaking(step))
     world.setGravity(shake.gravity)
     world.step(SettleRule.TIMESTEP_SECONDS)
 
+    val before = states
     states = world.readStates()
+    // How each die is moving, from where it was a step ago: what a toss
+    // carries it on along ([Toss]), and nothing else reads it.
+    moving =
+      states.mapIndexed { index, state ->
+        before.getOrNull(index)?.let { (state.position - it.position) * (1.0 / SettleRule.TIMESTEP_SECONDS) }
+          ?: Vector3.Zero
+      }
     // Listened to before anything is decided, and from the states that were
     // already read: an impact is a reading of the step just taken, not a thing
     // the step waits for.
@@ -349,6 +376,16 @@ class RollLoop(
     }
     return true
   }
+
+  /** How each die moved over the last step, in mm/s. */
+  private var moving: List<Vector3> = emptyList()
+
+  /** The dice leaving the hand, one after another ([Toss.Handful]). */
+  private val handful = Toss.Handful(world, diceCount, spec.seed, spec.geometry)
+
+  /** How many times the hand has let go of these dice: a reading, for tests and the harness. */
+  var tossed: Int = 0
+    private set
 
   /**
    * Gives the roll up, and says there is nothing more to step.
@@ -393,7 +430,12 @@ class RollLoop(
    * (`docs/architecture.md`, decision 70). Always false: there is nothing
    * left for this loop to step.
    */
+
   private fun closeOut(): Boolean {
+    tossLog?.invoke(
+      "roll over at step ${tracker.stepsTaken}, tossed $tossed times; " +
+        "${shake.samplesAfterLetGo} moments came after the toss, the last at step ${shake.lastStepAfterLetGo}",
+    )
     val unread = count(states)
     val again = unread.isNotEmpty()
 

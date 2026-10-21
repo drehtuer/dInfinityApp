@@ -122,7 +122,7 @@ class JoltDiceSimulator(
         } else {
           ImpactRecorder.deaf(spec.dice.size)
         }
-      LiveRoll(spec, world, RollLoop(spec, world, ShakeDriver(spec.shake), heard), renderer)
+      LiveRoll(spec, world, RollLoop(spec, world, ShakeDriver(spec.shake, tosses = spec.toss), heard), renderer)
     }.getOrElse { failure ->
       world.close()
       throw failure

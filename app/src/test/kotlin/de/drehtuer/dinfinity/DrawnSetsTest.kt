@@ -40,7 +40,7 @@ import java.nio.file.Files
 
 /**
  * From a stroke on the canvas to a formula the tray can throw
- * (`docs/face-designer.md`, "Save to set" and "Flow", step 4).
+ * (`docs/face-designer.md`, "Save to set" and "Flow", Roll it).
  *
  * This is the whole of the first piece of device feedback on v0.1.1 — "the
  * face colour is not visible when rolling the dice, a default dice is used"

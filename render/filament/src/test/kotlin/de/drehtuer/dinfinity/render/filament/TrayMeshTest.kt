@@ -206,9 +206,86 @@ class TrayMeshTest {
   }
 
   @Test
-  fun `the rim takes a plain colour rather than a texture`() {
-    tray.partsOf(TrayPart.Rim).forEach {
-      assertTrue("six millimetres of rim is not where anybody looks", it.uvs.isEmpty())
+  fun `the rim carries on from the top of the wall, round the same way`() {
+    val walls = tray.partsOf(TrayPart.Wall)
+    val rims = tray.partsOf(TrayPart.Rim)
+
+    walls.zip(rims).forEach { (wall, rim) ->
+      assertEquals(wall.uvs.minOf { it.u }, rim.uvs.minOf { it.u }, TOLERANCE)
+      assertEquals(wall.uvs.maxOf { it.u }, rim.uvs.maxOf { it.u }, TOLERANCE)
+      // Where the wall's top edge is, the rim's inner edge starts.
+      assertEquals(0.0, rim.uvs.maxOf { it.v }, TOLERANCE)
+      assertEquals(-TrayMesh.RIM_WIDTH_MM / geometry.wallHeightMm, rim.uvs.minOf { it.v }, TOLERANCE)
+    }
+  }
+
+  @Test
+  fun `a floor laid at real size is the same weave on every screen`() {
+    val felt = TableLook(id = "felt", name = "Felt", floorTileMm = 80.0)
+    listOf(TableGeometry.forAspect(0.4), TableGeometry.forAspect(0.75)).forEach { shape ->
+      val floor = TrayMesh.of(shape, felt).partsOf(TrayPart.Floor).single()
+
+      assertEquals(0.0, floor.uvs.minOf { it.u }, TOLERANCE)
+      assertEquals(0.0, floor.uvs.minOf { it.v }, TOLERANCE)
+      assertEquals(shape.longSideMm / 80.0, floor.uvs.maxOf { it.u }, TOLERANCE)
+      assertEquals(shape.shortSideMm / 80.0, floor.uvs.maxOf { it.v }, TOLERANCE)
+    }
+  }
+
+  @Test
+  fun `real size wins over a count of repeats`() {
+    val both = TableLook(id = "felt", name = "Felt", floorTiling = TableLook.Tiling(3, 6), floorTileMm = 120.0)
+
+    val floor = TrayMesh.of(geometry, both).partsOf(TrayPart.Floor).single()
+
+    assertEquals(geometry.longSideMm / 120.0, floor.uvs.maxOf { it.u }, TOLERANCE)
+  }
+
+  @Test
+  fun `a picture bigger than the floor covers it once, with no seam across the middle`() {
+    // The oak is a 300 mm cut of a bigger board, and not one that tiles: laid
+    // from the corner, the whole floor is inside one copy of it.
+    val oak = TableLook(id = "oak", name = "Oak", floorTileMm = 300.0)
+
+    val floor = TrayMesh.of(geometry, oak).partsOf(TrayPart.Floor).single()
+
+    assertTrue(floor.uvs.all { it.u in 0.0..1.0 && it.v in 0.0..1.0 })
+  }
+
+  @Test
+  fun `a wall laid at real size repeats by the millimetre, up and round`() {
+    val oak = TableLook(id = "oak", name = "Oak", wallTileMm = 300.0)
+    val mesh = TrayMesh.of(geometry, oak)
+    val walls = mesh.partsOf(TrayPart.Wall)
+
+    walls.forEach { wall ->
+      assertEquals(geometry.wallHeightMm / 300.0, wall.uvs.maxOf { it.v }, TOLERANCE)
+      val length = (wall.positions[3] - wall.positions[0]).length
+      assertEquals(length / 300.0, wall.uvs.maxOf { it.u } - wall.uvs.minOf { it.u }, TOLERANCE)
+    }
+    mesh.partsOf(TrayPart.Rim).forEach { rim ->
+      assertEquals(-TrayMesh.RIM_WIDTH_MM / 300.0, rim.uvs.minOf { it.v }, TOLERANCE)
+    }
+  }
+
+  @Test
+  fun `the texture runs the way the frame says, so a normal map leans the right way`() {
+    // A normal map is read in the surface's frame: `u` along the tangent, `v`
+    // along the bitangent, which is the normal crossed with the tangent. A
+    // surface whose texture ran against either would light its bumps from the
+    // wrong side.
+    val looks =
+      listOf(
+        TableLook(id = "count", name = "Count", floorTiling = TableLook.Tiling(3, 6)),
+        TableLook(id = "size", name = "Size", floorTileMm = 80.0, wallTileMm = 300.0),
+      )
+    looks.forEach { look ->
+      TrayMesh.of(geometry, look).surfaces.forEach { surface ->
+        val (alongU, alongV) = gradients(surface)
+        val bitangent = cross(surface.normal, surface.tangent)
+        assertTrue("${look.id} ${surface.part}: u runs against the tangent", alongU dot surface.tangent > 0.0)
+        assertTrue("${look.id} ${surface.part}: v runs against the bitangent", alongV dot bitangent > 0.0)
+      }
     }
   }
 
@@ -243,6 +320,25 @@ class TrayMeshTest {
   @Test
   fun `a tray is built the same way every time`() {
     assertEquals(TrayMesh.of(geometry), TrayMesh.of(geometry))
+  }
+
+  /**
+   * Which way position moves as `u` grows, and as `v` grows, over the first
+   * triangle of [surface] — the tangent and the bitangent its texture
+   * actually has.
+   */
+  private fun gradients(surface: TraySurface): Pair<Vector3, Vector3> {
+    val (a, b, c) = surface.triangles.take(TRIANGLE)
+    val edge1 = surface.positions[b] - surface.positions[a]
+    val edge2 = surface.positions[c] - surface.positions[a]
+    val du1 = surface.uvs[b].u - surface.uvs[a].u
+    val dv1 = surface.uvs[b].v - surface.uvs[a].v
+    val du2 = surface.uvs[c].u - surface.uvs[a].u
+    val dv2 = surface.uvs[c].v - surface.uvs[a].v
+    val determinant = du1 * dv2 - du2 * dv1
+    val alongU = (edge1 * dv2 - edge2 * dv1) * (1.0 / determinant)
+    val alongV = (edge2 * du1 - edge1 * du2) * (1.0 / determinant)
+    return alongU to alongV
   }
 
   /** The area a surface's triangles cover. */

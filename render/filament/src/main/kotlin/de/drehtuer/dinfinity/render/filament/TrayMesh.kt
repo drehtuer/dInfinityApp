@@ -55,7 +55,8 @@ data class TrayMesh(
       val outline = Outline.of(geometry)
       return TrayMesh(
         geometry = geometry,
-        surfaces = listOf(floor(outline, geometry, look)) + walls(outline, geometry, look) + rim(outline, geometry),
+        surfaces =
+          listOf(floor(outline, geometry, look)) + walls(outline, geometry, look) + rim(outline, geometry, look),
       )
     }
 
@@ -78,7 +79,7 @@ data class TrayMesh(
         normal = Vector3.Up,
         // The floor's texture runs along the tray, so u increases along +x.
         tangent = Vector3(1.0, 0.0, 0.0),
-        uvs = corners.map { floorUv(it, geometry, look.floorTiling) },
+        uvs = corners.map { floorUv(it, geometry, look) },
         triangles =
           outline.points.indices.flatMap { step ->
             listOf(0, 1 + step, 1 + (step + 1) % outline.points.size)
@@ -86,16 +87,40 @@ data class TrayMesh(
       )
     }
 
-    /** The texture runs along the tray, repeating as often as the look asks. */
+    /**
+     * The texture runs along the tray, repeating as often as the look asks.
+     *
+     * **A look that gives `floor_tile_mm` is laid at real size**: one copy of
+     * the picture is that many millimetres square, measured from the floor's
+     * corner, so felt is the same weave on a tall phone and a squat one and a
+     * picture bigger than the floor covers it once without a seam. Without
+     * it, the floor is cut into the look's whole number of repeats per side,
+     * which stretches the picture with the screen's shape — what a photo
+     * table wants, and what the format has always said.
+     */
     private fun floorUv(
       position: Vector3,
       geometry: TableGeometry,
-      tiling: TableLook.Tiling,
-    ): TextureCoordinate =
-      TextureCoordinate(
-        u = (position.x / geometry.longSideMm + HALF) * tiling.acrossLongSide,
-        v = (position.y / geometry.shortSideMm + HALF) * tiling.acrossShortSide,
+      look: TableLook,
+    ): TextureCoordinate {
+      val tile = look.floorTileMm
+      val fromCornerX = position.x + geometry.longSideMm * HALF
+      val fromCornerY = position.y + geometry.shortSideMm * HALF
+      if (tile != null) return TextureCoordinate(u = fromCornerX / tile, v = fromCornerY / tile)
+      return TextureCoordinate(
+        u = fromCornerX / geometry.longSideMm * look.floorTiling.acrossLongSide,
+        v = fromCornerY / geometry.shortSideMm * look.floorTiling.acrossShortSide,
       )
+    }
+
+    /**
+     * How far down the wall's picture one millimetre of wall goes: a whole
+     * copy over the wall's height, or one copy per `wall_tile_mm`.
+     */
+    private fun wallVPerMm(
+      geometry: TableGeometry,
+      look: TableLook,
+    ): Double = 1.0 / (look.wallTileMm ?: geometry.wallHeightMm)
 
     /**
      * The inner face of the wall, one quad per step of the outline.
@@ -107,6 +132,14 @@ data class TrayMesh(
      * the tray rather than restarting per stretch, so a change of rate shows
      * as the pattern stretching rather than as a seam. Up the wall it repeats
      * once: a rim is 60 mm and nobody tiles that.
+     *
+     * A look that gives `wall_tile_mm` is laid at real size instead, both
+     * ways, starting at the top of the wall: oak boards are as wide on a wall
+     * as on a floor.
+     *
+     * `v` grows down the wall and `u` the way the outline walks, which is the
+     * way the surface's tangent and bitangent point — the frame a normal map
+     * is read in (`DiceMaterial.TABLE_SOURCE`).
      */
     private fun walls(
       outline: Outline,
@@ -114,7 +147,8 @@ data class TrayMesh(
       look: TableLook,
     ): List<TraySurface> {
       val height = Vector3(0.0, 0.0, geometry.wallHeightMm)
-      val across = outline.acrossTheWall(geometry, look.wallTiling)
+      val across = outline.acrossTheWall(geometry, look)
+      val bottom = geometry.wallHeightMm * wallVPerMm(geometry, look)
       return outline.steps().map { step ->
         // u runs around the tray, which is the way this stretch of wall goes.
         val along = (step.to.position - step.from.position).normalised()
@@ -141,10 +175,10 @@ data class TrayMesh(
           tangent = along,
           uvs =
             listOf(
-              TextureCoordinate(across[step.index], 1.0),
+              TextureCoordinate(across[step.index], bottom),
               TextureCoordinate(across[step.index], 0.0),
               TextureCoordinate(across[step.index + 1], 0.0),
-              TextureCoordinate(across[step.index + 1], 1.0),
+              TextureCoordinate(across[step.index + 1], bottom),
             ),
           triangles = QUAD_FAN,
         )
@@ -154,14 +188,20 @@ data class TrayMesh(
     /**
      * The flat top of the wall, which is what the tray reads as from above.
      *
-     * It carries no texture of its own: it is the wall's material seen
-     * end-on, and a band six millimetres wide is not where anybody looks.
+     * It is the top of the wall's own board, so it carries on from the wall's
+     * picture where the wall stops: the same `u` around the tray, and `v`
+     * carrying on over the edge and outwards. Outwards is *against* the way
+     * `v` grows on a band whose bitangent points into the tray, so it runs
+     * below nought — which a repeating picture does not mind.
      */
     private fun rim(
       outline: Outline,
       geometry: TableGeometry,
+      look: TableLook,
     ): List<TraySurface> {
       val top = Vector3(0.0, 0.0, geometry.wallHeightMm)
+      val across = outline.acrossTheWall(geometry, look)
+      val outer = -RIM_WIDTH_MM * wallVPerMm(geometry, look)
       return outline.steps().map { step ->
         TraySurface(
           part = TrayPart.Rim,
@@ -175,7 +215,13 @@ data class TrayMesh(
             ),
           normal = Vector3.Up,
           tangent = (step.to.position - step.from.position).normalised(),
-          uvs = emptyList(),
+          uvs =
+            listOf(
+              TextureCoordinate(across[step.index], 0.0),
+              TextureCoordinate(across[step.index], outer),
+              TextureCoordinate(across[step.index + 1], outer),
+              TextureCoordinate(across[step.index + 1], 0.0),
+            ),
           triangles = QUAD_FAN,
         )
       }
@@ -196,7 +242,7 @@ enum class TrayPart {
   /** The inside of the wall, up to the rim. Takes the wall colour and texture. */
   Wall,
 
-  /** The flat top of the wall, seen from above. Wall colour, no texture. */
+  /** The flat top of the wall, seen from above. The wall's colour and texture. */
   Rim,
 }
 
@@ -267,19 +313,23 @@ private class Outline(
    * changes. Computed per stretch from its own start, it would jump — eight
    * visible seams around a tray nobody would be able to explain.
    *
+   * A look that gives `wall_tile_mm` has one rate everywhere — a copy of the
+   * picture per that many millimetres of wall — so nothing stretches at all.
+   *
    * The array is one longer than the outline: the last entry closes the loop.
    */
   fun acrossTheWall(
     geometry: TableGeometry,
-    tiling: TableLook.Tiling,
+    look: TableLook,
   ): DoubleArray {
     val walked = DoubleArray(points.size + 1)
+    val tile = look.wallTileMm
     steps().forEach { step ->
       val alongLong = abs(step.from.outward.y) > abs(step.from.outward.x)
       val side = if (alongLong) geometry.longSideMm else geometry.shortSideMm
-      val repeats = if (alongLong) tiling.acrossLongSide else tiling.acrossShortSide
+      val repeats = if (alongLong) look.wallTiling.acrossLongSide else look.wallTiling.acrossShortSide
       val length = (step.to.position - step.from.position).length
-      walked[step.index + 1] = walked[step.index] + length * repeats / side
+      walked[step.index + 1] = walked[step.index] + if (tile != null) length / tile else length * repeats / side
     }
     return walked
   }

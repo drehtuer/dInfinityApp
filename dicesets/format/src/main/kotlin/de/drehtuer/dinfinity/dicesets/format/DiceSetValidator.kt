@@ -81,7 +81,10 @@ object DiceSetValidator {
     val tables = tables(parsed, TableLookReader(fields, material, checker, report), report)
     val identity = identity(parsed, fields, report) ?: return null
     warnAboutMissingStandardDice(dice, report, fields.lineOf(parsed, "set"))
-    return identity.copy(dice = dice, tables = tables)
+    // A look's textures are paths inside *this* package, and this is the one
+    // place that knows which package that is. Stamped here rather than read,
+    // so no package can name another's files (`docs/tables.md`, "Textures").
+    return identity.copy(dice = dice, tables = tables.map { it.copy(packageId = identity.id) })
   }
 
   private fun checkFormat(

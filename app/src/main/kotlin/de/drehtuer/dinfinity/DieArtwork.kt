@@ -43,9 +43,12 @@ class DieArtwork(
    * The picture [key] names, or `null` when there is not one.
    *
    * A key that names no package is not an error and not a miss worth
-   * reporting: it is a table look's floor or wall texture, which carries a
-   * path and no package and so cannot be resolved yet
-   * (`docs/TODO.md`, "Open questions").
+   * reporting: nothing the tray asks for is spelt that way, and a path on its
+   * own names no file — two packages may both ship it.
+   *
+   * A table's pictures come through here too, keyed by the package the look
+   * was read from (`docs/tables.md`, "Textures"), and the bundled package's
+   * are answered by [InstalledArtwork] from its resources.
    *
    * Everything else that goes wrong — a package that is not installed, a path
    * that tries to leave it, a file that will not decode — comes back from

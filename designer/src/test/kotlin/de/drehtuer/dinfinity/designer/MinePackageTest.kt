@@ -157,6 +157,15 @@ class MinePackageTest {
     assertTrue(result.messages.all { it.severity == Severity.Warning })
   }
 
+  @Test
+  fun `a die made forty per cent opaque in the designer is sixty per cent translucent in the package`() {
+    val draft = Drawings.drawn(Drawings.die(DieShape.Cube), 0).copy(finish = DieFinish.STANDARD.opaque(0.4))
+
+    val die = validate(listOf(draft)).dice.single()
+
+    assertEquals(0.6, die.material.translucency, 1e-9)
+  }
+
   private fun validate(
     drawings: List<Draft>,
     license: String = SetLicense.Mit.id,

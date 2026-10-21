@@ -233,7 +233,10 @@ class MineSets(
       return PhotoResult.NotWritten
     }
     builtFrom = stamp()
-    return PhotoResult.Added(PhotoTable.lookOf(id, called))
+    // The look as the validator read it, which is the one the picker lists —
+    // and the one that knows which package its picture is in.
+    val read = (checked as? ValidationResult.Valid)?.set?.table(id)
+    return PhotoResult.Added(read ?: PhotoTable.lookOf(id, called))
   }
 
   /**

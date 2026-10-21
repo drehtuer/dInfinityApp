@@ -4,6 +4,7 @@ import de.drehtuer.dinfinity.core.model.DiceSet
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.core.model.TablePin
 import de.drehtuer.dinfinity.designer.PhotoTable
+import kotlinx.coroutines.CompletableDeferred
 import java.io.ByteArrayInputStream
 import java.io.InputStream
 
@@ -51,6 +52,35 @@ internal class FakePhotos(
   override suspend fun remove(pin: TablePin) {
     removed += pin
     kept.removeAll { it.id == pin.tableId }
+  }
+}
+
+/**
+ * A photo library that holds every photo at the door until it is let through.
+ *
+ * The real one decodes, scales, writes and validates, which takes long enough
+ * that the sheet has a state for it — and a fake that answered at once would
+ * leave that state, and whatever happens to the sheet during it, unreachable.
+ */
+internal class GatedPhotos(
+  private val inner: FakePhotos = FakePhotos(),
+) : TablePhotos by inner {
+  private val gate = CompletableDeferred<Unit>()
+
+  /** The photo waiting at the door goes through, and its answer comes back. */
+  fun letThrough() {
+    gate.complete(Unit)
+  }
+
+  /** The personal package, as the inner library holds it. */
+  fun personal(): List<DiceSet> = inner.personal()
+
+  override suspend fun add(
+    photo: PickedPhoto,
+    name: String,
+  ): PhotoOutcome {
+    gate.await()
+    return inner.add(photo, name)
   }
 }
 

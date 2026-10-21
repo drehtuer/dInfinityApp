@@ -240,6 +240,77 @@ class TablePhotoPresenterTest {
   }
 
   @Test
+  fun `removing a photo that is not the one in use leaves the choice alone`() {
+    // Only a choice that has gone is settled again. The player who made a
+    // photo table and went back to oak is still playing on oak.
+    val presenter = presenter()
+    presenter.usePhoto()
+    presenter.picked(pickedPhoto())
+    presenter.namePhoto("Meadow")
+    presenter.confirmPhoto()
+    val oak = TablePin(BuiltinDiceSet.set.id, "oak")
+    presenter.choose(oak)
+
+    presenter.removePhoto(TablePin(DiceSet.PERSONAL_ID, "photo-meadow"))
+
+    assertEquals(oak, presenter.state.chosen)
+  }
+
+  @Test
+  fun `a file that comes back after the sheet was shut opens nothing`() {
+    // The picker is another app, and the player may have shut the sheet behind
+    // it. What it hands back then has no draft to go into, and nothing is
+    // asked of the library on its behalf.
+    val presenter = presenter()
+    presenter.usePhoto()
+    presenter.dismissPhoto()
+
+    presenter.picked(pickedPhoto())
+    presenter.namePhoto("Oak")
+    presenter.confirmPhoto()
+
+    assertNull("the sheet came back for a file nobody was waiting for", presenter.state.adding)
+    assertTrue(photos.asked.isEmpty())
+  }
+
+  @Test
+  fun `while the photo is being made the sheet says so and cannot be sent twice`() {
+    val gated = GatedPhotos()
+    val presenter = gatedPresenter(gated)
+    presenter.usePhoto()
+    presenter.picked(pickedPhoto())
+
+    presenter.confirmPhoto()
+    presenter.confirmPhoto()
+
+    val draft = presenter.state.adding!!
+    assertTrue("the sheet does not say it is working", draft.working)
+    assertFalse("a photo being made was ready to be sent again", draft.ready)
+    gated.letThrough()
+    assertEquals(
+      "the second press made a second table",
+      1,
+      presenter.state.tables.count(TableChoice::own),
+    )
+  }
+
+  @Test
+  fun `a refusal that comes back after the sheet was shut does not open it again`() {
+    // Shut is shut: the player who walked away from a slow photo should not
+    // have the sheet spring back with a reason they never waited for.
+    val gated = GatedPhotos(FakePhotos(refuse = listOf("no")))
+    val presenter = gatedPresenter(gated)
+    presenter.usePhoto()
+    presenter.picked(pickedPhoto())
+    presenter.confirmPhoto()
+
+    presenter.dismissPhoto()
+    gated.letThrough()
+
+    assertNull(presenter.state.adding)
+  }
+
+  @Test
   fun `the room left is counted against what a package can hold`() {
     val presenter = presenter()
     assertTrue(presenter.state.roomForAPhoto)
@@ -254,6 +325,15 @@ class TablePhotoPresenterTest {
     assertEquals(PhotoTable.MAX_PHOTOS, presenter.state.photos)
     assertFalse(presenter.state.roomForAPhoto)
   }
+
+  private fun gatedPresenter(gated: GatedPhotos) =
+    TablesPresenter(
+      sets = { listOf(BuiltinDiceSet.set) + gated.personal() },
+      chosen = null,
+      onChosen = {},
+      scope = CoroutineScope(Dispatchers.Unconfined),
+      photos = gated,
+    )
 
   private fun presenter(
     photos: FakePhotos? = this.photos,

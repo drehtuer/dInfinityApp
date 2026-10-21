@@ -66,6 +66,7 @@ class OrderStatisticsTest {
   @Test
   fun `keeping more than there are is a bug, not a distribution`() {
     assertFailsWith<IllegalArgumentException> { OrderStatistics.keepHighest(d6, count = 2, keep = 3) }
+    assertFailsWith<IllegalArgumentException> { OrderStatistics.keepHighest(d6, count = 2, keep = -1) }
     assertFailsWith<IllegalArgumentException> { OrderStatistics.keepHighest(d6, count = 0, keep = 0) }
   }
 
@@ -73,6 +74,7 @@ class OrderStatisticsTest {
   fun `a chain with nothing done to it is just the die`() {
     assertTrue(ChainPmf.of(d6).approximates(d6))
     assertEquals(6, ChainPmf.explodingValue(d6))
+    assertEquals(0.0, ChainPmf.truncatedMass(d6, explodesAt = null))
   }
 
   @Test

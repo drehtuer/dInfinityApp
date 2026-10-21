@@ -76,6 +76,7 @@ class PhotoScalingTest {
   fun `a size no decoder could have produced is not a size`() {
     assertFalse(PhotoSize(0, 0).real)
     assertFalse(PhotoSize(-1, -1).real)
+    assertFalse("a width with no height counted as a picture", PhotoSize(1, 0).real)
     assertTrue(PhotoSize(1, 1).real)
     assertEquals(PhotoSize(-1, -1), PhotoScaling.target(PhotoSize(-1, -1)))
     assertTrue(PhotoScaling.steps(PhotoSize(-1, -1)).isEmpty())
@@ -109,6 +110,13 @@ class PhotoScalingTest {
     assertEquals(2, PhotoScaling.sampleSize(source, PhotoSize(1024, 771)))
     assertEquals(4, PhotoScaling.sampleSize(source, PhotoSize(512, 385)))
     assertEquals(8, PhotoScaling.sampleSize(source, PhotoSize(256, 192)))
+  }
+
+  @Test
+  fun `a subsample has to leave enough pixels in both directions, not just the long one`() {
+    // Halving this panorama still leaves twice the width asked for, and half
+    // the height: subsampling it would hand the scaler too few rows.
+    assertEquals(1, PhotoScaling.sampleSize(PhotoSize(4096, 1000), PhotoSize(1024, 1000)))
   }
 
   @Test

@@ -55,6 +55,11 @@ struct DieSpec {
   int point_count;
   /// The small margin that lets a sharp solid tumble instead of catching.
   float convex_radius;
+  /// How far a rounded corner may stand inside the sharp one before Jolt cuts
+  /// the radius back: `mMaxErrorConvexRadius`. Jolt's own default, 0.05, for a
+  /// die whose set does not ask to be rounder; it grows with the rounding
+  /// asked for (`HullMargin.maxErrorMm`, decision 94).
+  float max_error_convex_radius;
   /// Grams per cubic centimetre, which is what a set file quotes and what the
   /// solver's units want — so it needs no conversion at all.
   float density;

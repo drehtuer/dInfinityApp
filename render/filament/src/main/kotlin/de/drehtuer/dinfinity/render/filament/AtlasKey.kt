@@ -1,6 +1,8 @@
 package de.drehtuer.dinfinity.render.filament
 
 import de.drehtuer.dinfinity.core.model.AtlasImage
+import de.drehtuer.dinfinity.core.model.DieShape
+import de.drehtuer.dinfinity.core.model.ShapeAtlas
 
 /**
  * How a surface names the artwork it wants (`docs/dice-sets.md`, "Textures").
@@ -16,10 +18,12 @@ import de.drehtuer.dinfinity.core.model.AtlasImage
  * The separator is `::` rather than `/`. A set id is a slug and cannot contain
  * one (`DiceSet.IdPattern`), so a key can always be taken apart again — and,
  * more to the point, a path that arrives here *unqualified* has no `::` in it
- * and is refused rather than read as a package called `textures`. That is what
- * a table look's floor and wall textures are today: they carry a path and no
- * package, so they resolve to nothing until one reaches them
- * (`docs/tables.md`, "Table looks"; `docs/TODO.md`, "Open questions").
+ * and is refused rather than read as a package called `textures`.
+ *
+ * A table look's pictures are keyed the same way: their package is the one
+ * the validator read the look out of (`TableLook.packageId`), so the bundled
+ * felt is `builtin::tables/felt-albedo.webp` and a table can only ever name its
+ * own package's files (`docs/tables.md`, "Textures").
  */
 object AtlasKey {
   /** What separates the package from the path inside it. */
@@ -122,5 +126,55 @@ class AtlasCache<T : Any>(
   override fun close() {
     held.values.mapNotNull { it.made }.forEach(destroy)
     held.clear()
+  }
+}
+
+/**
+ * Which faces an atlas draws on, for every number of faces a catalogue die
+ * can have — read once, off the decoded pixels, when the atlas is uploaded.
+ *
+ * Every count rather than the one die's, because an atlas is keyed by its
+ * file and not by the die that wears it: the grid a face sits in depends on
+ * how many faces there are ([ShapeAtlas]), and the pixels are not kept once
+ * they are on the GPU. Eight short scans of an image that is already in
+ * memory, once per version of the file.
+ */
+class AtlasCoverage private constructor(
+  private val drawn: Map<Int, Set<Int>>,
+) {
+  /** The faces of a die with [faces] faces this atlas draws on; none for a count no catalogue die has. */
+  fun drawnOn(faces: Int): Set<Int> = drawn[faces].orEmpty()
+
+  companion object {
+    /** What [image] draws on, for every catalogue die. */
+    fun of(image: AtlasImage): AtlasCoverage =
+      AtlasCoverage(
+        DieShape.entries
+          .map(DieShape::faceCount)
+          .distinct()
+          .associateWith(image::drawnCells),
+      )
+  }
+}
+
+/**
+ * A die's atlas uploaded, and which faces it draws on — worked out once from
+ * the pixels it was uploaded from, because a face its artwork draws on is not
+ * printed ([Stage.drawnCells]).
+ *
+ * Generic in what the upload made, so the part of it that decides something —
+ * which faces — is a JVM test's to ask about; on a phone [T] is Filament's
+ * `Texture`.
+ */
+class DieArtwork<T : Any>(
+  val texture: T,
+  val coverage: AtlasCoverage,
+) {
+  companion object {
+    /** The faces of a die with [faces] faces [artwork] draws on, and none when there is no artwork. */
+    fun drawnBy(
+      artwork: DieArtwork<*>?,
+      faces: Int,
+    ): Set<Int> = artwork?.coverage?.drawnOn(faces).orEmpty()
   }
 }

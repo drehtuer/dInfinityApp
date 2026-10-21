@@ -1,6 +1,7 @@
 package de.drehtuer.dinfinity.simulation.harness
 
 import de.drehtuer.dinfinity.core.model.DieShape
+import de.drehtuer.dinfinity.simulation.api.Release
 import de.drehtuer.dinfinity.simulation.api.Seeds
 import de.drehtuer.dinfinity.simulation.api.TableCapacity
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
@@ -62,6 +63,7 @@ class HarnessRequestTest {
     assertTrue(requireNotNull(HarnessRequest.from(arguments("10", frames = "true"))).framePaced)
     assertFalse(requireNotNull(HarnessRequest.from(arguments("10", frames = "0"))).framePaced)
     assertFalse(requireNotNull(HarnessRequest.from(arguments("10", frames = "false"))).framePaced)
+    assertFalse(requireNotNull(HarnessRequest.from(arguments("10", frames = " No "))).framePaced)
     assertFalse(requireNotNull(HarnessRequest.from(arguments("10", frames = " "))).framePaced)
   }
 
@@ -82,6 +84,22 @@ class HarnessRequestTest {
     assertEquals("soak", requireNotNull(HarnessRequest.from(arguments("8", label = "soak"))).label)
     // A label of nothing is not a label.
     assertEquals("20d20", requireNotNull(HarnessRequest.from(arguments("8", label = "  "))).label)
+  }
+
+  @Test
+  fun `a table is named only when somebody names one, and the label says which`() {
+    val plain = requireNotNull(HarnessRequest.from(arguments("8")))
+    assertEquals(null, plain.table)
+
+    val glass = requireNotNull(HarnessRequest.from(arguments("8", dice = "100", shape = "d6", table = " dark-glass ")))
+    assertEquals("dark-glass", glass.table)
+    assertEquals("100d6-dark-glass", glass.label)
+    // Named nothing is not named.
+    assertEquals(null, requireNotNull(HarnessRequest.from(arguments("8", table = " "))).table)
+    assertEquals(
+      "20d20-oak-soak",
+      HarnessRequest.labelOf(20, DieShape.Icosahedron, RunLength.Soak(60.0), table = "oak"),
+    )
   }
 
   @Test
@@ -180,6 +198,43 @@ class HarnessRequestTest {
     assertEquals(first.specFor(2), again.specFor(2))
   }
 
+  @Test
+  fun `a run asked to release its throws from a hand throws every roll that way`() {
+    val asked = mapOf(HarnessRequest.ROLLS to "3", HarnessRequest.RELEASE to "1200")
+    val request = requireNotNull(HarnessRequest.from { asked[it] })
+
+    assertEquals(1_200.0, request.releaseMmPerSecond)
+    assertEquals("20d20-release1200", request.label)
+    val spec = request.plan().specFor(0)
+    assertTrue(spec.toss)
+    assertEquals(HandStroke.of(1_200.0, spec.seed), spec.shake)
+  }
+
+  @Test
+  fun `a run asked for nothing about a hand makes the grid throw`() {
+    val request = requireNotNull(HarnessRequest.from(arguments("3")))
+
+    assertNull(request.releaseMmPerSecond)
+    assertFalse(request.plan().specFor(0).toss)
+    assertTrue(
+      request
+        .plan()
+        .specFor(0)
+        .shake
+        .isEmpty(),
+    )
+  }
+
+  @Test
+  fun `a release the app cannot make is refused, not measured`() {
+    assertNull(HarnessRequest.releaseOf(null))
+    assertNull(HarnessRequest.releaseOf("  "))
+    assertEquals(Release.LEAST_MM_PER_SECOND, HarnessRequest.releaseOf(" ${Release.LEAST_MM_PER_SECOND} "))
+    assertFailsWith<IllegalArgumentException> { HarnessRequest.releaseOf("fast") }
+    assertFailsWith<IllegalArgumentException> { HarnessRequest.releaseOf("${Release.MOST_MM_PER_SECOND + 1}") }
+    assertFailsWith<IllegalArgumentException> { HarnessRequest.releaseOf("100") }
+  }
+
   @Suppress("LongParameterList")
   private fun arguments(
     rolls: String? = null,
@@ -189,6 +244,7 @@ class HarnessRequestTest {
     label: String? = null,
     soak: String? = null,
     frames: String? = null,
+    table: String? = null,
   ): (String) -> String? =
     { name ->
       when (name) {
@@ -199,6 +255,7 @@ class HarnessRequestTest {
         HarnessRequest.LABEL -> label
         HarnessRequest.SOAK -> soak
         HarnessRequest.FRAMES -> frames
+        HarnessRequest.TABLE -> table
         else -> null
       }
     }

@@ -63,6 +63,25 @@ class AppSettingsTest {
     assertTrue(AppSettings(developerTools = true).developerTools)
   }
 
+  /**
+   * What a first launch starts from, each default one the documents promise:
+   * the welcome screen still to come, the dice drawn, the phone's own
+   * appearance, and plain notation resolving against the bundled set on the
+   * bundled table, filed under the first session and the unfiled group.
+   */
+  @Test
+  fun `a fresh install starts from the defaults the documents name`() {
+    val fresh = AppSettings()
+
+    assertFalse(fresh.welcomeSeen)
+    assertFalse(fresh.powerSaving)
+    assertEquals(Appearance.System, fresh.appearance)
+    assertEquals(DiceSet.BUILTIN_ID, fresh.defaultSetId)
+    assertEquals(null, fresh.defaultTable)
+    assertEquals(SavedRollGroup.UNFILED_ID, fresh.activeGroupId)
+    assertEquals(AppSettings.DEFAULT_SESSION_ID, fresh.activeSessionId)
+  }
+
   /** Only so a log line or a test failure names the accent rather than an address. */
   @Test
   fun `toString names the accent`() {

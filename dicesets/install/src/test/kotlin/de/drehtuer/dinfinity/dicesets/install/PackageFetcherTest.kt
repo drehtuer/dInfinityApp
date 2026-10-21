@@ -102,6 +102,25 @@ class PackageFetcherTest {
   }
 
   @Test
+  fun `a redirect that names nowhere to go is refused rather than followed`() {
+    // `https://` with no host resolves to nothing; following it would be
+    // asking OkHttp to guess.
+    server.enqueue(redirect("https://"))
+
+    assertTrue(failed(fetcher.fetch(url(), into)).reason.contains("went nowhere"))
+  }
+
+  @Test
+  fun `a redirect status with no Location is the server's answer, not a hop`() {
+    server.enqueue(MockResponse.Builder().code(FOUND).build())
+
+    val result = failed(fetcher.fetch(url(), into))
+
+    assertTrue(result.reason, result.reason.contains("$FOUND"))
+    assertEquals("a redirect with nowhere to go was followed somewhere", 1, server.requestCount)
+  }
+
+  @Test
   fun `too many redirects is a failure rather than a loop`() {
     repeat(InstallLimits.MAX_REDIRECTS + 2) { server.enqueue(redirect(url())) }
     assertTrue(failed(fetcher.fetch(url(), into)).reason.contains("redirects"))

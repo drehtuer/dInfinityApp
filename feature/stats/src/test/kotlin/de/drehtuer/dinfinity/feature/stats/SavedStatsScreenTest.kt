@@ -1,10 +1,14 @@
 package de.drehtuer.dinfinity.feature.stats
 
 import android.content.Context
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.assertContentDescriptionContains
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -32,6 +36,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.GraphicsMode
 
 /**
  * A saved roll's totals against its exact distribution
@@ -144,6 +149,28 @@ class SavedStatsScreenTest {
       )
   }
 
+  /**
+   * The rectangles are `ChartShapes`' arithmetic and tested there; this is the
+   * other half, that they reach the screen at all and in the two colours that
+   * are the only thing telling a bar from a mark.
+   */
+  @Test
+  @GraphicsMode(GraphicsMode.Mode.NATIVE)
+  fun `the chart draws its bars in ink and the distribution's marks in the accent`() {
+    given("fireball", "Fireball", "2d6")
+    rolled("fireball", totals = listOf(4L, 6L, 7L, 7L, 8L))
+    opened("fireball")
+
+    val chart = compose.onNodeWithTag(SavedStatsTestTags.CHART).captureToImage().toPixelMap()
+    val colours = (0 until chart.width).flatMap { x -> (0 until chart.height).map { y -> chart[x, y] } }.toSet()
+
+    // No theme is set around the screen here, so it draws in Material's own
+    // light scheme — the same one asked for below.
+    val scheme = lightColorScheme()
+    assertTrue("no bar was drawn", scheme.onSurface in colours)
+    assertTrue("no mark was drawn", scheme.primary in colours)
+  }
+
   @Test
   fun `the throws, the mean and what was expected`() {
     given("fireball", "Fireball", "2d6")
@@ -251,6 +278,9 @@ class SavedStatsScreenTest {
     compose.onNodeWithTag(SavedStatsTestTags.NO_EXPECTATION).assertIsDisplayed()
     compose.onNodeWithTag(SavedStatsTestTags.CHART).assertIsDisplayed()
     compose.onNodeWithTag(SavedStatsTestTags.EXPECTED, useUnmergedTree = true).assertIsNotDisplayed()
+    // The range is what was thrown and nothing more: there is no "of a
+    // possible" for a formula that cannot say what is possible.
+    compose.onNodeWithTag(SavedStatsTestTags.RANGE, useUnmergedTree = true).assertTextEquals("Range 3 to 5")
   }
 
   @Test

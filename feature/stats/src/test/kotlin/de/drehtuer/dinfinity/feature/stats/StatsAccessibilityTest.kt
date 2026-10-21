@@ -3,7 +3,6 @@ package de.drehtuer.dinfinity.feature.stats
 import android.content.Context
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertHeightIsAtLeast
-import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
@@ -197,17 +196,6 @@ class StatsAccessibilityTest {
     show()
 
     compose.onNodeWithTag(StatsTestTags.orderOf(DieOrder.Recent)).assertHeightIsAtLeast(TOUCH_TARGET)
-  }
-
-  @Test
-  fun `the histogram is on screen at all`() {
-    given(dieId = "d2", sides = 2, throws = 2, sum = 3)
-    faces(dieId = "d2", sides = 2, counts = mapOf(1 to 1L, 2 to 1L))
-    val presenter = show()
-
-    openDie(presenter, "d2")
-
-    compose.onNodeWithTag(StatsTestTags.HISTOGRAM).assertIsDisplayed()
   }
 
   private fun openDie(

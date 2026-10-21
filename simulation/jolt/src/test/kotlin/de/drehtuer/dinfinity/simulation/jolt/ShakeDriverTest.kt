@@ -6,6 +6,9 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.math.PI
+import kotlin.math.ceil
+import kotlin.math.sin
 
 /**
  * The shake, replayed (`docs/physics-and-rendering.md`, "Shake input").
@@ -319,6 +322,186 @@ class ShakeDriverTest {
     assertTrue("a sample that drives nothing still counted as a shake", driver.isStill)
   }
 
+  @Test
+  fun `a hand that does not toss never lets go`() {
+    val driver = ShakeDriver(hard(0 until 50) + quiet(50 until 120))
+
+    assertTrue((0 until 120).none { step -> driver.advance(step).let { driver.lettingGo(step) } })
+  }
+
+  @Test
+  fun `a tossing hand lets go once, a moment after its last hard stroke`() {
+    val driver = ShakeDriver(hard(0 until 50) + quiet(50 until 120), tosses = true)
+
+    assertEquals(listOf(49 + ShakeDriver.LET_GO_STEPS), letGos(driver, 120))
+  }
+
+  @Test
+  fun `a hand braking from a hard shake has stopped before it falls under the threshold`() {
+    // Seven gravities, then a tail over the threshold but a sliver of the
+    // shake: the hand stopped when the hard moments did.
+    val driver =
+      ShakeDriver(hard(0 until 40) + stop(40 until 44) + tail(44 until 80) + quiet(80 until 120), tosses = true)
+
+    assertEquals(listOf(43 + ShakeDriver.LET_GO_STEPS), letGos(driver, 120))
+  }
+
+  @Test
+  fun `a shake shorter than its least is never let go of`() {
+    val short = ShakeDriver.LEAST_SHAKE_STEPS - 1
+    val driver = ShakeDriver(hard(0 until short) + quiet(short until 120), tosses = true)
+
+    assertTrue(letGos(driver, 120).isEmpty())
+  }
+
+  @Test
+  fun `the still moment at the turn of a stroke is not letting go`() {
+    val pause = ShakeDriver.LET_GO_STEPS - 1
+    val driver =
+      ShakeDriver(
+        hard(0 until 40) + quiet(40 until 40 + pause) + hard(40 + pause until 60 + pause) + quiet(60 + pause until 140),
+        tosses = true,
+      )
+
+    // The pause is now the longest the hand has made, so the quiet that ends
+    // the shake has to be half as long again as it before it is a stop.
+    val waited = maxOf(ShakeDriver.LET_GO_STEPS, ceil((pause + 1) * ShakeDriver.PAUSE_MARGIN).toInt())
+    assertEquals(listOf(59 + pause + waited), letGos(driver, 140))
+  }
+
+  @Test
+  fun `a slow shake is not let go of between its strokes`() {
+    // Two strokes a second, peaking at a gravity: the acceleration passes
+    // through nought mid-stroke and stays under the threshold for about
+    // twelve steps each time — longer than the fast hand's wait. The hand let
+    // go there and the dice settled while the phone was still being shaken.
+    val shaking = 300
+    val strokes = stroked(0 until shaking, hertz = 2.0, peak = ONE_G)
+    val driver = ShakeDriver(strokes + quiet(shaking until 500), tosses = true)
+
+    val letGos = letGos(driver, 500)
+
+    assertEquals("the hand let go more than once", 1, letGos.size)
+    assertTrue("the hand let go mid-shake, at ${letGos.single()}", letGos.single() >= shaking)
+    assertTrue(
+      "the hand waited too long, until ${letGos.single()}",
+      letGos.single() <= shaking + ShakeDriver.MOST_LET_GO_STEPS,
+    )
+  }
+
+  @Test
+  fun `a fast shake is still let go of a moment after it stops`() {
+    val shaking = 200
+    val strokes = stroked(0 until shaking, hertz = 6.0, peak = 3 * ONE_G)
+    val lastHard = strokes.last { it.accelerationMmPerSecond2.length >= HARD }.stepIndex
+    val driver = ShakeDriver(strokes + quiet(shaking until 400), tosses = true)
+
+    assertEquals(listOf(lastHard + ShakeDriver.LET_GO_STEPS), letGos(driver, 400))
+  }
+
+  @Test
+  fun `however slow the strokes, the hand lets go within the longest wait`() {
+    // Bursts thirty steps apart: half as long again as that is past the
+    // longest wait, so the stop is let go of after the longest wait.
+    val bursts =
+      (0 until 4).flatMap { burst ->
+        val start = burst * 40
+        hard(start until start + 10) + quiet(start + 10 until start + 40)
+      }
+    val driver = ShakeDriver(bursts + quiet(160 until 400), tosses = true)
+
+    assertEquals(listOf(129 + ShakeDriver.MOST_LET_GO_STEPS), letGos(driver, 400))
+  }
+
+  @Test
+  fun `a hand that has let go drives nothing and is no longer shaking`() {
+    val driver = ShakeDriver(hard(0 until 50) + quiet(50 until 120), tosses = true)
+    val letGo = 49 + ShakeDriver.LET_GO_STEPS
+    letGos(driver, letGo + 1)
+
+    driver.advance(letGo + 1)
+
+    assertEquals(ShakeDriver.DEFAULT_GRAVITY, driver.gravity)
+    assertFalse("the dice left the hand and the roll still waits on it", driver.stillShaking(letGo + 1))
+  }
+
+  @Test
+  fun `a hand lets go once per throw, and a shake after that drives nothing`() {
+    val driver =
+      ShakeDriver(hard(0 until 50) + quiet(50 until 80) + hard(80 until 130) + quiet(130 until 200), tosses = true)
+
+    assertEquals(listOf(49 + ShakeDriver.LET_GO_STEPS), letGos(driver, 100))
+    driver.advance(100)
+
+    assertEquals("a shake after the toss pushed the dice", ShakeDriver.DEFAULT_GRAVITY, driver.gravity)
+    assertFalse(driver.stillShaking(100))
+    assertTrue(letGos(driver, 200, from = 101).isEmpty())
+  }
+
+  @Test
+  fun `moments that arrive after the hand let go are counted`() {
+    val driver = ShakeDriver(hard(0 until 50), tosses = true)
+    val letGo = 49 + ShakeDriver.LET_GO_STEPS
+    letGos(driver, letGo + 1)
+    assertEquals(0, driver.samplesAfterLetGo)
+
+    driver.add(sample(0, HARD), atStep = letGo + 3)
+    driver.add(sample(0, HARD), atStep = letGo + 5)
+
+    assertEquals(2, driver.samplesAfterLetGo)
+    assertEquals(letGo + 5, driver.lastStepAfterLetGo)
+  }
+
+  @Test
+  fun `a shake describes itself in a line`() {
+    val driver = ShakeDriver(hard(0 until 50), tosses = true)
+    letGos(driver, 60)
+
+    val line = driver.describe(57)
+
+    assertTrue(
+      line,
+      line.startsWith("hard 0..49, quiet 8, longest pause 1, waited for ${ShakeDriver.LET_GO_STEPS}, pushes "),
+    )
+    // Nine thousand mm/s² is nine tenths of a gravity.
+    assertTrue(line, line.endsWith(" 9"))
+  }
+
+  /** The steps from [from] up to [until] at which [driver] lets go. */
+  private fun letGos(
+    driver: ShakeDriver,
+    until: Int,
+    from: Int = 0,
+  ): List<Int> = (from until until).filter { step -> driver.advance(step).let { driver.lettingGo(step) } }
+
+  @Test
+  fun `a hand letting go has felt only what came before`() {
+    val driver = ShakeDriver(hard(0 until 10) + quiet(10 until 80), tosses = true)
+
+    assertEquals((0..20).toList(), driver.recordedUpTo(20).map(ShakeSample::stepIndex))
+  }
+
+  private fun hard(steps: IntRange): List<ShakeSample> = steps.map { sample(it, HARD) }
+
+  private fun stop(steps: IntRange): List<ShakeSample> = steps.map { sample(it, SEVEN_G) }
+
+  private fun tail(steps: IntRange): List<ShakeSample> = steps.map { sample(it, TAIL) }
+
+  private fun quiet(steps: IntRange): List<ShakeSample> = steps.map { sample(it, QUIET) }
+
+  /**
+   * A hand moving to and fro at [hertz], its acceleration peaking at [peak]
+   * mm/s², read every other step as `SENSOR_DELAY_GAME` would.
+   */
+  private fun stroked(
+    steps: IntRange,
+    hertz: Double,
+    peak: Double,
+  ): List<ShakeSample> =
+    steps.filter { it % 2 == 0 }.map { step ->
+      sample(step, peak * sin(2 * PI * hertz * step / STEPS_PER_SECOND))
+    }
+
   private fun sample(
     step: Int,
     x: Double,
@@ -330,6 +513,24 @@ class ShakeDriverTest {
     )
 
   private companion object {
+    /** A hand shaking: over the detector's threshold. */
+    const val HARD = 9_000.0
+
+    /** And one coming to a stop: under it. */
+    const val QUIET = 500.0
+
+    /** A gravity, in mm/s². */
+    const val ONE_G = 9_806.65
+
+    /** The simulation's rate. */
+    const val STEPS_PER_SECOND = 120.0
+
+    /** A hand stopping hard. */
+    const val SEVEN_G = 68_000.0
+
+    /** And the decay after it: over the threshold, under a quarter of the stop. */
+    const val TAIL = 7_000.0
+
     /** Long enough to be past the roll's own cap several times over. */
     const val THIRTY_SECONDS_OF_STEPS = 3_600
 

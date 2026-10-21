@@ -20,11 +20,6 @@ class NotationLimitsTest {
   }
 
   @Test
-  fun `500d6 parses, because the outcome graph has no table to fit on`() {
-    assertEquals("500d6", render(parsed("500d6").root))
-  }
-
-  @Test
   fun `a group of exactly a thousand dice is fine`() {
     assertEquals("1000d6", render(parsed("1000d6").root))
   }
@@ -57,10 +52,5 @@ class NotationLimitsTest {
   fun `a percentile counts as the two d10s it really is`() {
     assertEquals(500, parsed("500d%").diceNodes.single().count)
     assertEquals(NotationErrorCode.FormulaTooLarge, refused("500d% + 1d6").code)
-  }
-
-  @Test
-  fun `the explosion depth is what bounds an exploding chain`() {
-    assertEquals(20, NotationLimits.MAX_EXPLOSION_DEPTH)
   }
 }

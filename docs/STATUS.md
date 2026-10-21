@@ -4,7 +4,7 @@ Current state of the project in a few lines. Update it when a milestone moves, a
 decision is taken or something is blocked; prune anything no longer current.
 This is a snapshot, not a changelog — git history is the changelog.
 
-**Last updated:** 2026-10-04
+**Last updated:** 2026-10-21
 
 ## Where we are
 
@@ -16,7 +16,7 @@ This is a snapshot, not a changelog — git history is the changelog.
   total appears beside them, with printed numbers the right way round and an
   author's artwork where a set has some.
 - **Latest release:** `v0.2.0`, signed and published with its SHA-256.
-- **`main` is at #368**: the owner's feedback on the overnight build is in
+- **`main` is at #374, released as `v0.2.0`**: the owner's feedback on the overnight build is in
   — a cold start shows the tray in 0.8 s (decision 46), the watched pace is
   0.4 (65), *Clear face* in the designer (82), a throw folds the top away and
   a double tap clears the table (83), an accent shake prompt and pick ring
@@ -25,10 +25,61 @@ This is a snapshot, not a changelog — git history is the changelog.
   to six levels, the coin that ran out the twelve-second cap is explained (it
   leaned on the old corner post; none of 100,000 give up on the fillet tray),
   and the designer masks the d10 and the d18 into their own kites (86).
-- **In flight:** a big roll's tail is shown faster — for ten dice or more
-  the watched pace climbs to real speed as the dice are read (decision 88),
-  after `100d4` measured a median 1.29 s and p99 3.09 s of simulated time on
-  the Pixel 10a, 3.2 s and 7.7 s to watch.
+- **In flight:** `feature/realistic-rendering`, an integration branch for
+  making the table and dice look real — a render gallery to compare against
+  (`tools/gallery.sh`), then lighting from a photographed room (decision 89:
+  the felt draws its set colour, no band along the walls, the room cached on
+  disk), translucent dice as refracting resin (90) and rounded edges drawn
+  with the solver's own convex radius (91), all passing on the Pixel 10a.
+  The dice are no longer reflected in the dark glass: from straight above
+  the reflection hid under each die and showed nothing on the phone (decision
+  104, withdrawing 93); it saves no GPU time, as dark glass's floor now runs
+  the dice's opaque material, as plain's does. The broken light lines along resin dice's
+  rounded edges were the lacquer's glint, thinner than a pixel; specular
+  anti-aliasing spreads it now. Felt and oak are drawn from CC0 pictures,
+  keyed by the package the look came from (92); plain stays flat. On the
+  phone the oak drew pinkish grey: its photograph's roughness map (0.44)
+  stood in for the look's, and the key light's sheen washed the brown out. A
+  look in `average` now has its roughness map averaged at its `roughness`
+  too, and oak is oiled at 0.75. The phone then drew green felt's red 13 over:
+  the felt's own sheen, 1.4 % of white, which a look in `average` now has
+  taken out of its colour (`SurfaceLight`); on the phone green felt now
+  draws (30, 92, 57) against its (31, 94, 58). The
+  face designer is three steps — Shape, Material (six named materials, a body
+  colour, an edge-rounding slider over 1.5–6 %), Faces
+  — after the owner's feedback (decisions 94, 97–99); a drawn face is no
+  longer printed over (96) and the turning die shows the pen's strokes and
+  the rounding. The range is measured: at 20,000 throws a shape every
+  solid is fair and every coin settles up to 6 %, while at 12 % coins rolled
+  on their rims until the backstop 42 times, so rounding now stops at 6 %
+  for the slider and for a set file alike (decision 100).
+  While a dice material compiles — the first launch after an install or
+  update, or the first resin or textured-table material — a
+  "Preparing the dice" plate over the tray says why, with a bar timed by what
+  the phone took last time (decision 95; seen working on the Pixel 10a).
+  Four sample sets to install — marble (artwork on every face, numbers cut
+  in by the app's own printing), steel, green resin and red glass — are in
+  `sample-sets/`, as folders and zips, each installed by a test on every
+  build. The designer's ink now reaches the tray in its own colour: the
+  dice material multiplied artwork by the body colour and read the atlas as
+  linear, so yellow pips on a black die were black (decision 101; a device
+  test fails by 127 levels without the fix). The Material step has an
+  Opacity slider, glass to solid in five per cents, over the same
+  `translucency` the menu sets (decision 102); seen on the Pixel 10a.
+  Dice no longer blink at some angles: the lacquer mirrored the sizeless
+  key light over a whole face for a frame, and is rougher now (0.4, decision
+  103; a device test fails by 50 % of a face at the old 0.12) — the owner
+  to judge whether they still look varnished. Metal dice are satin and
+  unlacquered now (decision 106): their top faces burnt white in the
+  gallery, made worse by a shader that left every coat-less surface under
+  Filament's default mirror coat.
+  It reaches `main` when the owner likes it on the phone.
+- **The hand tosses the dice** (decision 105, `docs/TODO.md` 5.8): shaken
+  in sight as before, and tossed when the hand stops, after a comparison with
+  slow-motion film of real dice. Adopted by the owner on 2026-10-20 — without
+  it the dice settle almost as the shaking stops. The constants wait for the
+  owner's recordings of real throws; a shake along the phone's length still
+  hops now and then.
 
 ## Done
 
@@ -45,10 +96,18 @@ This is a snapshot, not a changelog — git history is the changelog.
 - **Every decision about a roll is Kotlin over an interface**, so "nothing
   touches a die that has come to rest" is proved by JVM tests, not sampled.
 
-## Last device run — Pixel 10a, 2026-10-04, the overnight stack tip (#349)
+## Last device runs — Pixel 10a
 
-- **Device suite:** 102 tests, **101 passed, 0 failed**, 1 skipped
-  (`HarnessTest`, which declines without a roll count).
+- **2026-10-21, `feature/designer-material-and-roundness` (#406):** every
+  library module's device suite — `designer`, `dicesets:install`,
+  `feature:roll`, `simulation:jolt`, `render:filament` — 126 passed, 0
+  failed, 3 skipped. `:app`'s suite was not run, because it writes into the
+  owner's real history. Floors straight down: green felt (30, 92, 57),
+  black felt (30, 29, 29), oak (92, 62, 40); the gallery drawn for the owner
+  to judge.
+- **2026-10-04, the overnight stack tip (#349):** 102 tests, 101 passed, 0
+  failed, 1 skipped (`HarnessTest`, which declines without a roll count).
+  The harness and rendered-harness figures below are from that run.
 - **Harness, 10,000 rolls of 20d20:** no die read while standing on another,
   none gave up, settle 0.95 s median and 1.96 s p99, **2.70 turns after
   landing**. Fails, as before: re-throws 1.21 % against 0.05 %, overlap
@@ -99,9 +158,14 @@ of it in `docs/TODO.md` (4.1 and 5.6). The most useful three:
   to the worst-face bound (0.389 % against 1 %).
 - **The capacity rule barely bites**: the 100-body cap refuses long before the
   table's floor would (~241 dice).
+- **The emulator can no longer read a frame back.** Every
+  `render/filament` test that reads pixels aborts there with Filament's
+  `blitLow` program failing to compile (seen 2026-10-10); the phone runs them.
+  `docs/TODO.md`, Step 2.
 - Determinism holds across both ABIs; unproven across devices of one ABI.
-- **Coverage:** branch ~71.4 % against a floor of 62, function ~92.7 % against
-  85. Most missed branches are Compose skip branches.
+- **Coverage:** branch ~75.4 % against a floor of 62, function ~92.8 % against
+  85, after a pass that pruned about forty redundant tests and added two
+  hundred. Most missed branches are Compose skip branches.
 
 ## Decisions pending
 
@@ -113,6 +177,5 @@ All in `docs/TODO.md`; the ones that block code first.
   many fit.
 - Whether the too-many-dice refusal offers a way to the outcome graph (the
   argument is in `docs/architecture.md`).
-- Filled-button label contrast (3.65:1 against 4.5:1), the coverage floor,
-  the anomaly log surviving a restart, where a table texture names its
-  package, more than one personal set.
+- Filled-button label contrast (3.76:1 against 4.5:1), the coverage floor,
+  the anomaly log surviving a restart, more than one personal set.

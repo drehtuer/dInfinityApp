@@ -6,6 +6,7 @@ import de.drehtuer.dinfinity.core.model.DieMaterial
 import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.core.model.Face
 import de.drehtuer.dinfinity.core.model.FaceRead
+import de.drehtuer.dinfinity.core.model.TableColorMode
 import de.drehtuer.dinfinity.core.model.TableLight
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.core.model.TableSound
@@ -167,6 +168,25 @@ class DiceSetTomlTest {
   }
 
   @Test
+  fun `a set that is only clearer than standard still writes its defaults`() {
+    // The last of the three numbers is the one a person most often moves on
+    // its own, and a check that stopped at the first two would drop it.
+    val back =
+      read(
+        DiceSet(id = "mine", name = "My dice", version = "1.0.0", dice = listOf(d6)),
+        DieMaterial(translucency = 0.5),
+      )
+
+    assertEquals(
+      0.5,
+      back.dice
+        .single()
+        .material.translucency,
+      1e-12,
+    )
+  }
+
+  @Test
   fun `an atlas is pointed at by a relative path inside the package`() {
     val drawn = d6.copy(texturePath = DiceSetToml.texturePathOf("d6"))
     val text = DiceSetToml.write(DiceSet(id = "mine", name = "My dice", version = "1.0.0", dice = listOf(drawn)))
@@ -197,9 +217,9 @@ class DiceSetTomlTest {
     // raw newline inside a quoted TOML string is a syntax error, which would
     // be this object handing the validator a file it wrote itself and cannot
     // read back.
-    val set = DiceSet(id = "mine", name = "one\ntwo\tthree", version = "1.0.0", dice = listOf(d6))
+    val set = DiceSet(id = "mine", name = "one\ntwo\tthree\u007Ffour", version = "1.0.0", dice = listOf(d6))
 
-    assertEquals("one\ntwo\tthree", read(set).name)
+    assertEquals("one\ntwo\tthree\u007Ffour", read(set).name)
   }
 
   @Test
@@ -248,18 +268,31 @@ class DiceSetTomlTest {
         restitution = 0.45,
         sound = TableSound.Glass,
         light = TableLight.Cool,
+        floorNormalPath = "tables/floor-normal.png",
+        floorRoughnessPath = "tables/floor-roughness.png",
+        floorTileMm = 80.0,
+        wallNormalPath = "tables/wall-normal.png",
+        wallRoughnessPath = "tables/wall-roughness.png",
+        wallTileMm = 300.0,
+        colorMode = TableColorMode.Average,
       )
 
-    // The two textures have to exist for the file checker to accept them, so
-    // the package is written out whole rather than as a lone set file.
+    // The textures have to exist for the file checker to accept them, so the
+    // package is written out whole rather than as a lone set file.
     val back =
       readWhole(
         DiceSet(id = "mine", name = "My dice", version = "1.0.0", tables = listOf(loud)),
         "tables/floor.png" to Drawings.png(64, 64),
         "tables/wall.png" to Drawings.png(64, 64),
+        "tables/floor-normal.png" to Drawings.png(64, 64),
+        "tables/floor-roughness.png" to Drawings.png(64, 64),
+        "tables/wall-normal.png" to Drawings.png(64, 64),
+        "tables/wall-roughness.png" to Drawings.png(64, 64),
       )
 
-    assertEquals(loud, back.tables.single())
+    // Whose package it is comes back too, from the validator rather than the
+    // file: no key of the format says it.
+    assertEquals(loud.copy(packageId = "mine"), back.tables.single())
   }
 
   @Test

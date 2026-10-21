@@ -1,6 +1,8 @@
 package de.drehtuer.dinfinity.render.filament
 
 import de.drehtuer.dinfinity.core.model.DieInstance
+import de.drehtuer.dinfinity.core.model.DieShape
+import de.drehtuer.dinfinity.core.model.ShapeAtlas
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.core.model.TableView
 import de.drehtuer.dinfinity.fixtures.StandardDice
@@ -14,6 +16,7 @@ import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Vector3
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.PI
@@ -54,8 +57,39 @@ class FilamentDiceRendererTest {
           .take(3)
       val corner = Vector3(drawn[0].toDouble(), drawn[1].toDouble(), drawn[2].toDouble())
 
-      assertEquals("${instance.die.id} is drawn the wrong size", reach, corner.length, TOLERANCE)
+      // The first corner drawn is the first corner of the unit mesh, which
+      // sits a rounded edge's width inside the sphere the die reaches.
+      val unit =
+        DieMesh
+          .of(instance.die, scale)
+          .surfaces
+          .first()
+          .positions
+          .first()
+      assertEquals("${instance.die.id} is drawn the wrong size", reach * unit.length, corner.length, TOLERANCE)
     }
+  }
+
+  @Test
+  fun `a translucent die's resin is as thick as the die it is drawn as`() {
+    // The capacity rule shrinks a die, and a ray through a shrunk die crosses
+    // less resin: the thickness follows the drawn size, not the set's.
+    val scale = 0.6
+    val clear = StandardDice.d20.copy(material = StandardDice.d20.material.copy(translucency = 0.6))
+    renderer.begin(
+      ThrowSpec(
+        dice = listOf(DieInstance(index = 0, groupId = 0, setId = "builtin", requestedSetId = "builtin", die = clear)),
+        geometry = geometry,
+        table = look,
+        seed = 1L,
+        dieScale = scale,
+      ),
+      geometry,
+      look,
+    )
+
+    val resin = requireNotNull(stage.added[TRAY_PARTS].second.resin)
+    assertEquals(clear.material.sizeMm * scale * Resin.THICKNESS_OF_SIZE, resin.thicknessMm, TOLERANCE)
   }
 
   @Test
@@ -113,6 +147,70 @@ class FilamentDiceRendererTest {
   }
 
   @Test
+  fun `a face the artwork draws on is not printed, and a face it leaves clear is`() {
+    // The face designer's Roll it threw a drawn die with the set's numbers
+    // showing through every clear part of every drawing: the label went on
+    // under the artwork and the artwork's alpha let it through.
+    val painted = StandardDice.d6.copy(texturePath = "textures/d6.png")
+    val key = AtlasKey.of("mine", "textures/d6.png")
+    stage.drawn = mapOf(key to setOf(0, 2))
+    val throwSpec =
+      spec().copy(
+        dice = listOf(DieInstance(index = 0, groupId = 0, setId = "mine", requestedSetId = "mine", die = painted)),
+      )
+
+    renderer.begin(throwSpec, geometry, look)
+
+    assertEquals(listOf(key to 6), stage.askedAbout)
+    val printed = requireNotNull(stage.added[TRAY_PARTS].second.numbers)
+    val unpainted = requireNotNull(DieNumbers.fieldOf(StandardDice.d6))
+    val cells = DieNumbers.plan(StandardDice.d6)
+
+    fun inkIn(
+      field: NumberField,
+      cell: Int,
+    ): Int {
+      val at = cells[cell]
+      val side = field.width / ShapeAtlas.gridFor(DieShape.Cube).columns
+      return (0 until side).sumOf { row ->
+        (0 until side).count { column ->
+          val x = at.column * side + column
+          val y = at.row * side + row
+          (field.pixels[y * field.width + x].toInt() and 0xFF) > INK_EDGE
+        }
+      }
+    }
+    assertEquals("a drawn face carries no number", 0, inkIn(printed, 0))
+    assertEquals("nor does the other one", 0, inkIn(printed, 2))
+    listOf(1, 3, 4, 5).forEach { cell ->
+      assertEquals("face $cell is clear and keeps its number", inkIn(unpainted, cell), inkIn(printed, cell))
+      assertTrue(inkIn(printed, cell) > 0)
+    }
+  }
+
+  @Test
+  fun `a die whose artwork draws on every face prints nothing`() {
+    val painted = StandardDice.d6.copy(texturePath = "textures/d6.png")
+    stage.drawn = mapOf(AtlasKey.of("mine", "textures/d6.png") to (0 until 6).toSet())
+    val throwSpec =
+      spec().copy(
+        dice = listOf(DieInstance(index = 0, groupId = 0, setId = "mine", requestedSetId = "mine", die = painted)),
+      )
+
+    renderer.begin(throwSpec, geometry, look)
+
+    assertTrue(stage.added[TRAY_PARTS].second.textured)
+    assertFalse("a number under a drawing is a number nobody drew", stage.added[TRAY_PARTS].second.numbered)
+  }
+
+  @Test
+  fun `a die with no artwork is not asked about`() {
+    renderer.begin(spec(), geometry, look)
+
+    assertTrue(stage.askedAbout.isEmpty())
+  }
+
+  @Test
   fun `a die already down wears its own package's artwork`() {
     // A die an explosion landed among came from some set, and the throw that
     // draws it is not that set's: the resting die carries its own.
@@ -125,20 +223,35 @@ class FilamentDiceRendererTest {
   }
 
   @Test
-  fun `the tray takes the table's colours and the rim takes no texture`() {
+  fun `the tray takes the table's colours and pictures, and the rim takes the wall's`() {
     val felt =
       look.copy(
         floorTexturePath = "tables/felt.png",
         wallTexturePath = "tables/oak.png",
         floorColorArgb = 0xFF1F5E3A.toInt(),
+        packageId = "brass",
       )
 
     renderer.begin(spec(), geometry, felt)
 
     assertEquals(Colour.of(felt.floorColorArgb), stage.added[0].second.colour)
-    assertEquals("tables/felt.png", stage.added[0].second.texturePath)
-    assertEquals("tables/oak.png", stage.added[1].second.texturePath)
-    assertFalse("six millimetres of rim is not where anybody looks", stage.added[2].second.textured)
+    val (floor, wall) = stage.added.take(2).map { it.second.maps }
+    assertEquals("brass::tables/felt.png", floor?.albedo)
+    assertEquals("brass::tables/oak.png", wall?.albedo)
+    // The wall's colour only comes out right times the wall's picture, so a
+    // rim in the colour alone would be a band of something else.
+    assertEquals(stage.added[1].second, stage.added[2].second)
+  }
+
+  @Test
+  fun `a plain table is drawn exactly as it was, with no picture anywhere`() {
+    renderer.begin(spec(), geometry, look)
+
+    stage.added.take(TRAY_PARTS).forEach { (_, parameters) ->
+      assertNull(parameters.maps)
+      assertFalse(parameters.textured)
+      assertEquals(DiceMaterial.Variant.OPAQUE, DiceMaterial.variantOf(parameters))
+    }
   }
 
   @Test
@@ -160,6 +273,16 @@ class FilamentDiceRendererTest {
       List(spec().dice.size) { true },
       stage.casting.drop(TRAY_PARTS),
     )
+  }
+
+  @Test
+  fun `a glass table's tray is drawn like any other, and still casts nothing`() {
+    renderer.begin(spec(), geometry, look.copy(roughness = 0.1))
+
+    val tray = stage.added.take(TRAY_PARTS).map { it.second }
+    assertTrue(tray.all { DiceMaterial.variantOf(it) == DiceMaterial.Variant.OPAQUE })
+    assertEquals(0.1, tray[0].roughness, 1e-9)
+    assertEquals(List(TRAY_PARTS) { false }, stage.casting.take(TRAY_PARTS))
   }
 
   @Test
@@ -314,7 +437,7 @@ class FilamentDiceRendererTest {
   fun `a die the stage would not take is not moved either`() {
     // `add` hands back "no entity" for a mesh with nothing in it, and nought
     // is not an entity anything may be done to.
-    stage.refuse = GpuMesh.of(DieMesh.of(StandardDice.d6.shape).faces, scale = radiusOf(StandardDice.d6))
+    stage.refuse = GpuMesh.of(DieMesh.of(StandardDice.d6, 1.0).surfaces, scale = radiusOf(StandardDice.d6))
     renderer.begin(spec(), geometry, look)
 
     renderer.show(RenderFrame.still(List(3) { at(it, Vector3.Zero) }))
@@ -431,6 +554,9 @@ class FilamentDiceRendererTest {
   private companion object {
     /** The floor, the walls and the rim. */
     const val TRAY_PARTS = 3
+
+    /** Where a distance field crosses from paper to ink: a byte past half. */
+    const val INK_EDGE = 127
 
     const val ASPECT = 320.0 / 640.0
     const val TOLERANCE = 1e-6

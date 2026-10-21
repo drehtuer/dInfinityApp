@@ -422,7 +422,7 @@ class PrintedNumbersDeviceTest {
       )
       val entity =
         stage.add(
-          GpuMesh.of(DieMesh.of(die.shape).faces, scale = die.material.boundingRadiusMm),
+          GpuMesh.of(DieMesh.of(die, scale = 1.0).surfaces, scale = die.material.boundingRadiusMm),
           DiceMaterial.dieOf(die.material, texturePath = null, numbers = numbers),
         )
       stage.place(entity, Transform.of(body.position, body.orientation))

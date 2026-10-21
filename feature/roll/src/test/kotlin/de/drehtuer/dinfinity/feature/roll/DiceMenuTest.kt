@@ -1,32 +1,11 @@
 package de.drehtuer.dinfinity.feature.roll
 
-import android.view.Surface
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
-import de.drehtuer.dinfinity.core.model.DieInstance
-import de.drehtuer.dinfinity.core.model.TableLook
-import de.drehtuer.dinfinity.core.notation.DiceCatalog
-import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
-import de.drehtuer.dinfinity.render.filament.Tray
-import de.drehtuer.dinfinity.render.filament.TrayView
-import de.drehtuer.dinfinity.render.headless.BodyTransform
-import de.drehtuer.dinfinity.render.headless.HeadlessRenderer
-import de.drehtuer.dinfinity.render.headless.RenderFrame
-import de.drehtuer.dinfinity.render.headless.Renderer
-import de.drehtuer.dinfinity.render.headless.Rolls
-import de.drehtuer.dinfinity.render.headless.WatchedRoll
-import de.drehtuer.dinfinity.simulation.api.Impact
-import de.drehtuer.dinfinity.simulation.api.Quaternion
-import de.drehtuer.dinfinity.simulation.api.SettleRule
-import de.drehtuer.dinfinity.simulation.api.ShakeSample
-import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
-import de.drehtuer.dinfinity.simulation.api.TableGeometry
-import de.drehtuer.dinfinity.simulation.api.ThrowSpec
-import de.drehtuer.dinfinity.simulation.api.Vector3
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -114,122 +93,6 @@ class DiceMenuTest {
   }
 
   private fun show() {
-    val presenter =
-      RollPresenter(
-        machine =
-          RollMachine(
-            catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set)),
-            geometry = TableGeometry.referenceDevice(),
-            look = { TableLook(id = "plain", name = "Plain") },
-            outside = Outside(seeds = { 1L }, clock = { 0L }),
-          ),
-        driver = DirectTray(),
-        rolls = LandingRolls(mapOf(0 to 0)),
-        toTheScreen = { it() },
-      )
-    compose.setContent { RollScreen(presenter = presenter) }
-  }
-
-  private open class DirectTray : Tray {
-    val shaken = mutableListOf<ShakeSample>()
-
-    /** How many times the screen has given this tray back. */
-    var closes = 0
-      private set
-
-    /** How many throws this tray has been handed. */
-    var throws = 0
-      private set
-
-    /** Every board this tray has been asked to show, in order. */
-    val boards = mutableListOf<List<DieInstance>>()
-
-    /** Every table this tray has been told about, in order. */
-    val tabled = mutableListOf<Pair<TableGeometry, TableLook>>()
-
-    /** Every view the player has asked for, in order. */
-    val looked = mutableListOf<TrayView>()
-
-    override fun surfaceAvailable(
-      surface: Surface,
-      width: Int,
-      height: Int,
-    ) = Unit
-
-    override fun surfaceLost() = Unit
-
-    override fun roll(
-      start: (Renderer) -> WatchedRoll,
-      onCounted: (Map<Int, Int>) -> Unit,
-      onStalled: (List<Int>) -> Unit,
-      onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
-    ) {
-      throws++
-      val live = start(HeadlessRenderer())
-      while (live.running) live.advance(SettleRule.TIMESTEP_SECONDS)
-      live.outcome?.let { onSettled(it, live.drivenBy) }
-      live.close()
-    }
-
-    override fun waiting(spec: ThrowSpec) {
-      boards += spec.dice
-    }
-
-    override fun shake(sample: ShakeSample) {
-      shaken += sample
-    }
-
-    override fun table(
-      geometry: TableGeometry,
-      look: TableLook,
-    ) {
-      tabled += geometry to look
-    }
-
-    override fun look(view: TrayView) {
-      looked += view
-    }
-
-    override fun clear() = Unit
-
-    override fun close() {
-      closes++
-    }
-  }
-
-  /**
-   * A tray that reports some dice counted and then leaves the roll in the air,
-   * which is what the screen looks like halfway through one.
-   */
-
-  private class LandingRolls(
-    private val faces: Map<Int, Int>,
-  ) : Rolls {
-    override fun start(
-      spec: ThrowSpec,
-      watcher: Renderer,
-    ): WatchedRoll =
-      object : WatchedRoll {
-        private var landed = false
-
-        override val running: Boolean get() = !landed
-
-        override val outcome: SimulationOutcome? get() = if (landed) SimulationOutcome(faces = faces) else null
-
-        override val drivenBy: List<ShakeSample> = emptyList()
-
-        override val impacts: List<Impact> = emptyList()
-
-        override fun advance(elapsedSeconds: Double): RenderFrame {
-          landed = true
-          return RenderFrame.still(
-            spec.dice.indices.map { BodyTransform(it, Vector3(0.0, 0.0, 8.0), Quaternion.Identity) },
-          )
-        }
-
-        override fun shake(sample: ShakeSample) = Unit
-
-        override fun close() = Unit
-      }
+    compose.setContent { RollScreen(presenter = rollPresenter(DirectTray(), LandingRolls(mapOf(0 to 0)))) }
   }
 }

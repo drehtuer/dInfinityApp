@@ -116,6 +116,7 @@ internal object JoltNative {
     world: Long,
     hull: FloatArray,
     convexRadius: Float,
+    maxErrorConvexRadius: Float,
     density: Float,
     friction: Float,
     restitution: Float,

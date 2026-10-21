@@ -61,6 +61,9 @@ class ConvolutionTest {
   @Test
   fun `the transform needs a power-of-two length`() {
     assertFailsWith<IllegalArgumentException> { Fft.transform(DoubleArray(3), DoubleArray(3)) }
+    // Nought passes the bit trick a power of two is tested with, so it needs
+    // refusing on its own.
+    assertFailsWith<IllegalArgumentException> { Fft.transform(DoubleArray(0), DoubleArray(0)) }
   }
 
   @Test

@@ -1,0 +1,259 @@
+package de.drehtuer.dinfinity.designer
+
+import de.drehtuer.dinfinity.core.model.DieMaterial
+import kotlin.math.abs
+
+/**
+ * What a die is made of, what colour it is and how round it is, as the face
+ * designer sets it (`docs/face-designer.md`, "Material, colour and edges";
+ * `docs/architecture.md`, decisions 94 and 97).
+ *
+ * Six fields of a [DieMaterial] and no others. **The colour is here**: with
+ * rounded edges a face no longer fills its side, and what shows at the edges
+ * and corners — and through every clear part of a drawing — is the body
+ * colour, so a die drawn to be red has to *be* red rather than bucket-filled
+ * red on a bone die. [numberColorArgb] goes with it: it is what the faces left
+ * undrawn are printed in, and it is chosen to read on [colorArgb]
+ * ([coloured]). Weight, translucency's stepper and size are the details
+ * screen's, for every die of the set at once; this is one die's.
+ *
+ * [translucency] is here although the details screen also sets it, because a
+ * glass die *is* its translucency — a "Glass" that left it at nought would be
+ * a shiny plastic die. A die with a finish of its own keeps its own; the
+ * details screen's stepper moves every other die, and says what each one is
+ * (`docs/dice-sets.md`, "Weight, translucency and size, as a person sets
+ * them").
+ *
+ * Every value is held inside the set file's limits, so nothing this writes is
+ * a value the validator would have to bring back.
+ */
+data class DieFinish(
+  val roughness: Double,
+  val metallic: Double,
+  val translucency: Double,
+  val edgeRounding: Double,
+  val colorArgb: Int = DieMaterial.DEFAULT_COLOR_ARGB,
+  val numberColorArgb: Int = DieMaterial.DEFAULT_NUMBER_COLOR_ARGB,
+) {
+  /** [material] with this finish in place of its own, clamped to the format's limits. */
+  fun on(material: DieMaterial): DieMaterial =
+    material
+      .copy(
+        roughness = roughness,
+        metallic = metallic,
+        translucency = translucency,
+        edgeRounding = edgeRounding,
+        colorArgb = colorArgb,
+        numberColorArgb = numberColorArgb,
+      ).clampedToLimits()
+
+  /**
+   * The same finish in the body colour [argb], opaque, with its numbers
+   * printed in whatever reads on it: the built-in near-black on a light body
+   * and white on a dark one ([PaperInk]). What it is made of and how round it
+   * is stay.
+   */
+  fun coloured(argb: Int): DieFinish {
+    val body = argb or OPAQUE
+    val ink = if (PaperInk.on(body) == PaperInk.BLACK) DieMaterial.DEFAULT_NUMBER_COLOR_ARGB else PaperInk.WHITE
+    return copy(colorArgb = body, numberColorArgb = ink)
+  }
+
+  /** The same finish made of [preset], with its rounding kept. */
+  fun madeOf(preset: MaterialPreset): DieFinish =
+    copy(roughness = preset.roughness, metallic = preset.metallic, translucency = preset.translucency)
+
+  /**
+   * The same finish rounded by [share] of the die's size — on a step of the
+   * Edges slider, inside the range ([EdgeRounding.snapped]) — with what it is
+   * made of kept.
+   */
+  fun rounded(share: Double): DieFinish = copy(edgeRounding = EdgeRounding.snapped(share))
+
+  /**
+   * How much of the light the body stops: one for a solid die, nought for
+   * glass. The Opacity slider stands here; the set file writes the other side
+   * of it, [translucency].
+   */
+  val opacity: Double get() = 1 - translucency
+
+  /**
+   * The same finish [share] opaque — on a step of the Opacity slider, inside
+   * the range ([Opacity.snapped]) — with its surface, its metal, its colours
+   * and its rounding kept. A share that lands on a preset's translucency is
+   * that preset again ([MaterialPreset.of]); one that does not is **Custom**.
+   */
+  fun opaque(share: Double): DieFinish = copy(translucency = Opacity.translucencyOf(share))
+
+  companion object {
+    /** What [material] is made of and how round it is, inside the format's limits. */
+    fun of(material: DieMaterial): DieFinish {
+      val clamped = material.clampedToLimits()
+      return DieFinish(
+        roughness = clamped.roughness,
+        metallic = clamped.metallic,
+        translucency = clamped.translucency,
+        edgeRounding = clamped.edgeRounding,
+        colorArgb = clamped.colorArgb,
+        numberColorArgb = clamped.numberColorArgb,
+      )
+    }
+
+    /** Every bit of the alpha byte: a die's body is never see-through by its colour. */
+    private const val OPAQUE: Int = 0xFF shl 24
+
+    /** The finish a die has when nobody has said anything: plastic, rounded as every die always was. */
+    val STANDARD: DieFinish = of(DieMaterial())
+  }
+}
+
+/**
+ * What the face designer's **Material** menu offers (`docs/face-designer.md`,
+ * "Material, colour and edges").
+ *
+ * A short list of names rather than three sliders, because "glass" is a thing
+ * somebody wants and "translucency 1.0, roughness 0.05" is how it is made.
+ * Each sets the three fields a material is and leaves the colour and the
+ * rounding alone. The values are tuned against how the renderer draws them
+ * (`docs/physics-and-rendering.md`, "A die you can see into"): the blur of what
+ * is seen through a die is the larger of its roughness and
+ * `0.6 × (1 − translucency)`, so a quarter translucent is milky, three fifths
+ * is clear enough to see the felt bent through it, and wholly translucent with
+ * a polished body is glass.
+ *
+ * A die whose fields match none of them — one copied from a set somebody else
+ * wrote — is shown as **Custom** ([of] answers null), and is kept as it is
+ * until a name is chosen.
+ */
+enum class MaterialPreset(
+  val roughness: Double,
+  val metallic: Double,
+  val translucency: Double,
+) {
+  /** What every die is when nobody says otherwise: [DieMaterial]'s own defaults. */
+  Plastic(roughness = 0.35, metallic = 0.0, translucency = 0.0),
+
+  /** Milky resin: a quarter of the light through, blurred to nothing in particular. */
+  Pearl(roughness = 0.35, metallic = 0.0, translucency = 0.25),
+
+  /** Clear-ish resin: the felt shows through, bent and a little soft. */
+  Resin(roughness = 0.15, metallic = 0.0, translucency = 0.6),
+
+  /** Everything through, polished: the felt seen as through a lens. */
+  Glass(roughness = 0.05, metallic = 0.0, translucency = 1.0),
+
+  /**
+   * A metal die: wholly metallic, satin rather than brushed. Any smoother and
+   * a face turning through the key light's mirror angle burns white, even in
+   * steel's grey (decision 106).
+   */
+  Metal(roughness = 0.6, metallic = 1.0, translucency = 0.0),
+
+  /** Matte and solid, like a die cut from stone. */
+  Stone(roughness = 0.8, metallic = 0.0, translucency = 0.0),
+  ;
+
+  /** True when [finish] is made of exactly this, whatever its rounding. */
+  fun matches(finish: DieFinish): Boolean =
+    near(finish.roughness, roughness) && near(finish.metallic, metallic) && near(finish.translucency, translucency)
+
+  companion object {
+    /** The preset [finish] is made of, or null for **Custom**. */
+    fun of(finish: DieFinish): MaterialPreset? = entries.firstOrNull { it.matches(finish) }
+  }
+}
+
+/**
+ * How round the face designer's **Edges** slider makes a die
+ * (`docs/face-designer.md`, "Material, colour and edges";
+ * `docs/architecture.md`, decision 98).
+ *
+ * **A slider over the range a set file may ask for**, in steps of half a per
+ * cent of the die's size. It used to be four named steps, on the argument
+ * that four dice are four that can be thrown and checked; but the rounding is
+ * symmetric, so it cannot load a die, and what a run measures — whether dice
+ * settle, how often they are re-thrown, whether they are fair — is a smooth
+ * function of it, so the two ends of the range answer for everything between
+ * them. Four steps also hid how little the rounding shows on an obtuse solid:
+ * on a d20 the difference between the first and the last step is half a
+ * millimetre at the corners, which a slider and the turning die beside it at
+ * least let somebody look for.
+ *
+ * The range is the set file's ([DieMaterial.EdgeRoundingRange]) and the slider
+ * cannot leave it, so nothing the designer writes is a value the validator
+ * would have to bring back.
+ */
+object EdgeRounding {
+  /** The least and the most a die may be rounded by, as a share of its size. */
+  val RANGE: ClosedFloatingPointRange<Double> = DieMaterial.EdgeRoundingRange
+
+  /** How far one step of the slider moves it: half a per cent of the die's size. */
+  const val STEP: Double = 0.005
+
+  /** How many positions the slider has between its two ends, which is what Material's `Slider` counts. */
+  val BETWEEN: Int = Math.round((RANGE.endInclusive - RANGE.start) / STEP).toInt() - 1
+
+  /**
+   * [share] inside the range and on a step of it — what a slider position or
+   * a value from somebody else's set comes to when the slider moves it. A
+   * value already on a step comes back as exactly the number a set file
+   * writes for it (`0.06`, not `0.060000000000000005`).
+   */
+  fun snapped(share: Double): Double {
+    if (!share.isFinite()) return DieMaterial.DEFAULT_EDGE_ROUNDING
+    val steps = Math.round((share.coerceIn(RANGE) - RANGE.start) / STEP)
+    return Math.round((RANGE.start + steps * STEP) * PER_MILLE) / PER_MILLE
+  }
+
+  /** Steps are half a per cent, so three decimal places say every one exactly. */
+  private const val PER_MILLE = 1000.0
+}
+
+/** Two values a set file can only have written as the same number, give or take its parsing. */
+private fun near(
+  one: Double,
+  other: Double,
+): Boolean = abs(one - other) < SAME
+
+private const val SAME = 1e-9
+
+/**
+ * How see-through the face designer's **Opacity** slider makes a die
+ * (`docs/face-designer.md`, "Material, colour and edges";
+ * `docs/architecture.md`, decision 102).
+ *
+ * **Opacity on the screen, translucency in the file.** The set file has had
+ * `translucency` since resin dice (decision 90) and the renderer reads nothing
+ * else, so the slider adds no field: it is the same number the Material menu
+ * sets, said the way round a person asks for it — "more solid" is the
+ * question, and a die is solid at the right-hand end. The menu's six names are
+ * still the quick way; the slider is for the die between Pearl and Resin.
+ *
+ * Steps of five per cent: every preset's translucency is on one (0, 25, 60
+ * and 100 %), and a finer step is a difference the tray does not show.
+ */
+object Opacity {
+  /** Wholly clear to wholly solid. */
+  val RANGE: ClosedFloatingPointRange<Double> = 0.0..1.0
+
+  /** How far one step of the slider moves it. */
+  const val STEP: Double = 0.05
+
+  /** How many positions the slider has between its two ends, which is what Material's `Slider` counts. */
+  val BETWEEN: Int = Math.round((RANGE.endInclusive - RANGE.start) / STEP).toInt() - 1
+
+  /**
+   * [share] inside the range and on a step of it, as the number a set file
+   * writes (`0.65`, not `0.6499999999999999`).
+   */
+  fun snapped(share: Double): Double {
+    if (!share.isFinite()) return RANGE.endInclusive
+    val steps = Math.round((share.coerceIn(RANGE) - RANGE.start) / STEP)
+    return Math.round((RANGE.start + steps * STEP) * PER_MILLE) / PER_MILLE
+  }
+
+  /** The translucency a set file writes for a slider at [share], exactly. */
+  fun translucencyOf(share: Double): Double = Math.round((1 - snapped(share)) * PER_MILLE) / PER_MILLE
+
+  private const val PER_MILLE = 1000.0
+}

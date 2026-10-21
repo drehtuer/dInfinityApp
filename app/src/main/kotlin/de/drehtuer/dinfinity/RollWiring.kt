@@ -18,6 +18,8 @@ import de.drehtuer.dinfinity.feedback.ImpactFeedback
 import de.drehtuer.dinfinity.render.filament.MaterialCache
 import de.drehtuer.dinfinity.render.filament.PowerSavingTray
 import de.drehtuer.dinfinity.render.filament.RollThread
+import de.drehtuer.dinfinity.render.filament.ShaderTimingStore
+import de.drehtuer.dinfinity.render.filament.StudioCache
 import de.drehtuer.dinfinity.render.filament.ThumbnailPlan
 import de.drehtuer.dinfinity.render.filament.Tray
 import de.drehtuer.dinfinity.render.filament.TrayCamera
@@ -142,8 +144,12 @@ class RollWiring(
    * Read per visit rather than captured, because it is a preference and a
    * preference changes while the app is running — choosing a table and going
    * back to the tray should land on it.
+   *
+   * Internal rather than private so that the precedence can be tested
+   * without a physics engine: the roll that would otherwise carry it to a
+   * spec needs one (`RollWiringTest`).
    */
-  private fun table(pinned: TablePin?): TableLook {
+  internal fun table(pinned: TablePin?): TableLook {
     val wanted = pinned ?: chosenTable()
     val fromPin = wanted?.let { catalog.set(it.setId)?.tables?.firstOrNull { table -> table.id == it.tableId } }
     return fromPin
@@ -262,13 +268,20 @@ class RollWiring(
    *
    * The compiled material is kept on disk as well ([MaterialCache]), in the
    * code cache Android empties on every update, so only the first launch of a
-   * new version compiles it at all.
+   * new version compiles it at all. The studio's folded cube is kept beside
+   * it for the same reason ([StudioCache]).
+   *
+   * How long each compile took is kept somewhere an update does *not* empty
+   * ([ShaderTimingStore], in `noBackupFilesDir`), because the next update is
+   * when the roll screen's "Preparing the dice" bar wants to know.
    */
   private val rollThread: RollThread by lazy {
     RollThread(
       artwork = artwork ?: { null },
       artworkStamp = artwork?.let { it::stamp } ?: { null },
       materials = MaterialCache(File(context.codeCacheDir, MATERIAL_CACHE_DIR)),
+      studio = StudioCache(File(context.codeCacheDir, STUDIO_CACHE_DIR)),
+      timings = ShaderTimingStore(File(context.noBackupFilesDir, SHADER_TIMINGS_FILE)),
     )
   }
 
@@ -391,5 +404,14 @@ class RollWiring(
   private companion object {
     /** Under `codeCacheDir`, which Android empties on every update. */
     const val MATERIAL_CACHE_DIR = "materials"
+
+    /** And the studio's folded cube beside them ([StudioCache]). */
+    const val STUDIO_CACHE_DIR = "studio"
+
+    /**
+     * Under `noBackupFilesDir`, which survives an update and stays on this
+     * phone: how long this phone takes to compile each material.
+     */
+    const val SHADER_TIMINGS_FILE = "shader-timings.txt"
   }
 }

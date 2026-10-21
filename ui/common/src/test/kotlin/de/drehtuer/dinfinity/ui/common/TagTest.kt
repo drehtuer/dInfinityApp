@@ -18,7 +18,6 @@ import androidx.compose.ui.test.onNodeWithText
 import de.drehtuer.dinfinity.core.model.AccentRamp
 import de.drehtuer.dinfinity.core.model.Ground
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -52,22 +51,6 @@ class TagTest {
 
     assertTrue("a neutral tag is unreadable on paper: $light", light >= BODY_TEXT)
     assertTrue("a neutral tag is unreadable on a dark page: $dark", dark >= BODY_TEXT)
-  }
-
-  @Test
-  fun `the two kinds do not look the same`() {
-    // They say different things — a state that is simply true, and one
-    // somebody chose — so they must not come out as the same chip.
-    compose.setContent {
-      Row {
-        Tag("default", kind = TagKind.Neutral, modifier = Modifier.testTag("neutral"))
-        Tag("disabled", kind = TagKind.Outline, modifier = Modifier.testTag("outline"))
-      }
-    }
-
-    val neutral = corner("neutral")
-    val outline = corner("outline")
-    assertNotEquals("a neutral tag and an outlined one are the same chip", neutral, outline)
   }
 
   @Test
@@ -138,6 +121,9 @@ class TagTest {
 
   @Test
   fun `the three kinds do not look the same`() {
+    // They say different things — a state that is simply true, one somebody
+    // chose, and one that wants attention — so no two may come out as the
+    // same chip.
     compose.setContent {
       Row {
         Tag("default", kind = TagKind.Neutral, modifier = Modifier.testTag("neutral"))

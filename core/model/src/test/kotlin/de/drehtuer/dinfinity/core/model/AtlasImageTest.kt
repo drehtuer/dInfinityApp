@@ -22,6 +22,7 @@ class AtlasImageTest {
 
     assertTrue(short.message!!.contains("16 bytes"))
     assertFailsWith<IllegalArgumentException> { AtlasImage(0, 4, ByteArray(0)) }
+    assertFailsWith<IllegalArgumentException> { AtlasImage(4, 0, ByteArray(0)) }
   }
 
   @Test
@@ -29,6 +30,8 @@ class AtlasImageTest {
     val image = blank(4, 4)
 
     assertFailsWith<IllegalArgumentException> { image.alphaAt(4, 0) }
+    assertFailsWith<IllegalArgumentException> { image.alphaAt(-1, 0) }
+    assertFailsWith<IllegalArgumentException> { image.alphaAt(0, 4) }
     assertFailsWith<IllegalArgumentException> { image.alphaAt(0, -1) }
   }
 
@@ -55,6 +58,14 @@ class AtlasImageTest {
 
     assertEquals(listOf(0, 1, 2, 3, 5), image.emptyCells(faces = 6))
     assertFalse(image.cellIsEmpty(faces = 6, index = 4))
+  }
+
+  @Test
+  fun `the drawn cells are the faces that are not empty`() {
+    val image = painted(30, 20) { x, y -> if (x == 12 && y == 15) 0xFF else 0x00 }
+
+    assertEquals(setOf(4), image.drawnCells(faces = 6))
+    assertEquals(emptySet(), blank(30, 20).drawnCells(faces = 6))
   }
 
   @Test

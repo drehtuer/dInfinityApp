@@ -167,15 +167,23 @@ class DInfinityApplication : Application() {
   }
 
   /**
-   * A die's artwork, read out of the package it was installed with
-   * (`docs/dice-sets.md`, "Textures").
+   * A die's artwork and a table's pictures, read out of the package they came
+   * in (`docs/dice-sets.md`, "Textures").
    *
    * Here rather than in [RollWiring] because it is made of [packages], which
    * is this class's one Android-shaped fact — where `dicesets/` is — and
    * because the face designer writes into the same folder, so "My dice" is
    * found by exactly the same scan as anything downloaded.
    */
-  private val artwork: InstalledArtwork by lazy { InstalledArtwork(packages) }
+  private val artwork: InstalledArtwork by lazy {
+    // The bundled package is never put on disk, so its pictures — the felt and
+    // the oak — are read from the files it was validated from
+    // (`docs/tables.md`, "Textures").
+    InstalledArtwork(
+      installed = packages,
+      bundled = InstalledArtwork.BundledPackage(BuiltinDiceSet.set, BuiltinDiceSet.files()),
+    )
+  }
 
   /**
    * The table look the player chose, as last read from the settings.

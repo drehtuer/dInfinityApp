@@ -101,6 +101,13 @@ class ImpactVoiceTest {
   fun `a tick refuses a length or an amplitude that is not one`() {
     assertTrue(runCatching { Tick(milliseconds = 0, amplitude = 100) }.exceptionOrNull() is IllegalArgumentException)
     assertTrue(runCatching { Tick(milliseconds = 5, amplitude = 0) }.exceptionOrNull() is IllegalArgumentException)
+    // And above what `VibrationEffect.createOneShot` takes, which would throw
+    // on the phone rather than here.
+    assertTrue(
+      runCatching {
+        Tick(milliseconds = 5, amplitude = HapticTick.STRONGEST + 1)
+      }.exceptionOrNull() is IllegalArgumentException,
+    )
   }
 
   private fun impact(

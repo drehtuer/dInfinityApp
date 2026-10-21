@@ -29,6 +29,7 @@ internal class MaterialReader(
       "translucency",
       "restitution",
       "friction",
+      "edge_rounding",
     )
 
   /** [table]'s material keys, with anything it does not set taken from [inherited]. */
@@ -47,6 +48,10 @@ internal class MaterialReader(
       translucency = percentage(table, "translucency", where) ?: inherited.translucency,
       restitution = bounded(table, "restitution", where, DieMaterial.RestitutionRange) ?: inherited.restitution,
       friction = bounded(table, "friction", where, DieMaterial.FrictionRange) ?: inherited.friction,
+      // A share of `size_mm` rather than millimetres, so a die made bigger
+      // keeps its look; it is the solver's convex radius, clamped and warned
+      // about like every other physics value (`docs/dice-sets.md`).
+      edgeRounding = bounded(table, "edge_rounding", where, DieMaterial.EdgeRoundingRange) ?: inherited.edgeRounding,
     )
 
   /**

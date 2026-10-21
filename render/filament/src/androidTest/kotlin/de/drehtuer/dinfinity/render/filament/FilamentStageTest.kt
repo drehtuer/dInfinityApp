@@ -112,17 +112,18 @@ class FilamentStageTest {
 
   @Test
   fun bothMaterialsCompileOnThisDevice() {
-    // Two of them now: blending is baked into a material when it is compiled,
-    // so a die a set called translucent is drawn with a second material built
-    // from the same source. If the clear-coat lines or the premultiplied
-    // alpha were something this driver's compiler refused, it is here that it
-    // would say so (`docs/physics-and-rendering.md`, "Rendering").
+    // Two of them: refraction is baked into a material when it is compiled,
+    // so a die a set called translucent is drawn with a second material that
+    // shares the first one's surface. If screen-space refraction, the resin's
+    // parameters or the clear coat over them were something this driver's
+    // compiler refused, it is here that it would say so
+    // (`docs/physics-and-rendering.md`, "A die you can see into").
     FilamentEngine().use { filament ->
       val solid = DiceMaterial.dieOf(StandardDice.d20.material, texturePath = null)
       val clear = DiceMaterial.dieOf(StandardDice.d20.material.copy(translucency = HALF_CLEAR), texturePath = null)
       assertEquals(filament.material, filament.materialFor(solid))
-      assertEquals(filament.blendedMaterial, filament.materialFor(clear))
-      assertTrue("both materials are the same one", filament.material != filament.blendedMaterial)
+      assertEquals(filament.resinMaterial, filament.materialFor(clear))
+      assertTrue("both materials are the same one", filament.material != filament.resinMaterial)
     }
   }
 
@@ -137,25 +138,121 @@ class FilamentStageTest {
     assertTrue("a die at 80 % translucent drew exactly what a solid one did", !solid.contentEquals(clear))
   }
 
-  /** One frame of one die of this translucency, as bytes. */
-  private fun drawnWith(translucency: Double): ByteArray {
+  @Test
+  fun aResinDieShowsTheFeltBehindIt() {
+    // What resin is *for*: the floor under a clear die shows through it. A
+    // solid die's own pixels are the same whatever the felt is, so the pixels
+    // that agree between a red floor and a blue one under a solid die are its
+    // body (and the walls, which no die changes). Under a clear die in the
+    // same place, some of exactly those pixels have to follow the floor —
+    // which is a refraction that ran, a resin that compiled, and a refracting
+    // die that was drawn at all, in one question.
+    val red = look.copy(floorColorArgb = RED_FLOOR)
+    val blue = look.copy(floorColorArgb = BLUE_FLOOR)
+    val solidRed = drawnWith(translucency = 0.0, table = red)
+    val solidBlue = drawnWith(translucency = 0.0, table = blue)
+    val clearRed = drawnWith(translucency = 1.0, table = red, roughness = 0.0)
+    val clearBlue = drawnWith(translucency = 1.0, table = blue, roughness = 0.0)
+
+    val body = pixelsAgreeing(solidRed, solidBlue)
+    val seenThrough = body.count { pixel -> !samePixel(clearRed, clearBlue, pixel) }
+    Log.i(TAG, "resin: $seenThrough of ${body.size} body-or-wall pixels follow the floor")
+    assertTrue(
+      "no pixel of a clear die changed with the felt under it ($seenThrough of ${body.size})",
+      seenThrough >= LEAST_SEEN_THROUGH,
+    )
+  }
+
+  @Test
+  fun aGlassyDieTakesTheColourOfTheFloorUnderIt() {
+    // The question the one above cannot answer: not whether *any* pixel of a
+    // clear die follows the floor, but whether the die is mostly floor. A
+    // near-white glass die tints nothing, so through it a red floor has to
+    // look red and a blue one blue across most of its body; a refraction
+    // sampling an empty picture, or a tint that darkens what it sees to
+    // nothing, leaves the body grey whichever floor is under it.
+    //
+    // The body is found with an opaque die, not guessed: the pixels a solid
+    // die changes from the empty tray (which takes in its shadow too) and that
+    // do not change with the floor (which leaves out the shadow, the floor and
+    // the walls).
+    val red = look.copy(floorColorArgb = RED_FLOOR)
+    val blue = look.copy(floorColorArgb = BLUE_FLOOR)
+    val emptyRed = drawnWith(translucency = 0.0, table = red, position = OUT_OF_SIGHT)
+    val solidRed = drawnWith(translucency = 0.0, table = red, colour = NEAR_WHITE)
+    val solidBlue = drawnWith(translucency = 0.0, table = blue, colour = NEAR_WHITE)
+    val glassRed = drawnWith(translucency = 1.0, table = red, roughness = GLASSY, colour = NEAR_WHITE)
+    val glassBlue = drawnWith(translucency = 1.0, table = blue, roughness = GLASSY, colour = NEAR_WHITE)
+
+    val body = pixelsAgreeing(solidRed, solidBlue).filter { !samePixel(solidRed, emptyRed, it) }
+    val floorColoured =
+      body.count { pixel ->
+        leans(glassRed, pixel, towardsRed = true) && leans(glassBlue, pixel, towardsRed = false)
+      }
+    val share = floorColoured.toDouble() / body.size.coerceAtLeast(1)
+    val percent = (share * PERCENT).toInt()
+    Log.i(TAG, "glass: $floorColoured of ${body.size} body pixels ($percent %) take the floor's hue")
+    assertTrue("the die's body was not found (${body.size} pixels)", body.size >= LEAST_BODY)
+    assertTrue(
+      "only $floorColoured of ${body.size} pixels of a glass die take the floor's colour",
+      share >= LEAST_FLOOR_SHARE,
+    )
+  }
+
+  /** Whether [pixel] of [frame] is clearly redder than it is blue, or the other way. */
+  private fun leans(
+    frame: ByteArray,
+    pixel: Int,
+    towardsRed: Boolean,
+  ): Boolean {
+    val from = pixel * FilamentStage.PIXEL_BYTES
+    val r = frame[from].toInt() and BYTE
+    val b = frame[from + 2].toInt() and BYTE
+    return if (towardsRed) r - b >= HUE_MARGIN else b - r >= HUE_MARGIN
+  }
+
+  /** Every pixel [a] and [b] have the same, by index. */
+  private fun pixelsAgreeing(
+    a: ByteArray,
+    b: ByteArray,
+  ): List<Int> = (0 until a.size / FilamentStage.PIXEL_BYTES).filter { samePixel(a, b, it) }
+
+  private fun samePixel(
+    a: ByteArray,
+    b: ByteArray,
+    pixel: Int,
+  ): Boolean {
+    val from = pixel * FilamentStage.PIXEL_BYTES
+    return (from until from + FilamentStage.PIXEL_BYTES).all { a[it] == b[it] }
+  }
+
+  /** One frame of one die of this translucency, on [table], as bytes. */
+  private fun drawnWith(
+    translucency: Double,
+    table: TableLook = look,
+    roughness: Double = StandardDice.d20.material.roughness,
+    colour: Int = StandardDice.d20.material.colorArgb,
+    position: Vector3 = Vector3(0.0, 0.0, 10.0),
+  ): ByteArray {
     // Post-processing off, for the reason `aDrawnFrameIsNotBlank` gives.
     FilamentStage(WIDTH, HEIGHT, postProcessing = false).use { stage ->
-      val die = StandardDice.d20.copy(material = StandardDice.d20.material.copy(translucency = translucency))
+      val material =
+        StandardDice.d20.material.copy(translucency = translucency, roughness = roughness, colorArgb = colour)
+      val die = StandardDice.d20.copy(material = material)
       val renderer = FilamentDiceRenderer(stage)
       renderer.begin(
         ThrowSpec(
           dice = listOf(DieInstance(index = 0, groupId = 0, setId = "builtin", requestedSetId = "builtin", die = die)),
           geometry = geometry,
-          table = look,
+          table = table,
           seed = 1L,
         ),
         geometry,
-        look,
+        table,
       )
       renderer.show(
         RenderFrame.still(
-          listOf(BodyTransform(index = 0, position = Vector3(0.0, 0.0, 10.0), orientation = Quaternion.Identity)),
+          listOf(BodyTransform(index = 0, position = position, orientation = Quaternion.Identity)),
         ),
       )
       val pixels = stage.pixelBuffer()
@@ -223,6 +320,19 @@ class FilamentStageTest {
   }
 
   @Test
+  fun bothDiceMaterialsSpreadAGlintThinnerThanAPixel() {
+    // A rounded edge's lacquer glint drew as a broken white line on resin
+    // dice; the compiled packets have to carry the specular anti-aliasing
+    // that spreads it (`DiceMaterial.SPECULAR_AA_VARIANCE`).
+    FilamentEngine(materials = MaterialCache.NONE).use { filament ->
+      listOf(filament.material, filament.resinMaterial).forEach { material ->
+        assertEquals(DiceMaterial.SPECULAR_AA_VARIANCE, material.specularAntiAliasingVariance, 1e-6f)
+        assertEquals(DiceMaterial.SPECULAR_AA_THRESHOLD, material.specularAntiAliasingThreshold, 1e-6f)
+      }
+    }
+  }
+
+  @Test
   fun aMaterialKeptOnDiskDrawsOnTheNextLaunch() {
     // The second engine reads both materials back instead of compiling them
     // (`MaterialCache`); the packet has to be one this driver accepts.
@@ -230,13 +340,13 @@ class FilamentStageTest {
     dir.deleteRecursively()
     try {
       val compiling = System.nanoTime()
-      FilamentEngine(materials = MaterialCache(dir)).use { it.blendedMaterial }
+      FilamentEngine(materials = MaterialCache(dir)).use { it.resinMaterial }
       val compiled = System.nanoTime() - compiling
       assertEquals(2, dir.listFiles { file -> file.name.endsWith(".filamat") }?.size)
 
       val reading = System.nanoTime()
       FilamentEngine(materials = MaterialCache(dir)).use { filament ->
-        filament.blendedMaterial
+        filament.resinMaterial
         val read = System.nanoTime() - reading
         Log.i(
           "dinfinity.startup",
@@ -308,11 +418,53 @@ class FilamentStageTest {
     const val HEIGHT = 640
     const val ROLLS = 3
 
-    /** Clear enough that a blended die cannot come out as the solid one. */
+    /** Clear enough that a resin die cannot come out as the solid one. */
     const val MOSTLY_CLEAR = 0.8
 
-    /** And enough to pick the blended material at all. */
+    /** And enough to pick the resin material at all. */
     const val HALF_CLEAR = 0.5
+
+    /** Two felts nothing could mistake for each other. */
+    const val RED_FLOOR = 0xFFC02020.toInt()
+    const val BLUE_FLOOR = 0xFF2030C0.toInt()
+
+    /**
+     * How many of a clear die's pixels have to follow the felt. A d20 at this
+     * size is a few hundred pixels; a few dozen is a refraction that ran, and
+     * nought is one that did not.
+     */
+    const val LEAST_SEEN_THROUGH = 30
+
+    /** A glass die that tints nothing, so the floor's own colour is what shows. */
+    const val NEAR_WHITE = 0xFFF2F2F2.toInt()
+
+    /** Polished glass: the floor seen through it sharp, not blurred. */
+    const val GLASSY = 0.05
+
+    /**
+     * Under the floor, where a die is neither seen nor shades anything the
+     * key light reaches first: the tray as it is with no die on it.
+     */
+    val OUT_OF_SIGHT = Vector3(0.0, 0.0, -500.0)
+
+    /**
+     * How far apart red and blue have to be, in bytes, for a pixel to be
+     * coloured by the floor rather than grey with a cast.
+     */
+    const val HUE_MARGIN = 16
+
+    /**
+     * The share of a glass die's body that has to take the floor's colour.
+     * The rest is ink, which transmits nothing, and the lacquer's reflections
+     * of the room, which are the room's colour whatever the floor is.
+     */
+    const val LEAST_FLOOR_SHARE = 0.3
+
+    /** A d20 at this size covers hundreds of pixels; fewer is a die not found. */
+    const val LEAST_BODY = 100
+
+    const val BYTE = 0xFF
+    const val PERCENT = 100
 
     /** Rotations, near enough: a new surface each, one engine behind them. */
     const val SURFACES = 3

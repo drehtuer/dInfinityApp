@@ -15,6 +15,7 @@ import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.settleOrStand
+import kotlinx.coroutines.flow.StateFlow
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.RejectedExecutionException
@@ -104,6 +105,9 @@ class TrayDriver(
   private val handler get() = host.handler
 
   private var ticking = false
+
+  /** The thread's, because the engine whose materials are compiled is the thread's ([RollThread.shaders]). */
+  override val shaders: StateFlow<ShaderWork> get() = host.shaders
 
   /**
    * The board thread: one per visit, and the only place a board's drop is

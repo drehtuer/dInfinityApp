@@ -1,14 +1,19 @@
 package de.drehtuer.dinfinity.feature.stats
 
 import android.content.Context
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.click
+import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.test.performTouchInput
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import de.drehtuer.dinfinity.core.model.RollResult
@@ -141,6 +146,40 @@ class SessionsScreenTest {
 
     compose.onNodeWithTag(SessionsTestTags.SHEET).assertDoesNotExist()
     assertTrue(names().none { it == "Tuesday" })
+  }
+
+  @Test
+  fun `a tap outside the naming sheet makes nothing either`() {
+    // The backdrop is the other way out, and it is the one taken by accident.
+    show()
+    compose.onNodeWithTag(SessionsTestTags.NEW).performClick()
+    compose.onNodeWithTag(SessionsTestTags.NAME).performTextInput("Tuesday")
+
+    compose
+      .onAllNodes(isRoot())
+      .onLast()
+      .performTouchInput { click(Offset(1f, 1f)) }
+    compose.waitForIdle()
+
+    compose.onNodeWithTag(SessionsTestTags.SHEET).assertDoesNotExist()
+    assertTrue(names().none { it == "Tuesday" })
+  }
+
+  @Test
+  fun `a press with no sheet open, or a delete of the first session, changes nothing`() {
+    // The screen offers neither, but a stale frame or an accessibility service
+    // can still deliver one, and the presenter is the last thing between it
+    // and the database. The first session is where deleted sessions' rolls go,
+    // so it cannot go itself.
+    val presenter = show()
+
+    presenter.name("Tuesday")
+    presenter.save()
+    presenter.delete(SessionRepository.DEFAULT_ID)
+    compose.waitForIdle()
+
+    assertEquals(null, presenter.state.editing)
+    assertEquals(listOf("First rolls"), names())
   }
 
   @Test

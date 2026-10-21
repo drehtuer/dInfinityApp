@@ -1,5 +1,6 @@
 package de.drehtuer.dinfinity.render.filament
 
+import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.simulation.api.Quaternion
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
@@ -99,6 +100,31 @@ class GpuMeshTest {
         assertEquals("a tangent frame that is not a turn", 1.0, frame dot frame, LOOSE)
         assertTrue("a tangent frame Filament would read as reflected", frame.w >= 0.0)
       }
+    }
+  }
+
+  @Test
+  fun `a curved surface is lit by each corner's own normal, with a square frame`() {
+    // A rounded edge is one surface with a normal per corner; packing it with
+    // the face's single normal would light the whole bend as the flat beside
+    // it and the rounding would vanish (`RoundedEdges`).
+    val rounded = DieMesh.of(Die.standard("d6", DieShape.Cube), scale = 1.0).surfaces
+    val mesh = GpuMesh.of(rounded)
+    var corner = 0
+    rounded.forEach { surface ->
+      surface.positions.indices.forEach { own ->
+        val frame = mesh.tangentAt(corner + own)
+        val facing = surface.normals.getOrElse(own) { surface.normal }
+        val out = frame.rotate(Vector3(0.0, 0.0, 1.0))
+        val along = frame.rotate(Vector3(1.0, 0.0, 0.0))
+        assertTrue("corner ${corner + own} is lit facing $out, not $facing", facing.approximates(out, LOOSE))
+        assertTrue("a frame Filament would read as reflected", frame.w >= 0.0)
+        assertTrue(
+          "corner ${corner + own}'s texture runs against its face's",
+          (along dot surface.tangent) > 0,
+        )
+      }
+      corner += surface.positions.size
     }
   }
 

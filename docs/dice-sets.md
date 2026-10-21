@@ -42,7 +42,9 @@ A worked example of exactly this layout is in the repository at
 [`examples/`](../examples/) — one die on every catalogue shape, a `diceset.toml`
 whose comments say what each field is for and what it is limited to, and a
 blank atlas per shape cut to the grid below. It is the place to start, and
-[Authoring tips](#authoring-tips) says why.
+[Authoring tips](#authoring-tips) says why. Four finished sets to install and look at —
+marble with artwork on every face, steel, green resin and red glass — are in
+[`sample-sets/`](../sample-sets/), each as a folder and as a zip.
 
 ## `diceset.toml`
 
@@ -68,6 +70,7 @@ density = 1.2                    # g/cm³, clamped to 0.5..8
 translucency = 0                 # %, 0 solid .. 100 glass, clamped
 restitution = 0.55               # clamped to 0.0..0.8
 friction = 0.5                   # clamped to 0.1..1.0
+edge_rounding = 0.03             # share of size_mm, clamped to 0.015..0.06
 
 # --- dice -----------------------------------------------------------
 
@@ -114,7 +117,9 @@ color = "#f0e6d0"                # per-die override
 id = "bone-felt"
 name = "Bone felt"
 floor_texture = "tables/felt.png"
-floor_tiling = [3, 6]
+floor_normal = "tables/felt-normal.png"
+floor_tile_mm = 80
+color_mode = "average"
 floor_color = "#d9cbb0"
 wall_color = "#3a2a18"
 sound = "felt"
@@ -135,7 +140,8 @@ sound = "felt"
 | `die.labels` | no | Strings printed on faces when no texture. Defaults to `faces` as text. Max 4 characters each. |
 | `die.read` | no | `face-up` (default) or `vertex-up`. |
 | `die.texture` | no | Path to a PNG/WebP atlas, relative, inside the set folder. |
-| `defaults.translucency`, `die.translucency` | no | Per cent, `0` solid to `100` glass, clamped. It drives the body's opacity and **nothing else**: the numerals stay fully opaque whatever it is, because a face you cannot read is not a die. |
+| `defaults.translucency`, `die.translucency` | no | Per cent, `0` solid to `100` glass, clamped. Above `0` the die is drawn as resin: the felt and the dice behind it show *through* it, bent and tinted by the die's own `color` — more of it the higher the value, and wholly at `100` (`docs/physics-and-rendering.md`, "A die you can see into"). How milky it is, how thick and how it tints what is behind it are worked out from this, `color`, `size_mm` and `roughness` — a low translucency is milky, a high one glassy, and a rough die is frosted — so there are no resin fields of their own. The numerals and any artwork stay fully opaque whatever it is, because a face you cannot read is not a die. |
+| `defaults.edge_rounding`, `die.edge_rounding` | no | How round the die's edges and corners are, as a share of `size_mm`: `0.03` (0.48 mm on a 16 mm die) when not given, clamped to `0.015`–`0.06` with a warning, refused when it is not a number. The top is measured, not chosen: past 6 % a coin's rim starts to roll like a wheel and throws stop settling (`docs/physics-and-rendering.md`, "How round a die may be"; decision 100). It is a physical property, not a look: it is the solver's *convex radius*, and the renderer draws the die with exactly the rounding the solver collides (`docs/physics-and-rendering.md`, "Dice bodies" and "Rounded edges"). The solver gives a sharp corner less than is asked — a d4 gets half, at every value — so a d4's points never go blunt. Rounder dice tumble a little longer and land a little differently; a fairness run can be asked about any value of it (`FairnessTest`'s `edgeRounding`) (`docs/architecture.md`, decision 94). |
 | `die.color`, `number_color`, `roughness`, `metallic`, `size_mm`, `density`, `restitution`, `friction` | no | Per-die overrides of `defaults`. |
 | `table.*` | no | Table looks; fields and limits in `docs/tables.md`. |
 
@@ -186,6 +192,14 @@ of** (`docs/tables.md`, "Your own photo"). Beside it there can be any number of
 - Removing a named set removes its records with its package — a package whose
   records stayed would be built straight back. Removing "My dice" removes the
   package alone, as it always has.
+- **A die drawn in the designer may carry a material, a colour and a rounding
+  of its own** — `color`, `number_color`, `roughness`, `metallic`,
+  `translucency` and `edge_rounding` as per-die keys over `[defaults]` — when
+  the designer's **Material**, **Colour** or **Edges** control (its second
+  step) was used on it, or when it was copied from a set whose die
+  was not the standard material (`docs/face-designer.md`, "Material, colour and
+  edges"). Such a die keeps its own translucency when the details screen's
+  stepper moves the rest of the set's, and the block's range says so.
 
 Every one of them is a folder in `dicesets/` like any other, and there is no
 privileged path for any of them:
@@ -397,8 +411,8 @@ uses:
   number an author thought about. 50–150 % of 16 mm is 8–24 mm, so everything
   the stepper can reach is a size the file format already accepts.
 - **All three are real, none of them is metadata.** Size scales the die on the
-  table and therefore what the capacity rule counts; translucency drives the
-  body's opacity with the numerals held opaque; weight is mass, so a heavier
+  table and therefore what the capacity rule counts; translucency is how much
+  of the body light passes through, with the numerals held opaque; weight is mass, so a heavier
   die settles sooner. What the app must **not** take from the prototype is its
   arithmetic for the last one: `clamp(0.7, 1.05 × (4.2 / w)^0.35, 1.45)`
   seconds is an animation standing in for a solver, and the app has a solver.
@@ -491,7 +505,9 @@ unfair dice and a fairness UI — a whole feature, not a field.
   per package for as long as the renderer's engine is (below).
 - Textures are optional per die and per face: an atlas may leave cells
   transparent, in which case the label is rendered in `number_color` on top
-  of the die colour for that face.
+  of the die colour for that face. A face whose cell the atlas draws on is
+  **not printed** — it carries the drawing alone ("Labels, and the artwork
+  over them").
 
 ### How an atlas reaches the tray
 
@@ -533,31 +549,58 @@ Four things about that path are rules rather than arrangement:
   atlas is decoded again and the old `Texture` is given back, which is safe
   because a package only changes while the roll screen is not showing. Before
   this, a drawing rolled a second time was thrown as it looked the first time.
-- **Straight alpha, not premultiplied.** The material lays the artwork over the
-  die's printed label by the artwork's own alpha, so a half-transparent pixel
-  has to keep its full colour. Android premultiplies by default and the decoder
-  asks it not to.
+- **Straight alpha, not premultiplied, and sRGB.** The material lays the
+  artwork over the die's body colour by the artwork's own alpha, so a
+  half-transparent pixel has to keep its full colour. Android premultiplies by
+  default and the decoder asks it not to. An opaque pixel is drawn in its own
+  colour, not tinted by the body's: a yellow pip on a black die is yellow. The
+  texture is uploaded as sRGB, so the colour on the face is the colour in the
+  file (`docs/physics-and-rendering.md`, "Rendering (normal mode)"; decision 101).
+- **Which faces it draws on is read once, at the upload.** The same pixels
+  say which face cells hold anything at all (`AtlasImage.drawnCells`, the
+  complement of the validator's empty cells), for every face count the
+  catalogue has, and that answer travels with the texture
+  (`AtlasCoverage`). It is what decides which faces are printed (below).
 - **Nothing that fails here breaks a roll.** A package that is not installed, a
   path that tries to leave it, a file over the cap, a file that will not decode
   — each comes back as report lines and the die is drawn the way a die with no
   artwork is drawn. The bytes never reach a decoder until the path, the size
   and the dimensions have each been checked, in that order.
 
-**A table look's floor and wall textures do not go through this yet.** They
-carry a path and nothing saying whose package, so they resolve to nothing and a
-table is drawn in its own colours (`docs/tables.md`, "Table looks";
-`docs/TODO.md`, "Open questions").
+**A table look's pictures go through this too.** The validator stamps every
+look with the package it read it out of, so a floor's picture is keyed exactly
+like a die's atlas — `builtin::tables/felt-albedo.webp` — and goes through the
+same path, size and decode checks on the way. Two things differ, both on the
+GPU side: a table's pictures are uploaded with every mip level and sampled
+anisotropically, because a floor is looked at along it, and the colour
+picture is uploaded as sRGB (`docs/tables.md`, "Textures"). **The bundled
+package is answered from its resources**, the files it was validated from,
+because it is never installed to disk; its id is matched before any folder's,
+as `SetLibrary` matches it.
 
 ### Labels, and the artwork over them
 
-**Every die is printed, and the artwork is laid over it.** The labels go on in
+**A face carries its drawing or its label, never both.** The labels go on in
 `number_color` on the body colour, in the same atlas grid an image fills, and
-the atlas is then composited over that by its own alpha — so a cell an author
-drew in carries the drawing, and a cell they left clear carries the label. That
-is what "an atlas may leave cells transparent" above means, and it is settled
-per *pixel*, in the material, rather than per face anywhere else
-(`docs/physics-and-rendering.md`, "Rendering"). A die with no `texture` at all
-is simply the case where every cell is clear.
+the atlas is composited over that by its own alpha — but **only the faces the
+atlas leaves clear are printed**. A cell with anything drawn in it (any pixel
+above `AtlasImage.CLEAR_ALPHA`) carries the drawing on the body colour and no
+label; a cell left wholly clear carries the label. That is what "an atlas may
+leave cells transparent" above means, and it is settled **per face**, from the
+decoded pixels, by the renderer (`render/filament`'s `AtlasCoverage` and
+`PrintedDice`; `docs/physics-and-rendering.md`, "Rendering";
+`docs/architecture.md`, decision 96). A die with no `texture` at all is simply
+the case where every cell is clear.
+
+It was settled per *pixel* until v0.2.x — every face printed, the artwork laid
+over the printing — and that showed the label through every clear part of a
+drawing: a skull drawn in outline on a d6's 1 had a `1` in the middle of it,
+and every face drawn in the face designer came to the tray with the set's
+number over it. A number nobody drew is not part of anybody's artwork. An
+author who wants the number *and* a border draws both, which the face
+designer's "fill all with numbers" does in one tap (`docs/face-designer.md`).
+On a d4 the face is a triangle and its three corner numbers go with it: a
+drawn triangle loses its three, and its neighbours keep theirs.
 
 The decoder says which face cells came out empty, as a warning, because the
 other way to arrive at an empty cell is an atlas saved in the wrong grid and
@@ -791,7 +834,7 @@ Errors (set is rejected):
 - Bad slug, duplicate die id, duplicate table id
 - Unknown shape (including `mesh`, which v1 does not implement); `faces` length
   ≠ shape face count; a face value outside −9999..9999
-- A `read`, `sound` or `light` naming something the app does not have
+- A `read`, `sound`, `light` or `color_mode` naming something the app does not have
 - Referenced file missing, outside the folder, absolute, wrong extension, over
   size; the package's textures over 24 MiB together
 - Texture over the dimension limit, or not a picture of the kind its name
@@ -801,7 +844,7 @@ Errors (set is rejected):
 
 Warnings (set installs, user sees them):
 
-- Physics value clamped, table tiling clamped
+- Physics value clamped, table tiling or tile size clamped
 - A standard die id missing (e.g. no `d12`) — notation will fall back
 - Label longer than 4 chars truncated
 - Unknown key, ignored

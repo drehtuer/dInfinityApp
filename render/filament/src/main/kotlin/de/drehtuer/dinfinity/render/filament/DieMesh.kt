@@ -1,11 +1,13 @@
 package de.drehtuer.dinfinity.render.filament
 
+import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.core.model.ShapeAtlas
 import de.drehtuer.dinfinity.simulation.api.SolidFace
 import de.drehtuer.dinfinity.simulation.api.SolidFaces
 import de.drehtuer.dinfinity.simulation.api.Vector3
 import de.drehtuer.dinfinity.simulation.api.cross
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * The mesh a die is drawn from, built from the same closed forms the solver
@@ -31,16 +33,82 @@ import de.drehtuer.dinfinity.simulation.api.cross
 data class DieMesh(
   val shape: DieShape,
   val faces: List<MeshFace>,
+  val surfaces: List<Surface> = faces,
 ) {
   /** Every corner of every face, in face order. */
   val positions: List<Vector3> get() = faces.flatMap(MeshFace::positions)
 
   companion object {
-    /** The mesh of [shape], one unit from the middle to every corner. */
-    fun of(shape: DieShape): DieMesh {
+    /**
+     * The mesh of [shape], one unit from the middle to every corner, with its
+     * edges rounded by a fillet of radius [rounding] of that unit
+     * ([RoundedEdges]). Sharp unless asked otherwise.
+     *
+     * [faces] are the sharp solid's whatever [rounding] is: they are what a
+     * label's room is measured against and what the face designer's stage
+     * agrees with, and rounding is a matter of how the die is drawn, not of
+     * what its faces are. [surfaces] are what is drawn. At a [rounding] of
+     * nought they are [faces] themselves, so turning rounding off gives back
+     * the sharp die exactly rather than something a rounding error from it.
+     */
+    fun of(
+      shape: DieShape,
+      rounding: Double = 0.0,
+    ): DieMesh = BUILT.getOrPut(shape to rounding) { build(shape, rounding) }
+
+    /**
+     * The mesh [die] is drawn from at [scale]: rounded by exactly the radius
+     * the solver rounds its hull by, so the surface drawn is the surface that
+     * collides ([RoundedEdges.radiusFor]).
+     */
+    fun of(
+      die: Die,
+      scale: Double,
+    ): DieMesh {
+      val facets = of(die.shape).faces.map { RoundedEdges.Facet(it, paint = null) }
+      return of(die.shape, RoundedEdges.radiusFor(facets, die.material, scale))
+    }
+
+    // Every die added to a throw asks for its mesh, and a hundred d6 are one
+    // mesh: worked out once per shape and radius, like the solid it is built
+    // from. A radius is one per set size and capacity scale, so this holds a
+    // handful of meshes, not one per throw.
+    private val BUILT = ConcurrentHashMap<Pair<DieShape, Double>, DieMesh>()
+
+    private fun build(
+      shape: DieShape,
+      rounding: Double,
+    ): DieMesh {
       val grid = ShapeAtlas.gridFor(shape)
-      val faces = SolidFaces.of(shape).map { solid -> face(shape, solid, grid) }
-      return DieMesh(shape, faces + rimOf(shape, faces))
+      val painted = SolidFaces.of(shape).map { solid -> solid to paintOf(shape, solid, grid) }
+      val numbered = painted.map { (solid, paint) -> face(solid, paint) }
+      val faces = numbered + rimOf(shape, numbered)
+      if (rounding == 0.0) return DieMesh(shape, faces)
+      val facets =
+        faces.map { face ->
+          RoundedEdges.Facet(face, face.index?.let { index -> painted[index].second })
+        }
+      return DieMesh(shape, faces, RoundedEdges.of(facets, rounding))
+    }
+
+    /**
+     * Where any point on [solid]'s plane sits in the *atlas*: its place in its
+     * own cell shifted into that cell's square of the grid.
+     *
+     * One function for the sharp corners and for every point of the rounded
+     * die that belongs to this face, so the flat part of a rounded face samples
+     * exactly what the sharp face did.
+     */
+    private fun paintOf(
+      shape: DieShape,
+      solid: SolidFace,
+      grid: ShapeAtlas.Grid,
+    ): (Vector3) -> TextureCoordinate {
+      val (column, row) = ShapeAtlas.cellOf(shape, solid.index)
+      return { point ->
+        val (u, v) = solid.cellOf(point)
+        TextureCoordinate(u = (column + u) / grid.columns, v = (row + v) / grid.rows)
+      }
     }
 
     /**
@@ -56,25 +124,18 @@ data class DieMesh(
      * square of the grid.
      */
     private fun face(
-      shape: DieShape,
       solid: SolidFace,
-      grid: ShapeAtlas.Grid,
-    ): MeshFace {
-      val (column, row) = ShapeAtlas.cellOf(shape, solid.index)
-      return MeshFace(
+      paint: (Vector3) -> TextureCoordinate,
+    ): MeshFace =
+      MeshFace(
         index = solid.index,
         positions = solid.corners,
         reads = solid.cornerReads,
         normal = solid.normal,
         tangent = solid.along,
-        uvs =
-          solid.corners.map { corner ->
-            val (u, v) = solid.cellOf(corner)
-            TextureCoordinate(u = (column + u) / grid.columns, v = (row + v) / grid.rows)
-          },
+        uvs = solid.corners.map(paint),
         triangles = fan(solid.corners.size),
       )
-    }
 
     /**
      * The band around the outside of a coin, which belongs to no face.

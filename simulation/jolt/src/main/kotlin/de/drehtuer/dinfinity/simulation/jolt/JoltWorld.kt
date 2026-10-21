@@ -46,11 +46,15 @@ class JoltWorld private constructor(
     val points = FloatArray(hull.size * JoltNative.AXES)
     hull.forEachIndexed { index, corner -> points.putLength(index * JoltNative.AXES, corner) }
 
+    // The rounding is the die's own, and so is how far Jolt may cut a sharp
+    // corner of it back (`HullRounding`, decision 94).
+    val rounding = HullRounding.of(clamped)
     val created =
       JoltNative.nativeAddDie(
         world = handle,
         hull = points,
-        convexRadius = Units.mmToUnits(convexRadiusMmFor(clamped)),
+        convexRadius = rounding.convexRadius,
+        maxErrorConvexRadius = rounding.maxError,
         // No conversion: the solver's units are centimetres and grams, so a
         // set file's grams per cubic centimetre is already what it wants.
         density = clamped.density.toFloat(),
@@ -183,16 +187,6 @@ class JoltWorld private constructor(
     private const val INERTIA_CELLS = 9
 
     /**
-     * The rounded edge a solid gets, as a share of its size.
-     *
-     * Sharp corners are what catch on a floor instead of tumbling off it, and
-     * a d4 is almost all corner (`docs/physics-and-rendering.md`, "Dice
-     * bodies"). It is a share rather than a fixed millimetre so that a die
-     * shrunk by the capacity rule keeps the same proportions it was tuned at.
-     */
-    const val CONVEX_RADIUS_SHARE: Double = 0.03
-
-    /**
      * Opens a world for one throw. Null when the native library is not there,
      * which on a phone means the build is broken and on the JVM means the test
      * should have used a fake.
@@ -225,8 +219,6 @@ class JoltWorld private constructor(
       }
       return JoltWorld(handle, maxDice)
     }
-
-    private fun convexRadiusMmFor(material: DieMaterial): Double = material.sizeMm * CONVEX_RADIUS_SHARE
 
     /** Writes a length in millimetres as three floats in simulation units. */
     private fun FloatArray.putLength(

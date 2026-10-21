@@ -21,6 +21,13 @@ Done apart from boxes that wait on other projects; none blocks anything.
 - [ ] *Optional:* a `DEPENDABOT_METADATA_TOKEN` secret, so the metadata commit
       starts the checks without the *Approve workflows to run* banner
       (`docs/build-setup.md`)
+- [ ] **The emulator's readback aborts.** Every `render/filament` device test
+  that reads a frame back (`AtlasTextureTest`, `PrintedNumbersDeviceTest`, …)
+  kills the test process on the container's emulator: Filament's `blitLow`
+  program does not compile on SwiftShader (`cannot convert from 'float' to
+  'out mediump 4-component vector'`). The Pixel 10a passes them. Find which
+  change brought it (Filament 1.76.1, the emulator image, or the room light)
+  and either fix it or skip those tests on the emulator by name.
 - [ ] Drop `VerifyDeviceTestResultsTask` and `ignoreFailures` on
       `connectedDebugAndroidTest` once AGP stops failing runs on devices whose
       adb serial contains a colon (`docs/build-setup.md`)
@@ -41,6 +48,12 @@ Design `1a`–`1j`, `2a`, `3a`–`3c`, `4a`, `4b`, `6d`, `6f`, `9a`, `9c`, `1z`.
 Spec: `docs/dice-notation.md`, `docs/tables.md`,
 `docs/physics-and-rendering.md` ("What is drawn over the table").
 
+- [ ] **Show better when a shake can start** (owner, 2026-10-11). Nothing on
+      the tray says clearly that it is ready for the next throw — after a
+      roll has settled, while the board's dice are still dropping, or once a
+      formula has been typed. Decide what says "shake now" (the ready plate,
+      the shake prompt of decision 84, a haptic, the dice themselves) and
+      draw it in the prototype first.
 - [ ] **Stagger the spawn**, 85 ms between dice, the result sheet waiting
       `min(2400, 950 + (n − 1) × 85)` ms for the last landing. The prototype's
       collision shove is **not** ported: a settled die moved by code is the
@@ -127,6 +140,10 @@ and read here, and a seed gives the same result with the renderer on and off.
 
 ### 4.4 Dice sets — `feature/sets`
 
+- [ ] *Judge on the phone:* install the four `sample-sets/` from a file (the
+      zips) and from a link (their GitHub folders). Does marble read as stone
+      with its numbers cut in, steel as metal, green resin as half see-through
+      and red glass as clear? Does each refusal or note say something useful?
 - [ ] **Decide the built-in set's `size_mm`.** It is the width across the
       corners, so the built-in 16 mm d6 is a 9.2 mm cube weighing **0.9 g**
       against the design's 4.2 g. Something near `size_mm = 28` changes every
@@ -144,8 +161,25 @@ and read here, and a seed gives the same result with the renderer on and off.
       thrown die edge to edge, nothing spilling onto the neighbouring faces?
       A drawing made on a kite die before the change shows larger in the
       editor than it was drawn — is that read as the die's size or as a fault?
-- [ ] Should the Solid tab draw pen strokes (as thin filled outlines)? Today it
-      says what it does not draw
+- [ ] *Judge on the phone:* the three steps (decision 99) — is it clear where
+      you are, and do Back, Next and **Roll it** feel right? A die drawn on
+      some faces: drawn faces show no number, the others do (96). A dark body
+      colour: edges and corners in it, undrawn faces printed white (97). The
+      pen's lines on the Solid tab, foreshortened as the face turns. In the
+      dark theme, does **Guide** show and hide the faint number?
+- [ ] *Judge on the phone:* the **Opacity** slider (decision 102). Is "75 %
+  opaque: 25 % of the light goes through" the right way to say it, are five
+  per cents fine enough, and does a die between Pearl and Resin look like
+  one on the tray?
+- [ ] *Judge on the phone:* the **Material** menu and the **Edges** slider
+      (decisions 94, 98). Make a d20 each of Plastic, Pearl, Resin, Glass,
+      Metal and Stone and **Roll it**: does each look like its name on the
+      felt and on the oak — Pearl milky rather than faded, Resin clear enough
+      to see the felt bent through it, Glass clear, Metal metal rather than
+      grey plastic, Stone matte? Does the swatch beside the menu hint at the
+      right one? Then a d6 and a d4 at 6 %: do the edges look round
+      and do they still read as dice, and do the numbers near a d4's edges
+      still read where they wrap onto the bend?
 - [ ] *Judgement:* named personal sets (decision 79). A drawing saved into a
       named set is a copy and also stays in "My dice" — is that what somebody
       expects, or should a set-only drawing leave "My dice" alone? Does the
@@ -204,6 +238,12 @@ re-throws 5.11 % → 2.64 %, none gave up, slowest roll 10.5 s (4.7 s before).
 
 Fairness is done on the Pixel 10a (the d18 held to the worst-face bound), and
 `ModesAgreeTest` holds power-saving and drawn modes to the same faces.
+
+- [ ] Fairness at the roundest edges at full strength: 100,000 rolls with
+      `edgeRounding=0.06` and `0.015` (20,000 a shape passed at both,
+      decision 100; `docs/physics-and-rendering.md`, "How round a die may
+      be"), and the harness with coins (`-s d2`), which the sweep did not
+      throw and which is what gave first
 
 - [ ] Identical outcomes for identical seeds across JVM, emulator and device at
       ten thousand rolls and on a second phone. The golden suite already holds
@@ -359,7 +399,24 @@ keeps them comparable.
       and `LEAST_SPIN_RADIANS_PER_SECOND`–`MOST_SPIN_RADIANS_PER_SECOND`
       (9–18). Also run `BoardSettlerTest` and read its timings (`dinfinity.board`
       in logcat)
-- [ ] Rendering polish and the optimisation pass — deliberately **last**
+- [ ] Rendering polish and the optimisation pass — **in progress on
+      `feature/realistic-rendering`**: physically based lighting from a real
+      room (decision 89), refracting resin for translucent dice (90 — do the
+      milky and glassy ends need `Resin`'s constants turned, and are the full
+      shadows of clear dice acceptable), rounded edges drawn with the
+      solver's own convex radius (91 — does the bend's glint, now spread by
+      specular anti-aliasing, read as a soft highlight), felt and oak drawn
+      from CC0 pictures (92 — `TableTextureDeviceTest` passes on the phone
+      with each look's sheen taken out of its colour; in the gallery, does
+      the green felt read
+      as the old green, the black felt as black cloth rather than flat grey,
+      the oak as warm oak — a little darker than before — and its walls as
+      wood, is the felt's crinkle too strong — its normal map can be
+      softened — and does it shimmer as the dice settle, and is plain
+      unchanged; do satin metal dice at 0.6 read as metal, and is the
+      ivory metal's cream top face in the leaning view, red at 255, bright
+      enough to accept — decision 106). Judged with `tools/gallery.sh` before and after each
+      step, and merged to `main` once the owner likes it on the phone
 
 ### 5.7 Performance on the Pixel 10a
 
@@ -376,6 +433,62 @@ measured"). Re-run after any change to the renderer or the physics step.
 **Done when** every target is met on the Pixel 10a and the user agrees the
 dice look right. Wrong numbers become the new numbers in the docs.
 
+### 5.8 The hand tosses the dice
+
+Decision 105, adopted by the owner on 2026-10-20.
+
+- [ ] Tune `Release.GAIN`, `LEAST_MM_PER_SECOND`, `MOST_MM_PER_SECOND`,
+  `ShakeDriver.LET_GO_STEPS`, `PAUSE_MARGIN`, `MOST_LET_GO_STEPS` and `Toss`'s lift and spreads against the owner's
+  slow-motion recordings of real throws (every shape, from straight above,
+  with a scale in frame), and re-run `tools/harness.sh --release`.
+- [ ] **Shaking along the phone's length (y) still jumps now and then.** x and
+  z are fixed (owner, on the Pixel 10a). On y the let-go now comes at the
+  right moment and once per throw, and dice against a wall are tossed away
+  from it, yet a hop still shows on some shakes and not others. Next: record
+  a run with the full shake record logged per roll and line the hop up with
+  the frames.
+- [ ] Toss a crowded throw gentler: twenty d20 tossed one way are re-thrown
+  3.9 % of the time against 1.2 %.
+- [ ] Score the turns *after the hand lets go*: the harness counts from the
+  first touch, which for a shaken throw is under the hand.
+- [ ] *Judge on the phone:* shake slowly, two strokes a second or less — do
+  the dice keep moving until the hand stops, and is the toss after a slow
+  shake late enough to be the hand's and soon enough not to read as a pause?
+- [ ] *Judge on the phone:* does the toss go the way the hand went, does it
+  come at the moment the hand stops, and does the tumble look like the
+  recordings?
+- [ ] Fold "The hand lets go" into "Shake input" and decisions 65 and 87, and
+  make the golden cases toss (a physics change: goldens re-recorded,
+  `FairnessTest` re-run).
+
+### 5.9 A tone curve, and post-processing of our own
+
+The linear tone mapper (`FilamentEngine.colorGrading`) keeps every set and
+table colour exact, and cuts off everything above white. Filament renders in
+float, so a highlight at 1.8 × white exists until that cut. Ivory metal at 0.6
+still reaches 255 in red in the leaning view (decision 106). Owner, 2026-10-21:
+next after the metal fix.
+
+- [ ] Read the frame back **before** tone mapping, in float, so the device
+      tests measure how far past white a surface goes rather than whether an
+      8-bit channel reached 250 (`DieGlintDeviceTest` counts only pixels white
+      in all three channels, and missed ivory's red)
+- [ ] A curve that is the identity up to a knee (about 0.85, above every
+      table and the bone die) and rolls off above it, so highlights go
+      bright, not flat white. Filament's Java API takes no custom mapper:
+      either a post-process pass of our own (the view into a float target,
+      one full-screen quad with the curve) or a native `ToneMapper` through
+      JNI. Measure it against the frame budget first: GPU 12.6 ms of 16.7 at
+      20d20. With it in, decide whether Metal goes back towards 0.4
+- [ ] Once there is a pass of our own, other screen-space effects become
+      possible. Ambient occlusion on the dice alone, for contact shading
+      where a die meets the felt: Filament's occlusion is a property of the
+      view and darkened the felt along every wall, which is why it is off
+      (`docs/physics-and-rendering.md`, "There is no ambient occlusion"); a
+      pass of our own could mask it to the dice. Each effect is judged in the
+      gallery and paid for against the frame budget, as the rest of the
+      renderer is
+
 ## Step 6 — v1 release
 
 - [ ] **Walk every screen with TalkBack on a real phone** — reading order,
@@ -391,6 +504,20 @@ dice look right. Wrong numbers become the new numbers in the docs.
 
 ## After v1
 
+- [ ] **A long d4 in place of the tetrahedron** (owner, 2026-10-21). A
+      four-sided prism that lands on one of its four long faces, with short
+      ends it cannot stand on, read like every other die: the number on the
+      face that ends up on top. It would retire the d4's special rules —
+      numbers that belong to corners, three per face, the corner-pointing-up
+      reading (`docs/dice-sets.md`, "The d4"), `CORNER_HEIGHT`, the designer's
+      d4 masks, the oversized stamp clipping at a d4's edge — and should
+      help `100d4`, whose tetrahedra cock on one another (5.3). To decide
+      first: the ends' shape (a pyramid or a rounded cap steep enough that no
+      throw stands it up, which the harness has to show at zero), whether
+      `tetrahedron` stays in the catalogue for sets that name it, and how the
+      longer footprint counts in the capacity rule (`docs/tables.md`). A
+      physics change: fairness re-run, goldens re-recorded, and the prototype,
+      the designer and the docs changed together
 - [ ] More catalogue solids, `rhombic-triacontahedron` (d30) first
 - [ ] Author-supplied convex meshes, with the fairness preview they need
       (`docs/dice-sets.md`, "Shapes after v1")
@@ -399,7 +526,7 @@ dice look right. Wrong numbers become the new numbers in the docs.
 
 ## Coverage
 
-Branch coverage is **~71.4 %** against a floor of 62; about seven in ten missed
+Branch coverage is **~75.4 %** against a floor of 62; about seven in ten missed
 branches are Compose skip branches a single-pass test reaches one side of.
 What helps: extract decisions from draw lambdas, test shared components on
 their own, add recomposition tests. Figures go in every PR description.
@@ -407,10 +534,41 @@ their own, add recomposition tests. Figures go in every PR description.
 - [ ] Should the floor track the drift? A question for a person — moving a
       floor to make a check pass is what `.claude/CLAUDE.md` forbids
 
+Found by the test pass of 2026-10-05, each left as it was so no test locks a
+wrong answer in:
+
+- [ ] **`SafeExtractor` lets a tar device or FIFO entry through** as an empty
+      file: `TarArchiveEntry.isFile` is true for anything not a directory, so
+      the documented refusal of "a link or a device" never fires for them.
+      Not exploitable (the extractor writes the bytes itself), but the
+      validator should refuse anything but a regular file or a directory
+- [ ] `ReferencedFile.staysInsidePackage` refuses a path with an empty segment,
+      `textures/` included — check a zip's directory entries never reach it
+- [ ] `InstallSource.gitea` drops a `src/branch/<ref>/<folder>` subfolder and
+      installs from the repository root; GitHub and GitLab honour one. A
+      `blob/…` link on either becomes a subfolder named `blob/…`
+- [ ] `GraphMachine.redraw()` rebuilds the distribution with
+      `truncatedMass = 0`, so an exploding formula loses its tail after a tap
+      or a mode switch (nothing shows the value yet)
+- [ ] Dead code: `Solids.trapezohedronRadiusPerEdge`, `order(directions)` in
+      `Solids.kt`, `RollColour.argbs`, `SessionsState.active`, the public
+      getter of `RollMachine.cameFrom`, and the guards `GraphBars.of`'s
+      `tallest > 0.0` and `GraphMachine.redraw`'s `formula ?: return` that
+      cannot be false
+
 ## Open questions
 
 ### Rendering and physics
 
+- [ ] **Flat surfaces wear a mirror lacquer nobody asked for.** The dice's
+      material writes `material.clearCoat` only when a die has a lacquer, and
+      Filament's default is a full coat, so plain, dark glass, a flat felt and
+      every flat wall are drawn under a smooth coat that also takes away their
+      own sheen (`docs/tables.md`, "What the floors draw as"). Writing it
+      always changes every flat look and `StudioLightDeviceTest`'s felt
+      (its red would come out about 45, not 34) — so it wants the flat
+      looks put through `SurfaceLight` as the textured ones are, judged in
+      the gallery
 - [ ] **A numeral at 0.78 of its face, or 0.78 squared?** `FACE_SHARE` is
       applied twice (`LabelRoom.centred`), so a numeral is ~0.61 of its room.
       Once would make every number 28 % bigger; tray and designer move together
@@ -437,13 +595,9 @@ their own, add recomposition tests. Figures go in every PR description.
 
 ### Tables and photos
 
-- [ ] **Where does a table look's texture say which package it came from?**
-      Dice artwork reaches the tray by package and path; a `TableLook` carries a
-      path only, so a table draws in its own colours. Decide when a package
-      ships one — which also decides whether a photo table belongs in the
-      personal package before the tray can draw it
 - [ ] How should a photo sit on the tray — centre, fit width, fit height
-      (`1u`)? None is implemented
+      (`1u`)? It is drawn now (decision 92), stretched over the floor by
+      `[1, 1]` tiling
 
 ### Sets and collections
 

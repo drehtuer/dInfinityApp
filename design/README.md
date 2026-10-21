@@ -127,6 +127,12 @@ tray to roll". Both are listed in
 [../docs/design-handover.md](../docs/design-handover.md), "The shake is the
 throw, and the prototype half-says so".
 
+**While the dice's shaders compile, the tray says so** (decision 95): the
+first launch after an install or update, and the first translucent die or
+textured table, put a "Preparing the dice" plate over the tray with an
+estimated bar and the time left. Option `1za`, or `rollState` `preparing`
+(a hand edit, see **Editing**).
+
 **Dice that land cocked wait for a shake** (decision 70), on a `THROW AGAIN`
 plate, and **what the next shake throws is said over the tray** in an accent
 shake prompt until the shake, with a picked die ringed in the accent on a halo
@@ -136,8 +142,8 @@ line and rings round the first two dice of a landed roll, and `earned` and
 `stuck` carry the prompt too. Both are hand edits (see **Editing**).
 
 **Imported from** project `5cee69c8-e516-4414-a446-7fd89bb7c706`, last synced
-2026-09-17, with five hand edits to `dInfinityPhone.dc.html` since (see
-**Editing**).
+2026-09-17, with seven hand edits to `dInfinityPhone.dc.html` since (see
+**Editing**), and one option added to `dInfinity.dc.html` (`1za`).
 
 ## Viewing
 
@@ -158,13 +164,14 @@ round. Option ids (`1a`, `9c`, …) are the labels on the canvas.
 | Screens | Specified in |
 | --- | --- |
 | Roll screen: tray, layouts, result sheet — 1a, 1b–1d, 1e–1g, 1z | [../docs/physics-and-rendering.md](../docs/physics-and-rendering.md), [../docs/tables.md](../docs/tables.md) |
+| Roll screen while a dice material compiles: "Preparing the dice" — 1za, `rollState` `preparing` | [../docs/physics-and-rendering.md](../docs/physics-and-rendering.md) ("Preparing the dice"), [../docs/architecture.md](../docs/architecture.md) (decision 95, "Threading") |
 | Roll screen waiting on a shake: the shake prompt, the `THROW AGAIN` plate and the pick ring — `rollState` `earned`, `stuck`, `unread`, `picked` | [../docs/physics-and-rendering.md](../docs/physics-and-rendering.md) ("Picking a die up and throwing it again", "What is drawn over the table"), [../docs/architecture.md](../docs/architecture.md) (decisions 70, 76, 84) |
 | Notation field, dice pickers, errors — 2a, 1h–1j, 9c, 6d | [../docs/dice-notation.md](../docs/dice-notation.md) |
 | Outcome graph — 1k–1m, 7a | [../docs/probability.md](../docs/probability.md) |
 | Saved rolls, editor, import — 1n–1p, 1r, 7b, 9b, 9f–9g, 6e | [../docs/dice-notation.md](../docs/dice-notation.md) |
 | Dice sets, set details, install and update — 1s–1t, 5a, 6a–6b, 8c, 9h–9i | [../docs/dice-sets.md](../docs/dice-sets.md) |
 | Table picker — 1u, 8a, 9j | [../docs/tables.md](../docs/tables.md) |
-| Face designer — 1v, 4c, 8d; quick mode off the breakdown, 1f; the way back from a test throw, `fromDesigner`; its export on the "My dice" details, 8c | [../docs/face-designer.md](../docs/face-designer.md) |
+| Face designer — 1v, 4c, 8d; quick mode off the breakdown, 1f; the way back from a test throw, `fromDesigner`; its export on the "My dice" details, 8c; its three steps — shape, material and colour, faces — with the step bar, Back and Next, and the Material menu, body colour and Edges slider on the second step, in the phone prototype | [../docs/face-designer.md](../docs/face-designer.md) ("Material, colour and edges" also in [../docs/dice-sets.md](../docs/dice-sets.md) and [../docs/physics-and-rendering.md](../docs/physics-and-rendering.md), "Rounded edges") |
 | Statistics, history, sessions — 1w, 1x, 5b–5c, 6c, 8b, 9e | [../docs/statistics.md](../docs/statistics.md) |
 | Menu, Settings — 1q, 1y, 2d | [../README.md](../README.md), [../docs/architecture.md](../docs/architecture.md) |
 
@@ -173,7 +180,7 @@ round. Option ids (`1a`, `9c`, …) are the labels on the canvas.
 Edit in the [Claude Design project](./) and re-import here so the two stay in
 step.
 
-**`dInfinityPhone.dc.html` carries hand edits a re-import would undo.** Five
+**`dInfinityPhone.dc.html` carries hand edits a re-import would undo.** Seven
 small corrections were made here after the 2026-09-17 sync, to keep the
 prototype true to the app: the shake prompt over the tray, the `THROW AGAIN`
 plate and the accent pick ring, reached by the `rollState` values `unread`
@@ -191,7 +198,26 @@ formula input — the roll screen's two, the graph's and the editor's — carrie
 a `#ic-x` button, "Clear the formula", while it has text, which empties it
 through the same setter its `onChange` uses (`formulaFilled` / `clearFormula`,
 `gFormulaFilled` / `clearGFormula`, `edFormulaFilled` / `clearEdFormula`)
-([../docs/dice-notation.md](../docs/dice-notation.md), "Emptying the field").
+([../docs/dice-notation.md](../docs/dice-notation.md), "Emptying the field");
+and the face designer is **three steps** — 1 Shape (the base dice and the
+turning die), 2 Material (the turning die, the **Material** menu with its
+swatch, a **Colour** row of the pen's twelve and a picker past them, and an
+**Edges** slider from 1.5 % to 6 % that says the share and the millimetres)
+and 3 Faces (the drawing, its Face/Solid tabs and the face strip) — with a
+step bar under the title, **Back** and **Next** in the footer on the first
+two and **Roll it** / **Save to set** on the last (`dzSteps`, `dzStep`,
+`dzStepBack` / `dzStepNext`, `dzBodies` / `dzBody`, `dzEdgePct` /
+`dzEdgeSaid`); every face, in the editor, the strip and on the solid, is drawn
+on the body colour ([../docs/face-designer.md](../docs/face-designer.md),
+"Flow" and "Material, colour and edges"; decisions 94, 97, 98 and 99 in
+[../docs/architecture.md](../docs/architecture.md#key-decisions-log)). The
+prototype's turning die is CSS 3D and stays sharp; the app's is drawn
+rounded by the slider.
+The roll screen's `rollState` has a `preparing` value, the "Preparing the
+dice" plate centred over the tray — title, why, an estimated bar and the time
+left — drawn while a dice material compiles, shown on the canvas as option
+`1za` ([../docs/physics-and-rendering.md](../docs/physics-and-rendering.md),
+"Preparing the dice"; decision 95).
 Before the next
 import, either make the same changes in the design project or re-apply them
 afterwards; `git log -- design/dInfinityPhone.dc.html` lists them

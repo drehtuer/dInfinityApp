@@ -59,6 +59,22 @@ class ShakeRecorderTest {
     assertEquals("and it was kept anyway", 1, recorder.size)
   }
 
+  @Test
+  fun `resetting forgets the record and starts the step clock again`() {
+    // A new shake is numbered from its own first moment. Keeping the old
+    // origin would file the new shake's first moment seconds into a roll
+    // that has not taken a step yet.
+    val recorder = ShakeRecorder()
+    recorder.record(atMillis = 0, accelerationMmPerSecond2 = shove, gravity = down)
+    recorder.record(atMillis = 100, accelerationMmPerSecond2 = shove, gravity = down)
+
+    recorder.reset()
+    assertEquals(0, recorder.size)
+
+    recorder.record(atMillis = 5_000, accelerationMmPerSecond2 = shove, gravity = down)
+    assertEquals(listOf(0), recorder.recorded().map(ShakeSample::stepIndex))
+  }
+
   private val shove = Vector3(5_000.0, 0.0, 0.0)
   private val down = Vector3(0.0, 0.0, -1.0)
 

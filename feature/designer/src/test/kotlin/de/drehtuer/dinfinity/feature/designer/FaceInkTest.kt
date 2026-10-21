@@ -8,6 +8,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import de.drehtuer.dinfinity.designer.Dot
@@ -138,6 +139,23 @@ class FaceInkTest {
     val rubbed = Stroke(listOf(Dot(0.1f, 0.5f), Dot(0.9f, 0.5f)), width = 0.2f, colorArgb = INK, erases = true)
 
     assertTrue("the eraser left the canvas untouched", inked(onACanvas { drawMark(rubbed) }))
+    assertTrue("drawn on its own, it is drawn on the default paper", inked(onACanvas { drawStroke(rubbed) }))
+  }
+
+  @Test
+  fun `the eraser and the face are drawn in the die's own body colour`() {
+    val red = Color(0xFFEC3013.toInt())
+    val rubbed = Stroke(listOf(Dot(0.1f, 0.5f), Dot(0.9f, 0.5f)), width = 0.2f, colorArgb = INK, erases = true)
+    val middle = SIDE / 2 * SIDE + SIDE / 2
+
+    val erased = IntArray(SIDE * SIDE).also { onACanvas { drawMark(rubbed, red) }.readPixels(it) }
+    val face =
+      IntArray(
+        SIDE * SIDE,
+      ).also { onACanvas { drawFace(FaceOutline.Square, emptyList(), red) }.readPixels(it) }
+
+    assertEquals(red.toArgb(), erased[middle])
+    assertEquals(red.toArgb(), face[middle])
   }
 
   @Test

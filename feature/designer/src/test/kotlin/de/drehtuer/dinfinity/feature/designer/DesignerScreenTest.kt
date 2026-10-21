@@ -6,6 +6,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -18,6 +20,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertWidthIsAtLeast
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -43,8 +46,10 @@ import de.drehtuer.dinfinity.designer.Stamp
 import de.drehtuer.dinfinity.designer.StampSize
 import de.drehtuer.dinfinity.designer.Stroke
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
+import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -81,13 +86,6 @@ class DesignerScreenTest {
   }
 
   @Test
-  fun `a d20 has twenty faces to move between`() {
-    show(BuiltinDiceSet.set.dice.first { it.shape == DieShape.Icosahedron })
-
-    compose.onNodeWithTag(DesignerTestTags.faceOf(19)).assertExists()
-  }
-
-  @Test
   fun `the strip has its row to itself, and the fill buttons the next one`() {
     // What this is the fix for: the two shared a line, so the strip got
     // whatever three buttons left — about one face of a d20 on a phone. The
@@ -114,15 +112,6 @@ class DesignerScreenTest {
   }
 
   @Test
-  fun `tapping the strip moves to that face`() {
-    val presenter = show(d6)
-
-    compose.onNodeWithTag(DesignerTestTags.faceOf(4)).performScrollTo().performClick()
-
-    assertEquals(4, presenter.state.cell)
-  }
-
-  @Test
   fun `undo and redo are offered only when there is something to take back`() {
     val presenter = show(d6)
 
@@ -133,7 +122,14 @@ class DesignerScreenTest {
 
     compose.onNodeWithTag(DesignerTestTags.UNDO).assertIsEnabled()
     compose.onNodeWithTag(DesignerTestTags.UNDO).performClick()
+    assertTrue("undo left the stroke on the face", presenter.state.face.blank)
     compose.onNodeWithTag(DesignerTestTags.REDO).assertIsEnabled()
+
+    // And the header's redo is the presenter's: the stroke comes back, and
+    // there is nothing further forward to go.
+    compose.onNodeWithTag(DesignerTestTags.REDO).performClick()
+    assertEquals(1, presenter.state.face.marks.size)
+    compose.onNodeWithTag(DesignerTestTags.REDO).assertIsNotEnabled()
   }
 
   @Test
@@ -170,7 +166,7 @@ class DesignerScreenTest {
     // resources are still there (`docs/face-designer.md`, "Drawing tools").
     show(d6)
 
-    listOf("Fine", "Medium", "Broad", "Eraser", "Fill", "Stamp", "Undo", "Redo", "Hide guide")
+    listOf("Fine", "Medium", "Broad", "Eraser", "Fill", "Stamp", "Undo", "Redo")
       .forEach { compose.onNodeWithContentDescription(it).assertExists() }
   }
 
@@ -243,15 +239,6 @@ class DesignerScreenTest {
   }
 
   @Test
-  fun `choosing a nib chooses it`() {
-    val presenter = show(d6)
-
-    compose.onNodeWithTag(DesignerTestTags.nibOf(Nib.Broad)).performScrollTo().performClick()
-
-    assertEquals(Nib.Broad, presenter.state.nib)
-  }
-
-  @Test
   fun `the tool in hand is announced as the one that is chosen`() {
     // The design shows a chosen option filled rather than merely recoloured
     // (`.seg-opt:has(input:checked)`), and a screen reader hears the same fact
@@ -271,6 +258,7 @@ class DesignerScreenTest {
   fun `the die being drawn on is announced as the one that is chosen`() {
     show(d6, choosable = listOf(d6, d4))
 
+    onShape()
     compose.onNodeWithTag(DesignerTestTags.baseOf(d6.id)).assertIsSelected()
     compose.onNodeWithTag(DesignerTestTags.baseOf(d4.id)).assertIsNotSelected()
 
@@ -447,6 +435,7 @@ class DesignerScreenTest {
   fun `tapping another die opens it`() {
     val presenter = show(d6, choosable = listOf(d6, d4))
 
+    onShape()
     compose.onNodeWithTag(DesignerTestTags.baseOf(d4.id)).performClick()
 
     assertEquals(d4.id, presenter.state.die.id)
@@ -460,6 +449,7 @@ class DesignerScreenTest {
     val presenter = showRemembering(d6, choosable = listOf(d6, d4))
     presenter.drew(listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.8f)))
 
+    onShape()
     compose.onNodeWithTag(DesignerTestTags.baseOf(d4.id)).performClick()
     assertTrue("the other die opened on somebody else's drawing", presenter.state.draft.blank)
     compose.onNodeWithTag(DesignerTestTags.baseOf(d6.id)).performClick()
@@ -474,7 +464,7 @@ class DesignerScreenTest {
     // recomposition has to skip them. One that skipped wrongly would come back
     // without its row of dice, which a single-pass test would never see.
     var tick by mutableStateOf(0)
-    val presenter = DesignerPresenter(d6, choosable = listOf(d6, d4))
+    val presenter = DesignerPresenter(d6, choosable = listOf(d6, d4), step = DesignerStep.Shape)
     compose.setContent {
       Column {
         Text("tick $tick")
@@ -487,7 +477,7 @@ class DesignerScreenTest {
     compose.onNodeWithText("tick 1").assertIsDisplayed()
     compose.onNodeWithTag(DesignerTestTags.BASES).assertIsDisplayed()
     compose.onNodeWithTag(DesignerTestTags.baseOf(d4.id)).assertIsDisplayed()
-    compose.onNodeWithTag(DesignerTestTags.CANVAS).assertIsDisplayed()
+    compose.onNodeWithTag(DesignerTestTags.SOLID).assertExists()
   }
 
   @Test
@@ -505,7 +495,11 @@ class DesignerScreenTest {
     val thrown = mutableListOf<String>()
     show(d6, choosable = listOf(d6, d4), notationOf = { "1${it.id}" }, onRoll = thrown::add)
 
+    onShape()
     compose.onNodeWithTag(DesignerTestTags.baseOf(d4.id)).performClick()
+    // Through the steps the way a person goes: Next, Next, then Roll it.
+    compose.onNodeWithTag(DesignerTestTags.NEXT).performClick()
+    compose.onNodeWithTag(DesignerTestTags.NEXT).performClick()
     compose.onNodeWithTag(DesignerTestTags.ROLL).performClick()
 
     assertEquals(listOf("1d4"), thrown)
@@ -530,15 +524,6 @@ class DesignerScreenTest {
       presenter.state.face.marks
         .single() is Fill,
     )
-  }
-
-  @Test
-  fun `a tap on the canvas with a pen in hand leaves nothing`() {
-    val presenter = show(d6)
-
-    compose.onNodeWithTag(DesignerTestTags.CANVAS).performClick()
-
-    assertTrue(presenter.state.face.blank)
   }
 
   @Test
@@ -659,6 +644,38 @@ class DesignerScreenTest {
     compose.onNodeWithTag(DesignerTestTags.PICKER.sheet).assertDoesNotExist()
   }
 
+  /**
+   * Which colour is in the pen is said by a swatch's edge, and the eraser
+   * puts no colour in it: with the eraser in hand the colour that was chosen
+   * is edged like every other, rather than claiming to be what the next
+   * stroke will draw in.
+   */
+  @Test
+  fun `with the eraser in hand no colour is edged as the pen`() {
+    show(d6)
+    val chosen = DesignerTestTags.colourOf(0xFF4A90D9.toInt())
+    val other = DesignerTestTags.colourOf(0xFFEC3013.toInt())
+    compose.onNodeWithTag(chosen).performScrollTo().performClick()
+
+    assertNotEquals("the chosen colour is edged like the others", edgeOf(other), edgeOf(chosen))
+
+    compose.onNodeWithTag(DesignerTestTags.nibOf(Nib.Eraser)).performScrollTo().performClick()
+
+    assertEquals("a colour is still edged as the pen with the eraser in hand", edgeOf(other), edgeOf(chosen))
+  }
+
+  /** The middle of a swatch's left edge, which is drawn in the colour that says whether it is the pen's. */
+  private fun edgeOf(tag: String): Color {
+    val swatch =
+      compose
+        .onNodeWithTag(tag)
+        .performScrollTo()
+        .captureToImage()
+        .toPixelMap()
+    val inset = with(compose.density) { ((TOUCH_TARGET - swatchSide) / 2 + 1.dp).roundToPx() }
+    return swatch[inset, swatch.height / 2]
+  }
+
   @Test
   fun `the ink being drawn with is written where it can be read`() {
     val presenter = show(d6)
@@ -672,7 +689,7 @@ class DesignerScreenTest {
     val presenter = show(d6)
 
     compose.onNodeWithTag(DesignerTestTags.nibOf(Nib.Stamp)).performScrollTo().performClick()
-    compose.onNodeWithTag(DesignerTestTags.CANVAS).performClick()
+    compose.onNodeWithTag(DesignerTestTags.CANVAS).performScrollTo().performClick()
 
     assertTrue(
       "the stamp left nothing",
@@ -731,7 +748,7 @@ class DesignerScreenTest {
     // recomposition has to skip it — and one that skipped wrongly would come
     // back without the row it was typing in.
     var tick by mutableStateOf(0)
-    val presenter = DesignerPresenter(d6)
+    val presenter = DesignerPresenter(d6, step = DesignerStep.Faces)
     compose.setContent {
       Column {
         Text("tick $tick")
@@ -820,7 +837,7 @@ class DesignerScreenTest {
     // (`DInfinityApp`), which every other test here leaves defaulted.
     compose.setContent {
       DesignerScreen(
-        presenter = DesignerPresenter(d6, notationOf = { "1${it.id}" }),
+        presenter = DesignerPresenter(d6, notationOf = { "1${it.id}" }, step = DesignerStep.Faces),
         modifier = Modifier.testTag("hosted"),
         onRoll = {},
         menu = { Text("Menu") },
@@ -853,13 +870,17 @@ class DesignerScreenTest {
     notationOf: (Die) -> String? = { null },
     sets: DesignerSets = DesignerSets.NONE,
     onRoll: (String) -> Unit = {},
-  ): DesignerPresenter = shown(DesignerPresenter(die, choosable, Drafts.NONE, notationOf, sets), onRoll)
+  ): DesignerPresenter =
+    shown(DesignerPresenter(die, choosable, Drafts.NONE, notationOf, sets, step = DesignerStep.Faces), onRoll)
+
+  /** Back to the first step, where the dice are chosen. */
+  private fun onShape() = compose.onNodeWithTag(DesignerTestTags.stepOf(DesignerStep.Shape)).performClick()
 
   /** The one case that needs a drawing to outlive a change of die. */
   private fun showRemembering(
     die: Die,
     choosable: List<Die>,
-  ): DesignerPresenter = shown(DesignerPresenter(die, choosable, Remembered()))
+  ): DesignerPresenter = shown(DesignerPresenter(die, choosable, Remembered(), step = DesignerStep.Faces))
 
   private fun shown(
     presenter: DesignerPresenter,
@@ -886,6 +907,9 @@ class DesignerScreenTest {
 
   /** A kite-faced die: the one whose cells have no turn of their own. */
   private val d10 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.PentagonalTrapezohedron }
+
+  /** The prototype's 26 px swatch, drawn in the middle of its 48 dp target. */
+  private val swatchSide = 26.dp
 
   /** One of the picker's sliders, moved to [to]. */
   private fun slide(

@@ -27,6 +27,18 @@ interface Surface {
 
   /** Indices into [positions], three per triangle. */
   val triangles: List<Int>
+
+  /**
+   * Which way the surface faces at each corner, one per corner — or empty for
+   * a flat surface, which faces [normal] everywhere.
+   *
+   * A die's rounded edges and corners are curved, and a curve drawn with one
+   * normal per triangle is a row of facets catching the light one by one. With
+   * a normal per corner the GPU blends across each triangle and the strip reads
+   * as the fillet it stands for (`docs/physics-and-rendering.md`, "Rounded
+   * edges").
+   */
+  val normals: List<Vector3> get() = emptyList()
 }
 
 /**
@@ -86,9 +98,11 @@ data class GpuMesh(
       var corner = 0
       var index = 0
       surfaces.forEach { surface ->
-        val frame = frameOf(surface)
+        val flat = frameOf(surface.normal, surface.tangent)
         surface.positions.forEachIndexed { position, point ->
           write(positions, (corner + position) * POSITION_SIZE, point * scale)
+          val curved = surface.normals.getOrNull(position)
+          val frame = if (curved == null) flat else frameOf(curved, squared(surface.tangent, curved))
           write(tangents, (corner + position) * TANGENT_SIZE, frame)
           // A surface with no texture still needs the corner to exist, and
           // where it points at is not read: its material has no sampler.
@@ -103,7 +117,7 @@ data class GpuMesh(
     }
 
     /**
-     * A surface's whole frame as the quaternion a vertex buffer carries.
+     * A corner's frame as the quaternion a vertex buffer carries.
      *
      * Filament wants the tangent frame rather than a bare normal, because a
      * lit surface needs to know which way the texture runs as well as which
@@ -112,15 +126,33 @@ data class GpuMesh(
      * out — so the bitangent is the one that falls out, and the quaternion is
      * taken with a positive `w`, which is the half Filament reads.
      */
-    private fun frameOf(surface: Surface): Quaternion {
+    private fun frameOf(
+      normal: Vector3,
+      tangent: Vector3,
+    ): Quaternion {
       val turn =
         Quaternion.of(
-          right = surface.tangent,
-          up = cross(surface.normal, surface.tangent),
-          forward = surface.normal,
+          right = tangent,
+          up = cross(normal, tangent),
+          forward = normal,
         )
       return if (turn.w < 0) -turn else turn
     }
+
+    /**
+     * [tangent] with the part along [normal] taken out.
+     *
+     * A curved surface's tangent is the one of the face it continues, and at a
+     * corner of a rounded edge that leans into the corner's own normal; the
+     * frame has to be square, so the lean is removed. A flat surface never
+     * comes here: its tangent is square to its normal by construction, and
+     * putting it through this would move its frame by a rounding error for
+     * nothing.
+     */
+    private fun squared(
+      tangent: Vector3,
+      normal: Vector3,
+    ): Vector3 = (tangent - normal * (tangent dot normal)).normalised()
 
     private fun write(
       into: FloatArray,

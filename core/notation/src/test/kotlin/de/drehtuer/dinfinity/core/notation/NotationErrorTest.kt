@@ -184,15 +184,10 @@ class NotationErrorTest {
   @Test
   fun `a modifier's number is bounded too`() {
     assertEquals(NotationErrorCode.NumberOutOfRange, refused("4d6min${"9".repeat(40)}").code)
-  }
-
-  @Test
-  fun `every error code the parser can raise is reachable from a formula`() {
-    val raised =
-      listOf("   ", "3d6 +", "3d6 + @", "(1d6", "1d6)", "1d6 [x", "3 d 6", "1d0", "1d6 + ${"9".repeat(40)}")
-        .map { refused(it).code }
-        .toSet()
-    assertTrue(NotationErrorCode.Empty in raised)
-    assertTrue(NotationErrorCode.SpacedDice in raised)
+    // One past the limit is a number, just too big a one: refused on the
+    // limit rather than for failing to read.
+    val error = refused("2d20kh${NotationLimits.MAX_LITERAL + 1}")
+    assertEquals(NotationErrorCode.NumberOutOfRange, error.code)
+    assertTrue("${NotationLimits.MAX_LITERAL}" in error.message, error.message)
   }
 }

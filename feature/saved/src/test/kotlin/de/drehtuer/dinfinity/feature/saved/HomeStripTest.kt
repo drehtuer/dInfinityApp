@@ -34,7 +34,6 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -107,7 +106,21 @@ class HomeStripTest {
 
     compose.onNodeWithTag(HomeStripTestTags.tileOf("fireball")).performClick()
 
-    assertEquals(listOf("8d6" to SavedRollSource("fireball", SavedRollGroup.UNFILED_ID)), picked)
+    // The source carries no pin: a roll pinned to nothing anywhere lands on
+    // the app's own table, and `null` rather than a table nobody chose is how
+    // that is said — which table the app is set to is the roll screen's to
+    // know (`RollWiring`).
+    assertEquals(listOf("8d6" to SavedRollSource("fireball", SavedRollGroup.UNFILED_ID, tablePin = null)), picked)
+  }
+
+  @Test
+  fun `a tile wears the roll's own mark, and a tile without one wears the dot`() {
+    given(roll("fireball").copy(icon = "🔥"), roll("plain"))
+
+    show()
+
+    compose.onNodeWithTag(HomeStripTestTags.tileOf("fireball")).assertTextContains("🔥", substring = true)
+    compose.onNodeWithTag(HomeStripTestTags.tileOf("plain")).assertTextContains("●", substring = true)
   }
 
   @Test
@@ -167,19 +180,6 @@ class HomeStripTest {
     compose.onNodeWithTag(HomeStripTestTags.tileOf("fireball")).performClick()
 
     assertEquals(TablePin("brass", "oak"), thrown.single().second.tablePin)
-  }
-
-  @Test
-  fun `a roll pinned to nothing anywhere lands on the app's own table`() {
-    // `null` rather than a table nobody chose: which table the app is set to
-    // is the roll screen's to know (`RollWiring`).
-    given(roll("fireball", formula = "8d6"))
-    val thrown = mutableListOf<Pair<String, SavedRollSource>>()
-    show(onPick = { formula, source -> thrown += formula to source })
-
-    compose.onNodeWithTag(HomeStripTestTags.tileOf("fireball")).performClick()
-
-    assertNull(thrown.single().second.tablePin)
   }
 
   @Test

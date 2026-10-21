@@ -18,10 +18,29 @@ dependencies {
   // off, would still hold a GPU context (docs/physics-and-rendering.md).
   api(project(":render:headless"))
 
+  // `Tray.shaders` is a StateFlow: written on the roll thread while a material
+  // compiles, collected by the roll screen on the main one, and safe to read
+  // from either without a lock of this module's own (`ShaderWork`). Already
+  // in the build for `dicesets/install`, and on the app's classpath through
+  // Compose.
+  api(libs.kotlinx.coroutines.core)
+
   implementation(libs.filament.android)
   implementation(libs.filamat.android)
 
+  // Not filament-utils-android: the studio panorama is decoded and folded into
+  // a cube here (`Radiance`, `StudioLight.faces`) and prefiltered by the engine
+  // above, rather than pull in a native library that links gltfio's and costs
+  // 17.5 MB over four ABIs (`docs/architecture.md`, decision 89).
+
   testImplementation(project(":test-fixtures"))
+  // `sample-sets/marble` is drawn from this module's printing and checked
+  // by the validator a download goes through (`MarbleArtworkTest`).
+  testImplementation(project(":dicesets:format"))
+  // Reads the shipped panorama on the JVM, so `StudioLightTest` can check the
+  // irradiance written into `StudioLight` against the file it came from, and
+  // `RadianceTest` the app's own decoder against an independent one.
+  testImplementation(libs.twelvemonkeys.imageio.hdr)
   androidTestImplementation(project(":test-fixtures"))
 
   // The rendered harness: the real physics thrown through this module's tray
@@ -30,4 +49,17 @@ dependencies {
   // harness exists (`docs/architecture.md`, decision 80).
   androidTestImplementation(project(":simulation:jolt"))
   androidTestImplementation(project(":simulation:harness"))
+
+  // The render gallery throws the built-in set's own dice onto its own
+  // tables, so a picture is of what a player sees (`RenderGalleryTest`).
+  androidTestImplementation(project(":dicesets:builtin"))
+}
+
+// The tests read `sample-sets/` from the repository: declared, so a changed
+// set re-runs them rather than replaying a cached pass from before it.
+tasks.withType<Test>().configureEach {
+  inputs
+    .dir(rootDir.resolve("sample-sets"))
+    .withPropertyName("sampleSets")
+    .withPathSensitivity(PathSensitivity.RELATIVE)
 }
