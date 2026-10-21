@@ -98,13 +98,13 @@ This is a snapshot, not a changelog — git history is the changelog.
 
 ## Last device runs — Pixel 10a
 
-- **2026-10-21, `feature/designer-material-and-roundness` (#406):** every
+- **2026-10-21, `feature/realistic-rendering` after #406–#409:** every
   library module's device suite — `designer`, `dicesets:install`,
-  `feature:roll`, `simulation:jolt`, `render:filament` — 126 passed, 0
-  failed, 3 skipped. `:app`'s suite was not run, because it writes into the
-  owner's real history. Floors straight down: green felt (30, 92, 57),
-  black felt (30, 29, 29), oak (92, 62, 40); the gallery drawn for the owner
-  to judge.
+  `feature:roll`, `simulation:jolt`, `render:filament` — 128 passed, 0
+  failed, 3 skipped (the gallery and the two harnesses, which run only when
+  asked). `:app`'s suite was not run, because it writes into the owner's real
+  history. Floors straight down, before decision 106: green felt
+  (30, 92, 57), black felt (30, 29, 29), oak (92, 62, 40).
 - **2026-10-04, the overnight stack tip (#349):** 102 tests, 101 passed, 0
   failed, 1 skipped (`HarnessTest`, which declines without a roll count).
   The harness and rendered-harness figures below are from that run.
