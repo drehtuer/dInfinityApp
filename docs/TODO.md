@@ -352,7 +352,12 @@ keeps them comparable.
 
 - [ ] **The start of a shake** read as a lag: the dice are already fast when
       the shake reaches them. The 100 ms start threshold and the spawn impulse
-      are the two numbers
+      are the two numbers. Still seen on *some* throws with the hand's toss
+      (owner, 2026-10-21, `main` at #411; throws otherwise look right). First
+      find which lag it is — before the dice appear, or at the toss when the
+      hand stops — then whether it lines up with dropped steps
+      (`LiveRoll.droppedSteps`, below) or a material compiling, and the toss
+      log (`log.tag.dinfinity.toss`) shows the rest
 - [ ] **The pace.** The tumble (60–120 rad/s, restitution 0.55) is approved;
       the travel was still a little fast at 0.5, so `RollPace.WATCHED` is now
       0.4 and a 0.96 s 20d20 throw takes 2.4 s to watch. Is the travel right
