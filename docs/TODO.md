@@ -461,6 +461,34 @@ Decision 105, adopted by the owner on 2026-10-20.
   make the golden cases toss (a physics change: goldens re-recorded,
   `FairnessTest` re-run).
 
+### 5.9 A tone curve, and post-processing of our own
+
+The linear tone mapper (`FilamentEngine.colorGrading`) keeps every set and
+table colour exact, and cuts off everything above white. Filament renders in
+float, so a highlight at 1.8 × white exists until that cut. Ivory metal at 0.6
+still reaches 255 in red in the leaning view (decision 106). Owner, 2026-10-21:
+next after the metal fix.
+
+- [ ] Read the frame back **before** tone mapping, in float, so the device
+      tests measure how far past white a surface goes rather than whether an
+      8-bit channel reached 250 (`DieGlintDeviceTest` counts only pixels white
+      in all three channels, and missed ivory's red)
+- [ ] A curve that is the identity up to a knee (about 0.85, above every
+      table and the bone die) and rolls off above it, so highlights go
+      bright, not flat white. Filament's Java API takes no custom mapper:
+      either a post-process pass of our own (the view into a float target,
+      one full-screen quad with the curve) or a native `ToneMapper` through
+      JNI. Measure it against the frame budget first: GPU 12.6 ms of 16.7 at
+      20d20. With it in, decide whether Metal goes back towards 0.4
+- [ ] Once there is a pass of our own, other screen-space effects become
+      possible. Ambient occlusion on the dice alone, for contact shading
+      where a die meets the felt: Filament's occlusion is a property of the
+      view and darkened the felt along every wall, which is why it is off
+      (`docs/physics-and-rendering.md`, "There is no ambient occlusion"); a
+      pass of our own could mask it to the dice. Each effect is judged in the
+      gallery and paid for against the frame budget, as the rest of the
+      renderer is
+
 ## Step 6 — v1 release
 
 - [ ] **Walk every screen with TalkBack on a real phone** — reading order,
@@ -476,6 +504,20 @@ Decision 105, adopted by the owner on 2026-10-20.
 
 ## After v1
 
+- [ ] **A long d4 in place of the tetrahedron** (owner, 2026-10-21). A
+      four-sided prism that lands on one of its four long faces, with short
+      ends it cannot stand on, read like every other die: the number on the
+      face that ends up on top. It would retire the d4's special rules —
+      numbers that belong to corners, three per face, the corner-pointing-up
+      reading (`docs/dice-sets.md`, "The d4"), `CORNER_HEIGHT`, the designer's
+      d4 masks, the oversized stamp clipping at a d4's edge — and should
+      help `100d4`, whose tetrahedra cock on one another (5.3). To decide
+      first: the ends' shape (a pyramid or a rounded cap steep enough that no
+      throw stands it up, which the harness has to show at zero), whether
+      `tetrahedron` stays in the catalogue for sets that name it, and how the
+      longer footprint counts in the capacity rule (`docs/tables.md`). A
+      physics change: fairness re-run, goldens re-recorded, and the prototype,
+      the designer and the docs changed together
 - [ ] More catalogue solids, `rhombic-triacontahedron` (d30) first
 - [ ] Author-supplied convex meshes, with the fairness preview they need
       (`docs/dice-sets.md`, "Shapes after v1")
