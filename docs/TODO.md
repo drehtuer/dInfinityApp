@@ -406,9 +406,9 @@ keeps them comparable.
       shadows of clear dice acceptable), rounded edges drawn with the
       solver's own convex radius (91 — does the bend's glint, now spread by
       specular anti-aliasing, read as a soft highlight), felt and oak drawn
-      from CC0 pictures (92 — run `TableTextureDeviceTest`, whose floor
-      colours are logged under `TableTextureDeviceTest`; in the gallery, with
-      each look's sheen now taken out of its colour, does the green felt read
+      from CC0 pictures (92 — `TableTextureDeviceTest` passes on the phone
+      with each look's sheen taken out of its colour; in the gallery, does
+      the green felt read
       as the old green, the black felt as black cloth rather than flat grey,
       the oak as warm oak — a little darker than before — and its walls as
       wood, is the felt's crinkle too strong — its normal map can be
