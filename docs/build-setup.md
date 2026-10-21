@@ -850,6 +850,13 @@ last, so it reads as a different bug each time, and it is not a bug in the code
 under test at all. It is the same switch as **Developer options → Stay awake**,
 and unplugging the phone undoes it.
 
+**Nor does it get past a secured lock screen.** A phone that locked before
+the run hands an app no surface either, and `feature/roll`'s
+`DiceTrayLifecycleTest` then times out waiting for one, all three tests at
+once (seen 2026-10-21). `adb shell input keyevent KEYCODE_WAKEUP` wakes the
+display, but a PIN or pattern is the owner's to enter: ask for the phone to be
+unlocked, then run again.
+
 Pairing is separate, and needed once per machine:
 
 ```sh
