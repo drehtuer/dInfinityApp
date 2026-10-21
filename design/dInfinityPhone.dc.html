@@ -1774,7 +1774,7 @@ class Component extends DCLogic {
           sdSpin:spin,toggleSpin:()=>this.setState({sdSpin:!spin}),
           sdNote:`${MASK_NAMES[this.sides()]} · ${this.sides()} faces · drag to turn it`}})(),
       // step 2: the die's material, colour and edges, under the turning die (docs/face-designer.md, "Material, colour and edges")
-      ...(()=>{const MATS=[['plastic','Plastic',0.35,0,0],['pearl','Pearl',0.35,0,0.25],['resin','Resin',0.15,0,0.6],['glass','Glass',0.05,0,1],['metal','Metal',0.3,1,0],['stone','Stone',0.8,0,0]];
+      ...(()=>{const MATS=[['plastic','Plastic',0.35,0,0],['pearl','Pearl',0.35,0,0.25],['resin','Resin',0.15,0,0.6],['glass','Glass',0.05,0,1],['metal','Metal',0.6,1,0],['stone','Stone',0.8,0,0]];
         const BODIES=['#000000','#ffffff','#ec3013','#e15b47','#f5a623','#f8e71c','#7ed321','#1f5e3a','#50e3c2','#4a90d9','#9013fe','#8b572a'];
         const bodyHex=S.dzBody||'#e8dcc0';const pct=S.dzEdgePct??3;const mm=(pct/100*16*(this.sides()===4?0.52:1)).toFixed(2);
         const mat=S.dzMat||'plastic';const m=MATS.find(x=>x[0]===mat)||MATS[0];

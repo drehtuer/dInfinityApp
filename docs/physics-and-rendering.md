@@ -2241,14 +2241,19 @@ impact sounds rather than a crash in the middle of a roll.
   more of the felt in the middle, before and after the post pass, so a cast
   rim shadow (about 0.5), a variance-map band or an occlusion band (0.6 to
   0.85) fails by name.
-- **Dice are lacquered; the table is not.** A die is a moulded thing with a
+- **Dice are lacquered; metal dice and the table are not.** A die is a moulded thing with a
   varnish on it, and a varnish is a thin smooth layer over a body that is not
   smooth at all — which is exactly what a clear coat is. Without one the only
   way to make a die shine is to make the resin itself glossy, and glossy resin
   reflects its own colour where a varnish reflects the room. The coat is not a
   mirror either (`DIE_COAT_ROUGHNESS` is 0.4): a die has been in a bag with
   other dice. Felt with a clear coat is a table nobody owns, so the tray has
-  none, and the shader skips the whole path when there is none to apply.
+  none. A metal die has none either — its shine is the metal's own — and a
+  body partly metal has the coat in proportion to what is not
+  (`DiceMaterial.coatOver`). The shader sets the coat on every surface,
+  nought included, because Filament starts a coated material's every pixel
+  with a full coat as smooth as a mirror: until decision 106 the tray and
+  anything else given no coat were drawn under exactly that.
 - **A face does not blink as it turns through the key light.** The key is a
   lamp with no size, the camera looks straight down and a flat face has one
   normal, so a polished face mirrors the lamp over the whole face at once.

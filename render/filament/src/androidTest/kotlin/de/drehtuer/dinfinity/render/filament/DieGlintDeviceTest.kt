@@ -75,6 +75,28 @@ class DieGlintDeviceTest {
     assertNoTiltBlowsOut(d6.copy(material = d6.material.copy(colorArgb = DARK)))
   }
 
+  /*
+   * A metal die mirrors the key with its own colour, about twenty times what
+   * a lacquered plastic one sends back, so it blows out at roughnesses a
+   * plastic die's lacquer never would. Measured on the Pixel 10a, bare: an
+   * ivory face burnt over two thirds at 0.5 and nothing at 0.6, steel's grey
+   * two thirds at 0.4 and nothing at 0.5 (decision 106). Both at the
+   * designer's Metal, whose roughness is [METAL_ROUGHNESS].
+   */
+  @Test
+  fun aMetalD6FaceTurningThroughTheKeyLightsMirrorAngleDoesNotBlowOut() {
+    val d6 = StandardDice.d6
+    assertNoTiltBlowsOut(d6.copy(material = d6.material.copy(metallic = 1.0, roughness = METAL_ROUGHNESS)))
+  }
+
+  @Test
+  fun aSteelD6FaceTurningThroughTheKeyLightsMirrorAngleDoesNotBlowOut() {
+    val d6 = StandardDice.d6
+    assertNoTiltBlowsOut(
+      d6.copy(material = d6.material.copy(metallic = 1.0, roughness = METAL_ROUGHNESS, colorArgb = STEEL)),
+    )
+  }
+
   @Test
   fun theSweepRunsThroughTheKeyLightsMirrorAngle() {
     // A sweep that stopped short of the mirror angle would pass whatever the
@@ -206,6 +228,12 @@ class DieGlintDeviceTest {
     const val MARGIN = 10.0
 
     const val DARK = 0xFF202020.toInt()
+
+    /** The designer's Metal (`MaterialPreset.Metal`) and the steel sample set's roughness. */
+    const val METAL_ROUGHNESS = 0.6
+
+    /** The steel sample set's body (`sample-sets/steel`). */
+    const val STEEL = 0xFF9EA2A6.toInt()
     const val BYTE = 0xFF
     const val RGB = 3
     const val PERCENT = 100.0
