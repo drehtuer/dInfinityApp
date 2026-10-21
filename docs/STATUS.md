@@ -25,8 +25,9 @@ This is a snapshot, not a changelog — git history is the changelog.
   ended a mirror coat on every uncoated surface). The face designer is three
   steps with six materials, an opacity slider and edge rounding up to 6 %
   (94, 97–102); the "Preparing the dice" plate covers shader compiles (95);
-  four sample sets are in `sample-sets/`. On the Pixel 10a every library
-  device suite passes, and the owner finds the throws look right.
+  four sample sets are in `sample-sets/`, and come installed on the first
+  launch, resin, glass and metal on every shape (decision 107). On the Pixel 10a
+  every library device suite passes, and the owner finds the throws look right.
 - **Next:** the tone curve and post-processing of our own (`docs/TODO.md`
   5.9), and the lag the owner still sees on some throws (5.6). Everything since
   `v0.2.0` ships in `v0.3.0`, which needs only a tag.
