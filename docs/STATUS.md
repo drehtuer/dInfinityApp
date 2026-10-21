@@ -16,64 +16,20 @@ This is a snapshot, not a changelog — git history is the changelog.
   total appears beside them, with printed numbers the right way round and an
   author's artwork where a set has some.
 - **Latest release:** `v0.2.0`, signed and published with its SHA-256.
-- **`main` is at #374, released as `v0.2.0`**: the owner's feedback on the overnight build is in
-  — a cold start shows the tray in 0.8 s (decision 46), the watched pace is
-  0.4 (65), *Clear face* in the designer (82), a throw folds the top away and
-  a double tap clears the table (83), an accent shake prompt and pick ring
-  (84), *Roll it* throws the drawing as it is now, and every formula field
-  has a × that empties it. Since then: the room's reflections are prefiltered
-  to six levels, the coin that ran out the twelve-second cap is explained (it
-  leaned on the old corner post; none of 100,000 give up on the fillet tray),
-  and the designer masks the d10 and the d18 into their own kites (86).
-- **In flight:** `feature/realistic-rendering`, an integration branch for
-  making the table and dice look real — a render gallery to compare against
-  (`tools/gallery.sh`), then lighting from a photographed room (decision 89:
-  the felt draws its set colour, no band along the walls, the room cached on
-  disk), translucent dice as refracting resin (90) and rounded edges drawn
-  with the solver's own convex radius (91), all passing on the Pixel 10a.
-  The dice are no longer reflected in the dark glass: from straight above
-  the reflection hid under each die and showed nothing on the phone (decision
-  104, withdrawing 93); it saves no GPU time, as dark glass's floor now runs
-  the dice's opaque material, as plain's does. The broken light lines along resin dice's
-  rounded edges were the lacquer's glint, thinner than a pixel; specular
-  anti-aliasing spreads it now. Felt and oak are drawn from CC0 pictures,
-  keyed by the package the look came from (92); plain stays flat. On the
-  phone the oak drew pinkish grey: its photograph's roughness map (0.44)
-  stood in for the look's, and the key light's sheen washed the brown out. A
-  look in `average` now has its roughness map averaged at its `roughness`
-  too, and oak is oiled at 0.75. The phone then drew green felt's red 13 over:
-  the felt's own sheen, 1.4 % of white, which a look in `average` now has
-  taken out of its colour (`SurfaceLight`); on the phone green felt now
-  draws (30, 92, 57) against its (31, 94, 58). The
-  face designer is three steps — Shape, Material (six named materials, a body
-  colour, an edge-rounding slider over 1.5–6 %), Faces
-  — after the owner's feedback (decisions 94, 97–99); a drawn face is no
-  longer printed over (96) and the turning die shows the pen's strokes and
-  the rounding. The range is measured: at 20,000 throws a shape every
-  solid is fair and every coin settles up to 6 %, while at 12 % coins rolled
-  on their rims until the backstop 42 times, so rounding now stops at 6 %
-  for the slider and for a set file alike (decision 100).
-  While a dice material compiles — the first launch after an install or
-  update, or the first resin or textured-table material — a
-  "Preparing the dice" plate over the tray says why, with a bar timed by what
-  the phone took last time (decision 95; seen working on the Pixel 10a).
-  Four sample sets to install — marble (artwork on every face, numbers cut
-  in by the app's own printing), steel, green resin and red glass — are in
-  `sample-sets/`, as folders and zips, each installed by a test on every
-  build. The designer's ink now reaches the tray in its own colour: the
-  dice material multiplied artwork by the body colour and read the atlas as
-  linear, so yellow pips on a black die were black (decision 101; a device
-  test fails by 127 levels without the fix). The Material step has an
-  Opacity slider, glass to solid in five per cents, over the same
-  `translucency` the menu sets (decision 102); seen on the Pixel 10a.
-  Dice no longer blink at some angles: the lacquer mirrored the sizeless
-  key light over a whole face for a frame, and is rougher now (0.4, decision
-  103; a device test fails by 50 % of a face at the old 0.12) — the owner
-  to judge whether they still look varnished. Metal dice are satin and
-  unlacquered now (decision 106): their top faces burnt white in the
-  gallery, made worse by a shader that left every coat-less surface under
-  Filament's default mirror coat.
-  It reaches `main` when the owner likes it on the phone.
+- **`main` is at #411**, ahead of `v0.2.0` by the realistic-rendering work
+  (merged as #410, 2026-10-21): lighting from a photographed room (decision
+  89), refracting resin (90), rounded edges drawn at the solver's radius (91),
+  felt and oak from CC0 pictures with their sheen taken out of their colour
+  (92), no reflection of the dice in dark glass (104), a rougher lacquer so
+  faces do not blink (103), and satin, unlacquered metal dice (106, which also
+  ended a mirror coat on every uncoated surface). The face designer is three
+  steps with six materials, an opacity slider and edge rounding up to 6 %
+  (94, 97–102); the "Preparing the dice" plate covers shader compiles (95);
+  four sample sets are in `sample-sets/`. On the Pixel 10a every library
+  device suite passes, and the owner finds the throws look right.
+- **Next:** the tone curve and post-processing of our own (`docs/TODO.md`
+  5.9), and the lag the owner still sees on some throws (5.6). Everything since
+  `v0.2.0` ships in `v0.3.0`, which needs only a tag.
 - **The hand tosses the dice** (decision 105, `docs/TODO.md` 5.8): shaken
   in sight as before, and tossed when the hand stops, after a comparison with
   slow-motion film of real dice. Adopted by the owner on 2026-10-20 — without
