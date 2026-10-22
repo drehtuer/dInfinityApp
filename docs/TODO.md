@@ -180,6 +180,20 @@ and read here, and a seed gives the same result with the renderer on and off.
       right one? Then a d6 and a d4 at 6 %: do the edges look round
       and do they still read as dice, and do the numbers near a d4's edges
       still read where they wrap onto the bend?
+- [ ] **Weight per die, so metal feels like metal** (owner, 2026-10-22: the
+      metal colours look right). A set file already has `density` (steel's
+      is 7.8 g/cm³), the solver already uses it for mass, and the set details
+      show it as grams per die ("Weight, translucency and size, as a person
+      sets them"). What is missing is the die: the Material step's six
+      materials set roughness, metalness and translucency, and a Metal die
+      drawn in the designer weighs what plastic does. Make weight one of a
+      die's own material fields: each material brings its density (plastic
+      about 1.2, resin 1.2, glass 2.5, stone 2.7, metal 7.8), with a weight a
+      person can still change. Then check whether the weight is *felt* as
+      well as simulated: a heavy die bounces lower, and the knock and its
+      sound should say heavy (`docs/TODO.md` 5.6, haptics and sound). A
+      physics change for the designer's dice, so fairness is re-run for a
+      metal die
 - [ ] *Judgement:* named personal sets (decision 79). A drawing saved into a
       named set is a copy and also stays in "My dice" — is that what somebody
       expects, or should a set-only drawing leave "My dice" alone? Does the
