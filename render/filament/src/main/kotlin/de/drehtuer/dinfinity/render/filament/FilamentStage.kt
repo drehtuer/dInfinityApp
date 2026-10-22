@@ -93,6 +93,14 @@ class FilamentStage(
 
   private val camera: com.google.android.filament.Camera = engine.createCamera(cameraEntity)
 
+  /**
+   * The pass that bends light past white and writes the screen ([ToneCurve]),
+   * for a stage whose post pass is on — every stage anybody looks at. A stage
+   * without it draws straight to the screen, as before.
+   */
+  private val tone: TonePass? =
+    if (postProcessing) TonePass(engine, parts.toneMaterial, width, height) else null
+
   /** The white pixel every surface with no atlas samples. Shared, like the material. */
   private val blank: Texture get() = parts.blank
 
@@ -120,6 +128,7 @@ class FilamentStage(
     view.viewport = Viewport(0, 0, width, height)
     view.isPostProcessingEnabled = postProcessing
     photograph()
+    tone?.takeOver(view)
   }
 
   /**
@@ -323,12 +332,31 @@ class FilamentStage(
   fun draw(capture: ByteBuffer?): Boolean {
     if (!frames.beginFrame(swapChain, 0)) return false
     frames.render(view)
+    tone?.render(frames)
     capture?.let {
       frames.readPixels(0, 0, width, height, Texture.PixelBufferDescriptor(it, Texture.Format.RGBA, Texture.Type.UBYTE))
     }
     frames.endFrame()
     if (capture != null) engine.flushAndWait()
     return true
+  }
+
+  /**
+   * One frame, drawn, and the light it was drawn from read back before the
+   * tone pass bent it: linear, one being white, red, green and blue per
+   * pixel ([TonePass.lightOf]). Null for a stage with no tone pass, or when
+   * Filament skipped the frame. Like [draw] with a capture, it waits for the
+   * GPU, and only a device test asks.
+   */
+  internal fun lightRead(): FloatArray? {
+    val pass = tone ?: return null
+    if (!frames.beginFrame(swapChain, 0)) return null
+    frames.render(view)
+    pass.render(frames)
+    val halves = pass.readLight(frames)
+    frames.endFrame()
+    engine.flushAndWait()
+    return TonePass.lightOf(halves, width * height)
   }
 
   /** A buffer the right size for [draw] to copy a frame into. */
@@ -415,6 +443,7 @@ class FilamentStage(
    */
   override fun close() {
     clear()
+    tone?.close()
     engine.destroyView(view)
     engine.destroyScene(scene)
     engine.destroyRenderer(frames)

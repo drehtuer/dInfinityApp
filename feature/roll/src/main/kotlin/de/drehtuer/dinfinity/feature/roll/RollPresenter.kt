@@ -10,6 +10,7 @@ import de.drehtuer.dinfinity.core.model.DieInstance
 import de.drehtuer.dinfinity.core.model.Rounding
 import de.drehtuer.dinfinity.core.model.SavedRollSource
 import de.drehtuer.dinfinity.core.model.TableLook
+import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.core.notation.PickableDie
 import de.drehtuer.dinfinity.render.filament.PickMark
 import de.drehtuer.dinfinity.render.filament.Tray
@@ -145,8 +146,13 @@ class RollPresenter(
   var pickingFrom: String by mutableStateOf(machine.pickingFrom)
     private set
 
-  /** Every set that has dice to offer, for the chooser. Fixed for the visit. */
-  val choosableSets: List<DiceSet> get() = machine.choosableSets
+  /**
+   * Every set that has dice to offer, for the chooser. State rather than a
+   * getter: the installed sets can change while the screen is open
+   * ([catalogueChanged]).
+   */
+  var choosableSets: List<DiceSet> by mutableStateOf(machine.choosableSets)
+    private set
 
   /** The tray to hand a surface to. */
   val tray: Tray get() = driver
@@ -213,7 +219,8 @@ class RollPresenter(
   val geometry: TableGeometry get() = machine.geometry
 
   /** How many dice sets are installed, which first launch counts. */
-  val sets: Int get() = machine.sets
+  var sets: Int by mutableStateOf(machine.sets)
+    private set
 
   /**
    * The look the tray was last told about.
@@ -245,6 +252,27 @@ class RollPresenter(
   fun look(view: TrayView) {
     looking = view
     driver.look(view)
+  }
+
+  /**
+   * The installed sets are now [catalogue]'s: the start-up read of the folder
+   * finished after the screen opened, or a set was installed, switched or
+   * removed elsewhere. The machine takes it up now, or when the throw in the
+   * air ends ([RollMachine.use]), and the screen follows.
+   */
+  fun catalogueChanged(catalogue: DiceCatalog) {
+    machine.use(catalogue)
+    publish()
+  }
+
+  /**
+   * The table chosen in the settings may have changed. On a cold launch it
+   * always does a moment after the screen opens, because the settings are
+   * read after the tray is first drawn. Redrawn on it unless dice are in the
+   * air, whose tray is the throw's; [publish] draws it when they land.
+   */
+  fun tableChosen() {
+    if (!machine.throwing) publish()
   }
 
   /** The formula field changed. Re-validated on every keystroke. */
@@ -551,6 +579,8 @@ class RollPresenter(
     counts = machine.counts
     pickable = machine.pickable
     pickingFrom = machine.pickingFrom
+    choosableSets = machine.choosableSets
+    sets = machine.sets
   }
 
   /** The dice the board is showing, so it is only redrawn when they change. */

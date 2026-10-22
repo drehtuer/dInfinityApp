@@ -228,6 +228,15 @@ object DiceMaterial {
      * sampled trilinearly and anisotropically ([FilamentEngine.tableSampler]).
      */
     TABLE(TABLE_SOURCE, "table", specularAntiAliasing = false),
+
+    /**
+     * Not a surface: the full-screen pass that bends light past white and
+     * writes the screen ([ToneCurve]). Here because it is compiled, cached
+     * and announced exactly as the surfaces are — on the first launch it is
+     * one more thing "Preparing the dice" waits for — and [variantOf] never
+     * hands it to a surface.
+     */
+    TONE(ToneCurve.SOURCE, "tone", specularAntiAliasing = false),
     ;
 
     /**
@@ -270,7 +279,7 @@ object DiceMaterial {
   /** The most [SPECULAR_AA_VARIANCE] may add to a roughness squared, Filament's default. */
   const val SPECULAR_AA_THRESHOLD: Float = 0.2f
 
-  /** Which of the [Variant]s [parameters] are drawn with. */
+  /** Which of the surface [Variant]s [parameters] are drawn with: never [Variant.TONE]. */
   fun variantOf(parameters: Parameters): Variant =
     when {
       parameters.resin != null -> Variant.RESIN

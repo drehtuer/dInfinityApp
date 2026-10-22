@@ -9,6 +9,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.stringResource
 import androidx.core.net.toUri
@@ -134,8 +135,11 @@ class MainActivity : ComponentActivity() {
     // collect a flow (`docs/dice-sets.md`).
     LaunchedEffect(settings.defaultSetId) { app.defaultSet = settings.defaultSetId }
     // And the table the tray is built on, for the same reason
-    // (`docs/tables.md`).
-    LaunchedEffect(settings.defaultTable) { app.chosenTable = settings.defaultTable }
+    // (`docs/tables.md`). A side effect of every composition rather than a
+    // launched one, so it has happened before any effect below asks for it:
+    // the roll screen redraws on the chosen table when it changes, and a
+    // launched effect here could run after that and leave it on the old one.
+    SideEffect { app.chosenTable = settings.defaultTable }
 
     DInfinityApp(
       settings = settings,

@@ -39,14 +39,16 @@ data class ShaderTimings(
      * The Pixel 10a's figures (`docs/physics-and-rendering.md`, "Preparing the
      * dice"). The opaque and resin materials were measured there — about 2.4 s
      * and 2 s; the table one has not been timed alone and is assumed to cost
-     * what resin does, which is the material it is closest to in size. One
-     * compile on any phone replaces the guess.
+     * what resin does, which is the material it is closest to in size. The
+     * tone pass is a few lines of unlit shader and is guessed at a fifth of a
+     * second. One compile on any phone replaces the guess.
      */
     val DEFAULTS: Map<DiceMaterial.Variant, Long> =
       mapOf(
         DiceMaterial.Variant.OPAQUE to 2_400L,
         DiceMaterial.Variant.RESIN to 2_000L,
         DiceMaterial.Variant.TABLE to 2_000L,
+        DiceMaterial.Variant.TONE to 200L,
       )
 
     /** A tenth of a second to two minutes: anything else was not the compiler. */

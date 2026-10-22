@@ -147,6 +147,8 @@ internal fun titleOf(variant: DiceMaterial.Variant): Int =
     DiceMaterial.Variant.OPAQUE -> R.string.roll_preparing_dice
     DiceMaterial.Variant.RESIN -> R.string.roll_preparing_resin
     DiceMaterial.Variant.TABLE -> R.string.roll_preparing_table
+    // Part of drawing any tray at all, so a player is told what the dice are.
+    DiceMaterial.Variant.TONE -> R.string.roll_preparing_dice
   }
 
 /** [fraction] to the nearest whole per cent, as a fraction again. */

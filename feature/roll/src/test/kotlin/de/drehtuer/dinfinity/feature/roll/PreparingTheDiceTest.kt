@@ -129,6 +129,8 @@ class PreparingTheDiceTest {
         DiceMaterial.Variant.OPAQUE to "Preparing the dice",
         DiceMaterial.Variant.RESIN to "Preparing the translucent dice",
         DiceMaterial.Variant.TABLE to "Preparing the table",
+        // The tone pass is part of drawing any tray, so it is the dice too.
+        DiceMaterial.Variant.TONE to "Preparing the dice",
       ),
       titles,
     )

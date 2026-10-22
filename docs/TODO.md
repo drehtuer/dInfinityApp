@@ -180,6 +180,20 @@ and read here, and a seed gives the same result with the renderer on and off.
       right one? Then a d6 and a d4 at 6 %: do the edges look round
       and do they still read as dice, and do the numbers near a d4's edges
       still read where they wrap onto the bend?
+- [ ] **Weight per die, so metal feels like metal** (owner, 2026-10-22: the
+      metal colours look right). A set file already has `density` (steel's
+      is 7.8 g/cm³), the solver already uses it for mass, and the set details
+      show it as grams per die ("Weight, translucency and size, as a person
+      sets them"). What is missing is the die: the Material step's six
+      materials set roughness, metalness and translucency, and a Metal die
+      drawn in the designer weighs what plastic does. Make weight one of a
+      die's own material fields: each material brings its density (plastic
+      about 1.2, resin 1.2, glass 2.5, stone 2.7, metal 7.8), with a weight a
+      person can still change. Then check whether the weight is *felt* as
+      well as simulated: a heavy die bounces lower, and the knock and its
+      sound should say heavy (`docs/TODO.md` 5.6, haptics and sound). A
+      physics change for the designer's dice, so fairness is re-run for a
+      metal die
 - [ ] *Judgement:* named personal sets (decision 79). A drawing saved into a
       named set is a copy and also stays in "My dice" — is that what somebody
       expects, or should a set-only drawing leave "My dice" alone? Does the
@@ -352,7 +366,12 @@ keeps them comparable.
 
 - [ ] **The start of a shake** read as a lag: the dice are already fast when
       the shake reaches them. The 100 ms start threshold and the spawn impulse
-      are the two numbers
+      are the two numbers. Still seen on *some* throws with the hand's toss
+      (owner, 2026-10-21, `main` at #411; throws otherwise look right). First
+      find which lag it is — before the dice appear, or at the toss when the
+      hand stops — then whether it lines up with dropped steps
+      (`LiveRoll.droppedSteps`, below) or a material compiling, and the toss
+      log (`log.tag.dinfinity.toss`) shows the rest
 - [ ] **The pace.** The tumble (60–120 rad/s, restitution 0.55) is approved;
       the travel was still a little fast at 0.5, so `RollPace.WATCHED` is now
       0.4 and a 0.96 s 20d20 throw takes 2.4 s to watch. Is the travel right
@@ -413,9 +432,8 @@ keeps them comparable.
       the oak as warm oak — a little darker than before — and its walls as
       wood, is the felt's crinkle too strong — its normal map can be
       softened — and does it shimmer as the dice settle, and is plain
-      unchanged; do satin metal dice at 0.6 read as metal, and is the
-      ivory metal's cream top face in the leaning view, red at 255, bright
-      enough to accept — decision 106). Judged with `tools/gallery.sh` before and after each
+      unchanged; do satin metal dice at 0.6 read as metal — decision 106).
+      Judged with `tools/gallery.sh` before and after each
       step, and merged to `main` once the owner likes it on the phone
 
 ### 5.7 Performance on the Pixel 10a
@@ -463,27 +481,31 @@ Decision 105, adopted by the owner on 2026-10-20.
 
 ### 5.9 A tone curve, and post-processing of our own
 
-The linear tone mapper (`FilamentEngine.colorGrading`) keeps every set and
-table colour exact, and cuts off everything above white. Filament renders in
-float, so a highlight at 1.8 × white exists until that cut. Ivory metal at 0.6
-still reaches 255 in red in the leaning view (decision 106). Owner, 2026-10-21:
-next after the metal fix.
+Light past white is bent by a pass of our own since decision 108: identity
+below 0.8, PBR Neutral's shoulder above, about 1 ms of GPU a frame on the
+Pixel 10a.
 
-- [ ] Read the frame back **before** tone mapping, in float, so the device
-      tests measure how far past white a surface goes rather than whether an
-      8-bit channel reached 250 (`DieGlintDeviceTest` counts only pixels white
-      in all three channels, and missed ivory's red)
-- [ ] A curve that is the identity up to a knee (about 0.85, above every
-      table and the bone die) and rolls off above it, so highlights go
-      bright, not flat white. Filament's Java API takes no custom mapper:
-      either a post-process pass of our own (the view into a float target,
-      one full-screen quad with the curve) or a native `ToneMapper` through
-      JNI. Measure it against the frame budget first: GPU 12.6 ms of 16.7 at
-      20d20. With it in, decide whether Metal goes back towards 0.4
-- [ ] Once there is a pass of our own, other screen-space effects become
-      possible. Ambient occlusion on the dice alone, for contact shading
-      where a die meets the felt: Filament's occlusion is a property of the
-      view and darkened the felt along every wall, which is why it is off
+- [ ] *Judge on the phone:* do metal highlights read as bright metal now
+      rather than as white patches, and does the bone die's lit face look as
+      it did? With the curve in, should Metal go back towards 0.4 (shinier,
+      decision 106)? The numbers are `ToneCurve.KNEE` (0.8) and
+      `DESATURATION` (0.15)
+- [ ] **Glass and resin are different materials** (owner, 2026-10-21).
+      *Glass* is nearly transparent, with a little diffusion: the die's far
+      side and the felt show through it, softened. *Resin* scatters light
+      inside: neither the felt nor the far side shows, at most a blurred shade
+      of its colour, and it looks lit from within. Both let more light
+      through than a solid die, so **both cast a lighter shadow**, in
+      proportion. Today a translucent die refracts (`FilamentStageTest`
+      passes) but reads as solid: its shadow is a solid die's, and Filament's
+      screen-space refraction sees only the opaque scene, never the die's own
+      back. Candidates: Filament's transparent shadows for the lighter
+      shadow; the die's back faces drawn into what glass refracts; a
+      stronger scatter and a glow from within for resin
+- [ ] Other screen-space effects, now that there is a pass of our own.
+      Ambient occlusion on the dice alone, for contact shading where a die
+      meets the felt: Filament's occlusion is a property of the view and
+      darkened the felt along every wall, which is why it is off
       (`docs/physics-and-rendering.md`, "There is no ambient occlusion"); a
       pass of our own could mask it to the dice. Each effect is judged in the
       gallery and paid for against the frame budget, as the rest of the

@@ -32,6 +32,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import de.drehtuer.dinfinity.feature.stats.R as StatsR
@@ -103,6 +104,7 @@ internal class ScreenWiring(
       developer = { developer() },
       diceSet = { id, onGone -> diceSet(id, onGone) },
       whatIsThere = whatIsThere(app.savedRolls.all, app.sessions.sessions),
+      catalogues = app.setLibrary.changes.map { app.setLibrary.catalogue },
     )
 
   /**

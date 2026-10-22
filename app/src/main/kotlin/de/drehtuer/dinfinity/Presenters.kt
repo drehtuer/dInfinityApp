@@ -1,5 +1,6 @@
 package de.drehtuer.dinfinity
 
+import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.feature.designer.DesignerPresenter
 import de.drehtuer.dinfinity.feature.graph.GraphMachine
 import de.drehtuer.dinfinity.feature.roll.RollPresenter
@@ -18,6 +19,7 @@ import de.drehtuer.dinfinity.feature.stats.SessionsPresenter
 import de.drehtuer.dinfinity.feature.stats.StatsPresenter
 import de.drehtuer.dinfinity.feature.tables.TablesPresenter
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 
 /**
  * How to build every screen's state — all of them, in one place
@@ -110,4 +112,11 @@ data class Presenters(
    * session as a side effect of saying hello.
    */
   val whatIsThere: Flow<WhatIsThere>,
+  /**
+   * The catalogue each time the installed sets change, for the roll screen to
+   * take up: it opens before the folder has been read on every cold start, and
+   * keeps its presenter for the whole visit (`SetLibrary.changes`). Nothing
+   * by default, for screens built in a test with a fixed catalogue.
+   */
+  val catalogues: Flow<DiceCatalog> = emptyFlow(),
 )

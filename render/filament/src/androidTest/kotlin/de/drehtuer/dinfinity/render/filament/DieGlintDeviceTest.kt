@@ -97,6 +97,39 @@ class DieGlintDeviceTest {
     )
   }
 
+  /*
+   * What the tone pass is for (decision 108). A polished metal face at the
+   * key's mirror angle is lit far past white: the half-float frame has to
+   * hold that light rather than cut it at one, and the screen has to show it
+   * bright without any channel stopping dead at 255.
+   */
+  @Test
+  fun aPolishedMetalHighlightIsKeptPastWhiteAndShownUnderIt() {
+    val d6 = StandardDice.d6
+    val polished = d6.copy(material = d6.material.copy(metallic = 1.0, roughness = POLISHED))
+    val mirror = mirrorTiltDegrees()
+    val light = checkNotNull(faceAt(polished, mirror) { it.lightRead() }) { "this stage has no tone pass" }
+    val shown = faceAt(polished, mirror)
+    assumeFalse("this backend does not read a post-processed frame back", shown.uniform)
+    val brightest = light.max()
+    val pixels = shown.width * shown.height
+    // A pixel or two may dither onto 255; a patch at 255 is a cut.
+    val flat =
+      (0 until pixels).count { pixel ->
+        (0 until RGB).any { shown.pixels[pixel * Snapshot.CHANNELS + it].toInt() and BYTE == FULL }
+      } / pixels.toDouble()
+    Log.i(
+      TAG,
+      "polished metal at %.1f°: light %.2f of white, %.1f%% of it at 255".format(
+        mirror,
+        brightest,
+        flat * PERCENT,
+      ),
+    )
+    assertTrue("the frame cut the highlight at white (%.2f)".format(brightest), brightest > PAST_WHITE)
+    assertTrue("%.0f%% of the face stopped dead at 255".format(flat * PERCENT), flat <= MOST_BURNT)
+  }
+
   @Test
   fun theSweepRunsThroughTheKeyLightsMirrorAngle() {
     // A sweep that stopped short of the mirror angle would pass whatever the
@@ -137,7 +170,14 @@ class DieGlintDeviceTest {
   private fun faceAt(
     die: Die,
     degrees: Double,
-  ): Snapshot =
+  ): Snapshot = faceAt(die, degrees) { stage -> checkNotNull(stage.capture()) { "no frame came back off the GPU" } }
+
+  /** The same face, and what [read] makes of the stage once it is set up. */
+  private fun <T> faceAt(
+    die: Die,
+    degrees: Double,
+    read: (FilamentStage) -> T,
+  ): T =
     FilamentStage(SIZE, SIZE, shared = filament).use { stage ->
       val solid = SolidFaces.of(die.shape).first()
       val radius = die.material.boundingRadiusMm
@@ -164,7 +204,7 @@ class DieGlintDeviceTest {
       )
       renderer.show(RenderFrame.still(listOf(BodyTransform(index = 0, position = position, orientation = turn))))
       stage.aim(CameraShot(target + Vector3.Up * distance, target, X, FIELD_OF_VIEW_DEGREES))
-      checkNotNull(stage.capture()) { "no frame came back off the GPU" }
+      read(stage)
     }
 
   /** The distance from a face's [centre] to the nearest of its edges, on the unit solid. */
@@ -228,6 +268,15 @@ class DieGlintDeviceTest {
     const val MARGIN = 10.0
 
     const val DARK = 0xFF202020.toInt()
+
+    /** A metal smoother than any preset, whose highlight is well past white. */
+    const val POLISHED = 0.2
+
+    /** Light past this, as a fraction of white, was kept rather than cut. */
+    const val PAST_WHITE = 1.2f
+
+    /** A channel at this has stopped dead. */
+    const val FULL = 255
 
     /** The designer's Metal (`MaterialPreset.Metal`) and the steel sample set's roughness. */
     const val METAL_ROUGHNESS = 0.6
