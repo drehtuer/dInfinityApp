@@ -61,7 +61,7 @@ import de.drehtuer.dinfinity.simulation.api.Vector3
  */
 @Suppress("TooManyFunctions")
 class RollMachine(
-  private val catalog: DiceCatalog,
+  catalog: DiceCatalog,
   /** The table every throw from here lands on, and the one the tray draws. */
   val geometry: TableGeometry,
   /**
@@ -301,8 +301,20 @@ class RollMachine(
    */
   val table: TableLook get() = look(cameFrom?.tablePin)
 
+  /**
+   * What a formula resolves against and the picker offers. Replaced by [use]
+   * when the installed sets change while the screen is open.
+   */
+  private var catalog: DiceCatalog = catalog
+
+  /** A catalogue that arrived during a throw, taken up when the throw ends ([use]). */
+  private var nextCatalog: DiceCatalog? = null
+
   /** Which set the picker row is offering, and what is on it ([Picker]). */
-  private val picker = Picker(catalog)
+  private var picker = Picker(catalog)
+
+  /** True while a throw is in the air or waiting to be read: the tray is the throw's. */
+  val throwing: Boolean get() = inFlight != null
 
   /** The dice the picker row offers (`design/dInfinity.dc.html`, option 1h). */
   val pickable: List<PickableDie> get() = picker.dice
@@ -324,6 +336,45 @@ class RollMachine(
 
   /** How many dice sets are installed, which the first-launch screen counts. */
   val sets: Int get() = catalog.installed.size
+
+  /**
+   * The installed sets are now [next]'s (`docs/dice-sets.md`, "Sets that come
+   * installed").
+   *
+   * A cold start opens this screen on the bundled set alone and reads the
+   * folder afterwards, and installing or removing a set on another screen
+   * changes it too — so the picker, its set chooser and what the formula
+   * resolves against are taken from [next] rather than kept from when the
+   * screen opened. The picker stays on the set it was offering if [next]
+   * still has it, and a formula waiting to be thrown is planned again, so a
+   * `steel:3d6` typed before the folder was read is ready once it is.
+   *
+   * Never under a throw: the dice in the air were planned against the sets
+   * they were thrown with, and a catalogue that arrives then is taken up when
+   * the throw ends or is abandoned. A result already on the table is left as
+   * it is. The same sets as now change nothing.
+   */
+  fun use(next: DiceCatalog) {
+    if (inFlight != null) {
+      nextCatalog = next
+      return
+    }
+    nextCatalog = null
+    if (next.defaultSetId == catalog.defaultSetId && next.installed == catalog.installed) return
+    catalog = next
+    val offering = picker.from
+    picker = Picker(next).also { it.choose(offering) }
+    if (landed == null && scored == null) {
+      prepared = null
+      state = stateOf(text)
+    }
+    counts = DicePicker.counts(text, pickable)
+  }
+
+  /** Takes up a catalogue that arrived during the throw that has just ended. */
+  private fun takeNextCatalog() {
+    nextCatalog?.let(::use)
+  }
 
   /**
    * The formula field changed.
@@ -348,14 +399,20 @@ class RollMachine(
     picks = emptySet()
     scored = null
     expected = null
+    // An edit abandons a throw in the air, so a catalogue that waited for it
+    // is taken up now, before the formula is planned against the old one.
+    takeNextCatalog()
 
-    state =
-      when (val parsed = FormulaParser.parse(typed)) {
-        is ParseResult.Failed -> if (typed.isBlank()) RollState.Empty else RollState.Invalid(parsed.error)
-        is ParseResult.Parsed -> planned(parsed.formula)
-      }
+    state = stateOf(typed)
     counts = DicePicker.counts(typed, pickable)
   }
+
+  /** What [typed] comes to as it stands: empty, unreadable, or planned. */
+  private fun stateOf(typed: String): RollState =
+    when (val parsed = FormulaParser.parse(typed)) {
+      is ParseResult.Failed -> if (typed.isBlank()) RollState.Empty else RollState.Invalid(parsed.error)
+      is ParseResult.Parsed -> planned(parsed.formula)
+    }
 
   /**
    * A tap on the picker row: one more of [die].
@@ -979,6 +1036,8 @@ class RollMachine(
     picks = emptySet()
     scored = flight.prepared.formula to result
     state = RollState.Settled(result, divides = flight.prepared.formula.divides)
+    // After the result is in place, so it is left as it is.
+    takeNextCatalog()
     // Handed out rather than written here: this module decides what a throw
     // came to, and nothing else. Re-rounding the same throw does not come
     // through here, which is why a roll is recorded once and not once per

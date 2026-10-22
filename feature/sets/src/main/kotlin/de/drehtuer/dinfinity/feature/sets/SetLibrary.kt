@@ -11,6 +11,10 @@ import de.drehtuer.dinfinity.dicesets.install.InstalledPackage
 import de.drehtuer.dinfinity.dicesets.install.InstalledSets
 import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 import java.io.File
 
@@ -82,6 +86,16 @@ class SetLibrary(
   @Volatile
   private var usable: List<DiceSet> = listOf(bundled)
 
+  private val revisions = MutableStateFlow(0)
+
+  /**
+   * Counts up each time [all] finds a different list of usable sets, so a
+   * screen that was opened before the folder was read — the roll screen, on
+   * every cold start — can take up the new [catalogue] rather than keep the
+   * bundled set it opened with.
+   */
+  val changes: StateFlow<Int> = revisions.asStateFlow()
+
   /**
    * Which set plain notation reaches for first (`docs/dice-notation.md`;
    * design `6a`).
@@ -140,7 +154,11 @@ class SetLibrary(
         packages
           .map { pack -> SetRow.of(pack, enabled = pack.id !in off, madeHere = pack.id in ours) }
           .sortedBy { it.name.lowercase() }
-    usable = rows.filter(SetRow::usable).mapNotNull(SetRow::set).distinctBy(DiceSet::id)
+    val nowUsable = rows.filter(SetRow::usable).mapNotNull(SetRow::set).distinctBy(DiceSet::id)
+    if (nowUsable != usable) {
+      usable = nowUsable
+      revisions.update { it + 1 }
+    }
     return rows
   }
 

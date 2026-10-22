@@ -482,7 +482,10 @@ instead is still open (`docs/TODO.md`, "Open questions").
   one marked and the package named beside a look only when more than one
   package supplies tables — repeating the same name down a list of five says
   nothing. Choosing one is remembered with the settings, and the tray is built
-  on it the next time it is opened. A choice whose package is no longer
+  on it the next time it is opened. On a cold launch the settings are read a
+  moment after the tray is first drawn, so the tray opens on the bundled
+  table and is redrawn on the chosen one as soon as it is known, before any
+  die is put down (it waits only for dice already in the air). A choice whose package is no longer
   installed shows the look the tray would really use instead; the setting is
   left as it was, because the package may be re-installed tomorrow. Each row
   carries a **thumbnail** of the look — the real tray, with a d20 standing on

@@ -853,6 +853,11 @@ flowchart TD
 - **A set you removed stays removed,** whatever version a later app carries.
 - **A newer version shipped with the app replaces an older installed copy**,
   and a newer copy you installed yourself is never downgraded.
+- **The roll screen takes them up as soon as they are installed.** It opens
+  before the folder has been read, and then the set chooser on the dice
+  picker, and what a typed `steel:3d6` resolves against, follow every change
+  to the installed sets. Dice in the air keep the sets they were thrown
+  with until they land.
 - What the app has installed is recorded in `preinstalled-sets.txt`
   (`docs/architecture.md`, "Storage layout"). An installed sample set's
   source is `app:<name>.zip`.

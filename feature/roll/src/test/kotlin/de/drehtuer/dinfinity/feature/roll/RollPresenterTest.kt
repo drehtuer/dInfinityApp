@@ -327,6 +327,41 @@ class RollPresenterTest {
   }
 
   @Test
+  fun `the table chosen in the settings reaches a tray that opened before it was read`() {
+    // A cold launch: the screen opens on the bundled table and the settings
+    // arrive a moment later. Without being told, the tray stayed on the first
+    // table until the first die was added.
+    val tray = DirectTray()
+    var chosen = table
+    val presenter =
+      RollPresenter(
+        machine = RollMachine(catalog, geometry, look = { chosen }, outside = Outside(seeds = { 1L }, clock = { 0L })),
+        driver = tray,
+        rolls = RecordingRolls(faces = emptyMap()),
+        toTheScreen = { it() },
+      )
+
+    chosen = oak
+    presenter.tableChosen()
+    presenter.tableChosen()
+
+    assertEquals(listOf(geometry to table, geometry to oak), tray.tabled)
+  }
+
+  @Test
+  fun `sets read after the screen opened reach the chooser and the count`() {
+    val presenter = presenterOn(DirectTray())
+    assertEquals(1, presenter.choosableSets.size)
+
+    presenter.catalogueChanged(
+      DiceCatalog.of(listOf(BuiltinDiceSet.set, BuiltinDiceSet.set.copy(id = "brass", name = "Brass"))),
+    )
+
+    assertEquals(listOf(BuiltinDiceSet.set.id, "brass"), presenter.choosableSets.map { it.id })
+    assertEquals(2, presenter.sets)
+  }
+
+  @Test
   fun `typing over it puts the app's table back`() {
     val tray = DirectTray()
     val presenter = presenterOn(tray)

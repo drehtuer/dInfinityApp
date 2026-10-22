@@ -15,6 +15,7 @@ import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -90,6 +91,21 @@ class InstallingTest {
     assertEquals("Brass and Bone", (outcome as PackageInstaller.Result.Installed).set.name)
     assertFalse("a first install said it replaced something", outcome.replaced)
     await("the new set never reached the list") { presenter.state.sets.any { it.id == "brass" } }
+  }
+
+  @Test
+  fun `a screen opened before the folder was read is told when the usable sets change, and only then`() {
+    // The roll screen opens on a cold start before the first read and keeps
+    // its presenter for the visit, so it is told rather than asking again.
+    val before = library.changes.value
+    write("brass", toml("brass", "Brass and Bone"))
+
+    runBlocking { library.all() }
+    assertEquals(before + 1, library.changes.value)
+    assertTrue(library.catalogue.installed.any { it.id == "brass" })
+
+    runBlocking { library.all() }
+    assertEquals("the same sets read again counted as a change", before + 1, library.changes.value)
   }
 
   @Test

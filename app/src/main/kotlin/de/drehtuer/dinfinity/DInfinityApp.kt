@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -39,6 +40,7 @@ import de.drehtuer.dinfinity.core.model.AppSettings
 import de.drehtuer.dinfinity.core.model.Appearance
 import de.drehtuer.dinfinity.core.model.Rounding
 import de.drehtuer.dinfinity.core.model.TableView
+import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.feature.designer.DesignerScreen
 import de.drehtuer.dinfinity.feature.graph.GraphMachine
 import de.drehtuer.dinfinity.feature.graph.GraphPresenter
@@ -285,6 +287,7 @@ private fun Roll(
   presenter: () -> RollPresenter,
   savedRolls: (() -> SavedPresenter)?,
   whatIsThere: Flow<WhatIsThere>,
+  catalogues: Flow<DiceCatalog>,
   entry: NavBackStackEntry,
   navController: NavHostController,
   settings: AppSettings,
@@ -300,6 +303,12 @@ private fun Roll(
     } else {
       whatIsThere.collectAsState(WhatIsThere())
     }
+  // Kept for the visit (see below), so what changes during it is handed to it:
+  // the installed sets, read after a cold start opens this screen, and the
+  // table chosen in the settings, which arrive after the tray is first drawn.
+  val roll = remember(entry) { presenter() }
+  LaunchedEffect(roll) { catalogues.collect(roll::catalogueChanged) }
+  LaunchedEffect(roll, settings.defaultTable) { roll.tableChosen() }
   RollScreen(
     // Keyed on the visit, like every other screen here, and emphatically not
     // on the lambda: that one is built afresh every time `settings` changes,
@@ -308,7 +317,7 @@ private fun Roll(
     // defaults stand in until the file has been read. The surface had already
     // been handed to the tray that was just thrown away, and nothing hands it
     // to the new one, so the dice rolled onto a tray nobody could see.
-    presenter = remember(entry) { presenter() },
+    presenter = roll,
     firstLaunch = !settings.welcomeSeen,
     whatIsThere = what,
     onWelcomeSeen = onWelcomeSeen,
@@ -407,6 +416,7 @@ private fun playing(
         screens.roll,
         screens.savedRolls,
         screens.whatIsThere,
+        screens.catalogues,
         entry,
         navController,
         settings,
