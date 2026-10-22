@@ -171,16 +171,11 @@ is the visual one. Each document below links to the screens that realise it.
 
 ## Status
 
-**Implementation. The app rolls dice on a phone, and `v0.2.0` is out** — a
+**Implementation. The app rolls dice on a phone, and `v0.3.0` is out** — a
 signed early release, published with its SHA-256, built from this repository by
 pushing a tag. Every screen is written and connected; the documents in `docs/`
 and the prototype in `design/` are still the specification, and where the two
 disagree one of them is a bug.
-
-The features above run ahead of that release: the three-step face designer
-with its materials and edge rounding, felt and oak drawn from real textures,
-the plate that says why the first launch waits for its shaders, and the four
-sample sets are built since `v0.2.0` and ship in the next one.
 
 It is still `0.x` because the physics is not finished: `100d4` does not
 reliably settle, and a hard sideways shake can run a roll out to its

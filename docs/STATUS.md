@@ -4,7 +4,7 @@ Current state of the project in a few lines. Update it when a milestone moves, a
 decision is taken or something is blocked; prune anything no longer current.
 This is a snapshot, not a changelog — git history is the changelog.
 
-**Last updated:** 2026-10-22
+**Last updated:** 2026-10-23
 
 ## Where we are
 
@@ -15,8 +15,8 @@ This is a snapshot, not a changelog — git history is the changelog.
   onto a felt tray, come to rest, are felt and heard as they land, and their
   total appears beside them, with printed numbers the right way round and an
   author's artwork where a set has some.
-- **Latest release:** `v0.2.0`, signed and published with its SHA-256.
-- **`main` is at #411**, ahead of `v0.2.0` by the realistic-rendering work
+- **Latest release:** `v0.3.0`, signed and published with its SHA-256.
+- **`v0.3.0` is `main` at #416**: the realistic-rendering work
   (merged as #410, 2026-10-21): lighting from a photographed room (decision
   89), refracting resin (90), rounded edges drawn at the solver's radius (91),
   felt and oak from CC0 pictures with their sheen taken out of their colour
@@ -33,8 +33,7 @@ This is a snapshot, not a changelog — git history is the changelog.
   are bright cream instead of flat white.
 - **Next:** glass and resin as the two materials they are, with lighter
   shadows (`docs/TODO.md` 5.9), and the lag the owner still sees on some
-  throws (5.6). Everything since
-  `v0.2.0` ships in `v0.3.0`, which needs only a tag.
+  throws (5.6).
 - **The hand tosses the dice** (decision 105, `docs/TODO.md` 5.8): shaken
   in sight as before, and tossed when the hand stops, after a comparison with
   slow-motion film of real dice. Adopted by the owner on 2026-10-20 — without
