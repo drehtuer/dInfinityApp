@@ -7,7 +7,7 @@ format = 1
 [set]
 id = "steel"
 name = "Steel"
-version = "1.0.1"
+version = "2.0.0"
 author = "dInfinity"
 license = "CC0-1.0"
 description = "Machined steel: a fully metallic body, satin-finished, with numbers filled black."
@@ -31,8 +31,7 @@ faces = [1, 2]
 
 [[die]]
 id = "d4"
-shape = "tetrahedron"
-read = "vertex-up"
+shape = "elongated-square-bipyramid"
 faces = [1, 2, 3, 4]
 
 [[die]]

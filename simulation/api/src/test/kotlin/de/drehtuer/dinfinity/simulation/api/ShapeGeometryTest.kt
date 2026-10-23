@@ -65,7 +65,6 @@ class ShapeGeometryTest {
     // out of a table of the same constants. Every solid here has its corners
     // on the unit sphere, so the circumradius is 1 and the closed form for
     // circumradius-per-edge is simply one over the edge length.
-    assertEquals(sqrt(6.0) / 4, 1 / edgeOf(DieShape.Tetrahedron), 1e-12)
     assertEquals(sqrt(3.0) / 2, 1 / edgeOf(DieShape.Cube), 1e-12)
     assertEquals(sqrt(2.0) / 2, 1 / edgeOf(DieShape.Octahedron), 1e-12)
     assertEquals((sqrt(3.0) / 4) * (1 + sqrt(5.0)), 1 / edgeOf(DieShape.Dodecahedron), 1e-12)
@@ -115,11 +114,14 @@ class ShapeGeometryTest {
   }
 
   @Test
-  fun `a tetrahedron's four positions are its corners, not its faces`() {
-    val directions = ShapeGeometry.directionsOf(DieShape.Tetrahedron)
+  fun `a long d4's four positions are its long faces, all across its length`() {
+    val directions = ShapeGeometry.directionsOf(DieShape.ElongatedSquareBipyramid)
+    val length = ShapeGeometry.verticesOf(DieShape.ElongatedSquareBipyramid).maxBy { it.length }.normalised()
     assertEquals(4, directions.size)
-    // Any two corners of a tetrahedron are at arccos(-1/3) to each other.
-    assertEquals(-1.0 / 3, directions[0] dot directions[1], 1e-12)
+    assertEquals(1.0, directions.first().z, 1e-12)
+    directions.forEach { assertEquals(0.0, it dot length, 1e-12, "a long face that leans along the die") }
+    // Neighbours are a quarter turn apart.
+    assertEquals(0.0, directions[0] dot directions[1], 1e-12)
   }
 
   @Test

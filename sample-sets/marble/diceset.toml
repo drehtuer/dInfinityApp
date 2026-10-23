@@ -7,7 +7,7 @@ format = 1
 [set]
 id = "marble"
 name = "Marble"
-version = "1.0.0"
+version = "2.0.0"
 author = "dInfinity"
 license = "CC0-1.0"
 description = "White veined marble, polished, with charcoal numbers cut into the stone. Every face is artwork, numbers included."
@@ -32,10 +32,9 @@ texture = "textures/coin.png"
 
 [[die]]
 id = "d4"
-shape = "tetrahedron"
-read = "vertex-up"
+shape = "elongated-square-bipyramid"
 faces = [1, 2, 3, 4]
-texture = "textures/tetrahedron.png"
+texture = "textures/elongated-square-bipyramid.png"
 
 [[die]]
 id = "d6"

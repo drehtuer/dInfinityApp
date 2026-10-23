@@ -18,7 +18,7 @@ import org.junit.Test
  */
 class DraftFileTest {
   private val d6 = Die.standard(id = "d6", shape = DieShape.Cube)
-  private val d4 = Die.standard(id = "d4", shape = DieShape.Tetrahedron)
+  private val d4 = Die.standard(id = "d4", shape = DieShape.ElongatedSquareBipyramid)
   private val d10 = Die.standard(id = "d10", shape = DieShape.PentagonalTrapezohedron)
 
   @Test
@@ -85,7 +85,7 @@ class DraftFileTest {
     // four faces that still exist are still somebody's drawing, and refusing
     // the file over the other two would throw all six away.
     val drawn = Draft(die = d6).onFace(0) { it.draw(stroke()) }.onFace(5) { it.draw(stroke()) }
-    val shrunk = Die.standard(id = "d6", shape = DieShape.Tetrahedron)
+    val shrunk = Die.standard(id = "d6", shape = DieShape.ElongatedSquareBipyramid)
 
     val back = requireNotNull(DraftFile.read(DraftFile.write(drawn), shrunk))
 

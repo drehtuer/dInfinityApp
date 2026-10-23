@@ -18,8 +18,7 @@ import kotlin.math.sin
  *   height rather than this string's own ink, so `1` and `8` come out the same
  *   size and a `0`'s overshoot does not shrink the face it is on.
  * @param turns how far the text is turned anticlockwise, in whole turns. Zero
- *   for every face-read solid; a d4's three numbers each face their own corner
- *   (`docs/dice-sets.md`, "The d4").
+ *   for every number the app prints; kept so a caller can lay a turned label.
  * @param marked whether a full stop is printed after the text, so that a
  *   number which could be read as another number on the same die cannot be —
  *   `6.` against `9.`. What decides which faces need it is

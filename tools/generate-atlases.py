@@ -36,7 +36,7 @@ from pathlib import Path
 # how many entries its `faces` takes. Closed in v1 (docs/dice-sets.md).
 SHAPES = {
     "coin": 2,
-    "tetrahedron": 4,
+    "elongated-square-bipyramid": 4,
     "cube": 6,
     "octahedron": 8,
     "pentagonal-trapezohedron": 10,

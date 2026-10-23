@@ -51,7 +51,6 @@ object DieVolume {
   private const val FIVE = 5.0
   private const val SEVEN = 7.0
   private const val EIGHT = 8.0
-  private const val NINE = 9.0
   private const val TEN = 10.0
   private const val TWELVE = 12.0
   private const val FIFTEEN = 15.0
@@ -66,7 +65,7 @@ object DieVolume {
   fun perCircumradiusCubed(shape: DieShape): Double =
     when (shape) {
       DieShape.Coin -> COIN
-      DieShape.Tetrahedron -> TETRAHEDRON
+      DieShape.ElongatedSquareBipyramid -> LONG_DIE
       DieShape.Cube -> CUBE
       DieShape.Octahedron -> OCTAHEDRON
       DieShape.PentagonalTrapezohedron -> PENTAGONAL_TRAPEZOHEDRON
@@ -114,15 +113,15 @@ object DieVolume {
       (TWO * CoinShape.THICKNESS_RATIO / sqrt(ONE + CoinShape.THICKNESS_RATIO * CoinShape.THICKNESS_RATIO))
 
   /**
-   * `8 / (9√3)`.
-   *
-   * A regular tetrahedron of edge `a` has volume `a³ / (6√2)` and circumradius
-   * `a √(3/8)`, so `a = R √(8/3)` and the volume is `R³ (8/3)^(3/2) / (6√2)`,
-   * which reduces to this. It is the smallest of the catalogue by a long way:
-   * a d4 and a d20 of the same `size_mm` share a bounding sphere, and the d4
-   * is the thinner solid inside it (`docs/dice-sets.md`, "Size").
+   * The long d4: a square prism `2w` wide and `2b` long, and a pyramid `h`
+   * tall on each end, with the points at one ([LongDieShape]). The prism is
+   * `(2w)² · 2b` and the two pyramids `2 · (2w)² h / 3`, so it is
+   * `4w² (2b + 2h/3)` — 1.024 for the catalogue's proportions, between the
+   * cube and the octahedron.
    */
-  private val TETRAHEDRON = EIGHT / (NINE * sqrt(THREE))
+  private val LONG_DIE =
+    FOUR * LongDieShape.HALF_WIDTH * LongDieShape.HALF_WIDTH *
+      (TWO * LongDieShape.BODY_HALF_LENGTH + TWO * (ONE - LongDieShape.BODY_HALF_LENGTH) / THREE)
 
   /**
    * `8 / (3√3)`.

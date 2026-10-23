@@ -1,6 +1,8 @@
 package de.drehtuer.dinfinity.designer
 
 import de.drehtuer.dinfinity.core.model.DieShape
+import de.drehtuer.dinfinity.simulation.api.SolidFace
+import de.drehtuer.dinfinity.simulation.api.SolidFaces
 import de.drehtuer.dinfinity.simulation.api.Vector3
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -69,13 +71,17 @@ class SolidStageTest {
   fun `the faces facing away are not drawn at all`() {
     DieShape.entries.forEach { shape ->
       TURNS.forEach { turn ->
-        val faces = SolidStage.of(Draft(die = Drawings.die(shape)), turn).faces
+        val shown = SolidStage.of(Draft(die = Drawings.die(shape)), turn).faces
+        // A long d4's ends are drawn too, with no cell of their own.
+        val faces = shown.filter { it.cell != SolidFace.BARE }
+        val ends = shown.size - faces.size
         assertTrue("${shape.id} at $turn shows nothing at all", faces.isNotEmpty())
         assertTrue(
           "${shape.id} at $turn shows ${faces.size} of ${shape.faceCount} faces at once",
           faces.size < shape.faceCount,
         )
         assertEquals("${shape.id} draws a face twice", faces.size, faces.map(StageFace::cell).distinct().size)
+        assertTrue("${shape.id} shows $ends ends", ends <= SolidFaces.bareOf(shape).size / 2)
       }
     }
   }

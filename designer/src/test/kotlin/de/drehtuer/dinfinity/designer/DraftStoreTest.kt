@@ -21,7 +21,7 @@ class DraftStoreTest {
   private val directory: File = Files.createTempDirectory("dinfinity-drafts").toFile()
   private val store = DraftStore(directory)
   private val d6 = Die.standard(id = "d6", shape = DieShape.Cube)
-  private val d4 = Die.standard(id = "d4", shape = DieShape.Tetrahedron)
+  private val d4 = Die.standard(id = "d4", shape = DieShape.ElongatedSquareBipyramid)
 
   @After
   fun clean() {

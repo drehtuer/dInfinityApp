@@ -31,9 +31,9 @@ object FaceNumbering {
    * is a minus across from a plus and a blank across from a blank, which is
    * what a real Fudge die is; and for a tens d10 it is `0` across from `90`.
    *
-   * **A shape with no opposites keeps the order it was given.** A tetrahedron
-   * is read from its corners and no two of them face opposite ways, so a d4
-   * is 1–4 at its corners and there is nothing to pair.
+   * **A shape with no opposites keeps the order it was given.** None in the
+   * catalogue is such a shape since the long d4 replaced the tetrahedron
+   * (decision 109); the rule stays so a set's own order is never invented.
    *
    * @param values what the die carries, in any order — they are sorted here,
    *   because "smallest against largest" is a statement about the multiset

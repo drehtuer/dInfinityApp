@@ -146,23 +146,17 @@ shape = "coin"
 faces = [1, 2]
 texture = "textures/coin.png"
 
-# The d4. A tetrahedron resting on a face never has a face pointing up, so it
-# is read from the corner at the top — which is what `read = "vertex-up"`
-# means, and what this shape does anyway if you leave `read` out. The only
-# other value is "face-up"; anything else is an error.
-#
-# For a vertex-up die, `faces` is a value per *corner*, and a cell of the atlas
-# is still a *face*: cell *i* is the triangle opposite corner *i*, and it
-# carries the numbers of the three other corners, one at each of its own
-# corners. That is what a moulded d4 does — when a corner points up, all three
-# faces you can see carry that corner's number at their apex.
+# The d4: a long die, a square prism lying on one of its four long faces with
+# a short point at each end that it never rests on. Read from the face on top,
+# like every other die: `faces` is a value per long face, 1 across from 4 and
+# 2 across from 3. Each cell is a long rectangle, stood upright in its square;
+# the two ends carry no cell and are drawn in the die's colour.
 # Atlas: 4 cells, 2x2.
 [[die]]
 id = "d4"
-shape = "tetrahedron"
-read = "vertex-up"
+shape = "elongated-square-bipyramid"
 faces = [1, 2, 3, 4]
-texture = "textures/tetrahedron.png"
+texture = "textures/elongated-square-bipyramid.png"
 
 # Atlas: 6 cells, 3x2.
 [[die]]

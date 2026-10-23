@@ -1,7 +1,6 @@
 package de.drehtuer.dinfinity.simulation.api
 
 import de.drehtuer.dinfinity.core.model.Die
-import de.drehtuer.dinfinity.core.model.FaceRead
 
 /**
  * Reads the number off a die that has come to rest
@@ -13,9 +12,9 @@ import de.drehtuer.dinfinity.core.model.FaceRead
  * the only honest answer is to throw it again where the player can see
  * (rung 3 of the ladder).
  *
- * A d4 is read from the vertex pointing up rather than a face, because a
- * tetrahedron resting on a face has no face pointing up. The check is the same
- * one, against the vertex direction instead of the face normal.
+ * Every die is read this way, the d4 included: it is a long die that rests on
+ * one of its four long faces, and one that came to rest on an end has no face
+ * within fifteen degrees of up and is cocked like any other (decision 109).
  */
 object FaceReader {
   /** How far from upright a face may be and still count as the one on top. */
@@ -33,8 +32,6 @@ object FaceReader {
     orientation: Quaternion,
   ): Reading {
     val directions = ShapeGeometry.directionsOf(die.shape)
-    // A vertex-up die is read from the corner at the top; a face-up one from
-    // the face normal. Both are already in the shape's own direction list.
     require(directions.size == die.faces.size) {
       "${die.shape.id} has ${directions.size} positions but '${die.id}' has ${die.faces.size} faces"
     }
@@ -49,9 +46,6 @@ object FaceReader {
     }
     return if (bestAlignment >= UPRIGHT_THRESHOLD) Reading.Face(best) else Reading.Cocked(best, bestAlignment)
   }
-
-  /** True when a die read this way takes its value from a vertex, not a face. */
-  fun readsFromVertex(die: Die): Boolean = die.read == FaceRead.VertexUp
 }
 
 /** What a settled die said. */

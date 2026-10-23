@@ -1,0 +1,15 @@
+# Rejected: a d4 as every set wrote one before the long die (decision 109).
+# The tetrahedron is no longer a shape and its top corner no longer a way to
+# read a die, and the errors say what to write instead.
+format = 1
+
+[set]
+id = "fixture-tetrahedron"
+name = "Fixture, tetrahedron"
+version = "1.0.0"
+
+[[die]]
+id = "d4"
+shape = "tetrahedron"
+read = "vertex-up"
+faces = [1, 2, 3, 4]

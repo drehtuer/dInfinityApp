@@ -1,11 +1,10 @@
 package de.drehtuer.dinfinity.simulation.api
 
 import de.drehtuer.dinfinity.core.model.DieShape
-import de.drehtuer.dinfinity.core.model.FaceRead
+import de.drehtuer.dinfinity.core.model.LongDieShape
 import kotlin.math.hypot
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlin.test.assertNotEquals
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
@@ -33,7 +32,7 @@ class SolidFacesTest {
   @Test
   fun `a face is a polygon, and every corner of it is on its plane`() {
     DieShape.entries.forEach { shape ->
-      SolidFaces.of(shape).forEach { face ->
+      (SolidFaces.of(shape) + SolidFaces.bareOf(shape)).forEach { face ->
         assertTrue(face.corners.size >= TRIANGLE, "${shape.id} face ${face.index} is not a polygon")
         val height = face.corners.first() dot face.normal
         face.corners.forEach { corner ->
@@ -51,7 +50,7 @@ class SolidFacesTest {
   @Test
   fun `a face is wound anticlockwise as seen from outside`() {
     DieShape.entries.forEach { shape ->
-      SolidFaces.of(shape).forEach { face ->
+      (SolidFaces.of(shape) + SolidFaces.bareOf(shape)).forEach { face ->
         face.corners.indices.forEach { corner ->
           val here = face.corners[corner]
           val next = face.corners[(corner + 1) % face.corners.size]
@@ -65,75 +64,65 @@ class SolidFacesTest {
   }
 
   @Test
-  fun `a d4's cell is the face opposite the corner it is read from`() {
-    assertEquals(FaceRead.VertexUp, DieShape.Tetrahedron.naturalRead, "a tetrahedron is read from its corners")
-    SolidFaces.of(DieShape.Tetrahedron).forEach { face ->
-      val corner = ShapeGeometry.directionsOf(DieShape.Tetrahedron)[face.index].normalised()
-      assertEquals(-1.0, face.normal dot corner, TOLERANCE, "cell ${face.index} is not opposite corner ${face.index}")
-      assertTrue(
-        face.corners.none { it.normalised().approximates(corner, TOLERANCE) },
-        "the corner a d4 is read from is one of the corners of its own cell",
-      )
+  fun `a long d4 has four long faces it is read from and eight ends it is not`() {
+    val shape = DieShape.ElongatedSquareBipyramid
+    val cells = SolidFaces.of(shape)
+    val ends = SolidFaces.bareOf(shape)
+
+    assertEquals(4, cells.size)
+    assertTrue(cells.all { it.corners.size == 4 && it.numbered }, "a long face is a rectangle with a cell")
+    assertEquals(8, ends.size)
+    assertTrue(ends.all { it.corners.size == TRIANGLE && !it.numbered }, "an end is a triangle with no cell")
+    // Every other shape is all cells: a coin's rim is built where it is drawn.
+    DieShape.entries.filter { it != shape }.forEach { assertTrue(SolidFaces.bareOf(it).isEmpty(), it.id) }
+  }
+
+  @Test
+  fun `a long face is as long and as wide as the catalogue says`() {
+    SolidFaces.of(DieShape.ElongatedSquareBipyramid).forEach { face ->
+      val sides =
+        face.corners.indices
+          .map { (face.corners[it] - face.corners[(it + 1) % face.corners.size]).length }
+          .sorted()
+      assertEquals(2 * LongDieShape.HALF_WIDTH, sides.first(), TOLERANCE, "face ${face.index} is the wrong width")
+      assertEquals(2 * LongDieShape.BODY_HALF_LENGTH, sides.last(), TOLERANCE, "face ${face.index} is the wrong length")
     }
   }
 
   @Test
-  fun `a vertex-read solid says which corner each corner of a cell is`() {
-    // The one answer the tray prints a d4's numbers from and the face
-    // designer draws its guide from. It has to be the corner the polygon
-    // actually has there — not the face's index arithmetic, which agrees with
-    // the solid on one edge in six (`docs/face-designer.md`, "The d4").
-    val corners = ShapeGeometry.verticesOf(DieShape.Tetrahedron)
-
-    SolidFaces.of(DieShape.Tetrahedron).forEach { face ->
-      assertEquals(face.corners.size, face.cornerReads.size, "cell ${face.index} does not read every corner")
-      face.corners.forEachIndexed { corner, position ->
-        assertTrue(
-          position.approximates(corners[face.cornerReads[corner]], TOLERANCE),
-          "cell ${face.index} calls its corner $corner position ${face.cornerReads[corner]}, which it is not",
-        )
+  fun `a long d4's faces and ends close the solid, every edge shared by two of them`() {
+    val faces = SolidFaces.of(DieShape.ElongatedSquareBipyramid) + SolidFaces.bareOf(DieShape.ElongatedSquareBipyramid)
+    val edges =
+      faces.flatMap { face ->
+        face.corners.indices.map { setOf(key(face.corners[it]), key(face.corners[(it + 1) % face.corners.size])) }
       }
-      assertEquals(
-        (corners.indices - face.index).toSet(),
-        face.cornerReads.toSet(),
-        "cell ${face.index} does not carry the three corners that are not its own",
-      )
-    }
+    assertTrue(
+      edges
+        .groupingBy { it }
+        .eachCount()
+        .values
+        .all { it == 2 },
+      "an edge belongs to one face, or three",
+    )
+    // Euler: ten corners, twenty edges, twelve faces.
+    assertEquals(2, ShapeGeometry.verticesOf(DieShape.ElongatedSquareBipyramid).size - edges.toSet().size + faces.size)
   }
 
   @Test
-  fun `two cells of a d4 sharing an edge call its ends the same two corners`() {
-    // Which is the whole of the rule, and why it is derived here rather than
-    // twice over: they are the same two corners of one solid.
-    val faces = SolidFaces.of(DieShape.Tetrahedron)
-
-    faces.forEach { one ->
-      faces.filter { it.index > one.index }.forEach { other ->
-        assertEquals(
-          2,
-          (one.cornerReads.toSet() intersect other.cornerReads.toSet()).size,
-          "cells ${one.index} and ${other.index} do not meet along an edge",
-        )
-      }
+  fun `a long d4 cannot rest on an end, because its middle is never over one`() {
+    // A die rests on a face when the point under its middle is inside that
+    // face; for every end, that point is beyond the end's base, so the die
+    // tips back onto a long face (`LongDieShape.BODY_HALF_LENGTH`).
+    SolidFaces.bareOf(DieShape.ElongatedSquareBipyramid).forEach { end ->
+      val foot = end.normal * (end.corners.first() dot end.normal)
+      val inside =
+        end.corners.indices.all { at ->
+          val here = end.corners[at]
+          val next = end.corners[(at + 1) % end.corners.size]
+          (cross(here - foot, next - foot) dot end.normal) > 0
+        }
+      assertTrue(!inside, "a long d4 can balance on the end facing ${end.normal}")
     }
-  }
-
-  @Test
-  fun `a face-read solid reads nothing from its corners`() {
-    // A cube's corner is exactly as far from three of its faces, so there is
-    // no answer and none is offered — an arbitrary one would be worse.
-    DieShape.entries.filter { it.naturalRead == FaceRead.FaceUp }.forEach { shape ->
-      SolidFaces.of(shape).forEach { face ->
-        assertTrue(face.cornerReads.isEmpty(), "${shape.id} face ${face.index} claims to read from its corners")
-      }
-    }
-  }
-
-  @Test
-  fun `a face reads one position per corner or none at all`() {
-    val face = SolidFaces.of(DieShape.Cube).first()
-
-    assertFailsWith<IllegalArgumentException> { face.copy(cornerReads = listOf(0)) }
   }
 
   @Test
@@ -217,6 +206,10 @@ class SolidFacesTest {
     assertNotEquals(SolidFaces.of(DieShape.Cube), SolidFaces.of(DieShape.Octahedron), "two shapes share one answer")
   }
 
+  /** A corner as something two faces can agree on despite the last bit of rounding. */
+  private fun key(corner: Vector3): Triple<Long, Long, Long> =
+    Triple(Math.round(corner.x * KEY), Math.round(corner.y * KEY), Math.round(corner.z * KEY))
+
   private fun lyingFlat(face: SolidFace): Boolean =
     face.normal.approximates(Vector3.Up, FLAT) || face.normal.approximates(-Vector3.Up, FLAT)
 
@@ -224,6 +217,7 @@ class SolidFacesTest {
     const val TOLERANCE = 1e-9
     const val HALF = 0.5
     const val TRIANGLE = 3
+    const val KEY = 1e6
 
     /** How near a face has to be to straight up before it counts as lying flat. */
     const val FLAT = 1e-6

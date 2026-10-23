@@ -206,9 +206,8 @@ data class ThumbnailPlan(
      * than the twentieth one.
      *
      * It is the *readable direction* that is turned upwards, not a normal
-     * guessed back from the mesh: for a d4 those are corners, so a d4 turned
-     * this way stands on a face with its number at the top, which is how a d4
-     * is read (`docs/dice-sets.md`, "The d4").
+     * guessed back from the mesh, so a die stands exactly as the reader would
+     * read it.
      */
     fun bestFaceUp(die: Die): Quaternion {
       val best = die.faces.indexOfFirst { it.value == die.maxValue }

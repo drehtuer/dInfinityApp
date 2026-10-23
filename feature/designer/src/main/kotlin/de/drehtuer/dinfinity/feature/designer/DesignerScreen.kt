@@ -77,10 +77,6 @@ import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
  * the bottom moves between faces, and each of its squares is the face itself
  * rather than a word for it.
  *
- * **A d4 shows three numbers, one at each corner**, because its values belong
- * to corners rather than faces. That is not a special case in this file: the
- * guide is a list, and a list of three draws three (`FaceGuide`).
- *
  * **The tools are pictures.** Every glyph on the screen is one of the
  * prototype's own (`DesignerIcons`), and what draws them is the design
  * system's two shapes for the two kinds of control there are: an option that

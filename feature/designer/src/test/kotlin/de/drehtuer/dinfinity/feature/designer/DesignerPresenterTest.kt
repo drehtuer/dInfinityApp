@@ -24,8 +24,7 @@ import org.junit.Test
  * Drawing the faces of a die (`docs/face-designer.md`).
  *
  * The die is copied, so nothing here can change what it scores — which is what
- * makes the guide trustworthy. The rest is about the pen, and about a d4
- * showing three numbers because its numbers belong to corners.
+ * makes the guide trustworthy. The rest is about the pen.
  */
 class DesignerPresenterTest {
   @Test
@@ -177,13 +176,11 @@ class DesignerPresenterTest {
   }
 
   @Test
-  fun `a d4 shows three numbers because its numbers belong to corners`() {
-    // The rule `docs/dice-sets.md` sets out, arriving on the screen: cell 0 is
-    // the triangle opposite corner 0, so it carries the other three.
+  fun `a d4 shows the one number its face scores, like every die`() {
+    // Since it became a long die (decision 109), not the tetrahedron's three.
     val presenter = DesignerPresenter(d4)
 
-    assertEquals(3, presenter.state.guide.size)
-    assertEquals(listOf(2, 3, 4), presenter.state.guide.map { it.value })
+    assertEquals(listOf(1), presenter.state.guide.map { it.value })
   }
 
   @Test
@@ -459,7 +456,8 @@ class DesignerPresenterTest {
   @Test
   fun `each die offers the turn its cells have`() {
     assertEquals(4, DesignerPresenter(d6).state.turnsOffered)
-    assertEquals(3, DesignerPresenter(d4).state.turnsOffered)
+    // A long rectangle is the same turned upside down, and no other way.
+    assertEquals(2, DesignerPresenter(d4).state.turnsOffered)
     assertEquals(1, DesignerPresenter(d10).state.turnsOffered)
   }
 
@@ -739,7 +737,7 @@ class DesignerPresenterTest {
   }
 
   private val d6 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.Cube }
-  private val d4 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.Tetrahedron }
+  private val d4 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.ElongatedSquareBipyramid }
   private val d20 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.Icosahedron }
   private val d10 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.PentagonalTrapezohedron }
 

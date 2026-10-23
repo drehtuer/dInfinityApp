@@ -56,7 +56,7 @@ four is given any trust the bundled set has.
 **Why the marble generator is Kotlin and not a script here.** A face with
 artwork on it is not printed (`docs/architecture.md`, decision 96), so a
 marble die has to carry its numbers in the picture. They are taken from the
-app's own printing (`DieNumbers`), so a marble d4's corner numbers or a d20's
+app's own printing (`DieNumbers`), so a marble d4's numbers or a d20's
 marked `6.` sit exactly where a plain die's would — which only Kotlin in the
 app's own build can reach. The archives need nothing but Python.
 

@@ -23,7 +23,7 @@ import org.junit.Test
 class FaceStampTest {
   private val d6 = Die.standard("d6", DieShape.Cube)
   private val d20 = Die.standard("d20", DieShape.Icosahedron)
-  private val d4 = Die.standard("d4", DieShape.Tetrahedron)
+  private val d4 = Die.standard("d4", DieShape.ElongatedSquareBipyramid)
   private val coin = Die.standard("d2", DieShape.Coin)
 
   private fun middle(outline: FaceOutline) = FaceStamp.corners(outline)
@@ -150,16 +150,12 @@ class FaceStampTest {
   }
 
   @Test
-  fun `numbers a d4 at three corners, where its guide already showed them`() {
+  fun `numbers a d4 once, in the middle of its long face, where its guide already showed it`() {
     val marks = FaceStamp.numbers(d4, cell = 0, colorArgb = Drawings.INK)
 
-    assertEquals(3, marks.size)
-    val spots =
-      FaceGuide.cornersOf(d4, cell = 0).map { (_, spot) -> FaceShapes.spot(FaceOutline.Triangle, spot) }
-    marks.forEachIndexed { index, mark ->
-      val across = (mark.dots.minOf { it.x } + mark.dots.maxOf { it.x }) / 2f
-      assertEquals("the number is not at the corner its guide is", spots[index].x, across, 0.05f)
-    }
+    val mark = marks.single() as Stamp
+    val dots = mark.rings.flatten()
+    assertEquals(0.5f, (dots.minOf { it.x } + dots.maxOf { it.x }) / 2f, 0.05f)
   }
 
   @Test

@@ -40,7 +40,7 @@ has the work each one makes.
 They are in `docs/TODO.md` under "Open questions": uppercase on a session-name
 kicker, whether Statistics splits its three axes, whether History groups by day
 or by saved roll, whether a set row carries make-default, whether the d18 keeps
-its true shape, and whether an oversized stamp on a d4 shrinks to fit.
+its true shape, and whether an oversized stamp on a narrow face shrinks to fit.
 
 ### Two the app is waiting on
 

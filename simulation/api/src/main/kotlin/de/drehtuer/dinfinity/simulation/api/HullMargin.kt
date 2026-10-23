@@ -11,7 +11,7 @@ import de.drehtuer.dinfinity.core.model.DieMaterial
  * *convex radius*: it pulls every face plane in by that much and grows the
  * smaller solid back out by a ball of the same radius, so what touches the
  * felt is the solid with its edges and corners rounded off — which is what
- * lets a d4 tumble instead of catching on a corner. The renderer draws that
+ * lets a die tumble instead of catching on a corner. The renderer draws that
  * same rounded solid, and it can only do so if the two ask for the same
  * radius, so the number lives here rather than with either of them.
  *
@@ -65,10 +65,10 @@ object HullMargin {
    * at the default share, twice that at twice the share. Held at half a
    * millimetre, a rounder die would get what it asked for only where its
    * corners are blunt — a d6's corner stands `0.73 r` inside its sharp one,
-   * so anything over 0.68 mm would be cut back, and a d4 would not get
-   * rounder at all. In proportion, every shape is rounded in proportion to
-   * what it asks for: a d4 still gets half (its spike stands `2 r` in), as
-   * it always has, and the rest get all of it. At the default this is
+   * so anything over 0.68 mm would be cut back, and a sharp point would not
+   * get rounder at all. In proportion, every shape is rounded in proportion
+   * to what it asks for, a sharp point as much as its angle lets it and the
+   * rest all of it. At the default this is
    * exactly the half millimetre Jolt has always used, so nothing a set does
    * not ask for moves.
    */

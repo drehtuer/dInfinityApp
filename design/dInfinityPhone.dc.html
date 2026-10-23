@@ -657,7 +657,6 @@ a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}
         <sc-if value="{{ showGuideNum }}"><div style="position:absolute;left:{{ guideX }}%;top:{{ guideY }}%;transform:translate(-50%,-50%);font-family:var(--font-heading);font-weight:800;font-size:{{ guidePx }}px;line-height:1;color:#201e1d;opacity:.12;pointer-events:none;white-space:nowrap">{{ faceValue }}</div></sc-if>
         <svg viewBox="0 0 320 320" width="100%" height="100%" style="position:absolute;inset:0;display:block;pointer-events:none"><sc-for list="{{ pipDots }}" as="p" hint-placeholder-count="0"><circle cx="{{ p.cx }}" cy="{{ p.cy }}" r="24" fill="{{ p.ink }}"></circle></sc-for></svg>
         <sc-for list="{{ stamps }}" as="s" hint-placeholder-count="0"><div style="position:absolute;left:{{ s.lx }}%;top:{{ s.ly }}%;transform:translate(-50%,-50%);font-family:var(--font-heading);font-weight:800;font-size:{{ s.size }}px;line-height:1;color:{{ s.color }};pointer-events:none">{{ s.text }}</div></sc-for>
-        <sc-for list="{{ edgeMarks }}" as="e" hint-placeholder-count="0"><div style="position:absolute;left:{{ e.x }}%;top:{{ e.y }}%;transform:translate(-50%,-50%) rotate({{ e.rot }}deg);font-family:var(--font-heading);font-weight:800;font-size:76px;line-height:1;color:{{ e.ink }};pointer-events:none">{{ e.text }}</div></sc-for>
         <svg viewBox="0 0 320 320" width="320" height="320" onPointerDown="{{ cvDown }}" onPointerMove="{{ cvMove }}" onPointerUp="{{ cvUp }}" onPointerCancel="{{ cvUp }}" style="position:relative;display:block;touch-action:none;cursor:crosshair;clip-path:{{ maskClip }}">
           <sc-for list="{{ strokes }}" as="s" hint-placeholder-count="0"><polyline points="{{ s.pts }}" fill="none" stroke="{{ s.color }}" stroke-width="{{ s.w }}" stroke-linecap="round" stroke-linejoin="round"></polyline></sc-for>
           <sc-if value="{{ drawingOn }}"><polyline points="{{ drawing.pts }}" fill="none" stroke="{{ drawing.color }}" stroke-width="{{ drawing.w }}" stroke-linecap="round" stroke-linejoin="round"></polyline></sc-if>
@@ -673,7 +672,6 @@ a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}
                 <svg viewBox="0 0 320 320" width="100%" height="100%" style="position:absolute;inset:0;display:block;pointer-events:none"><sc-for list="{{ f.pipDots }}" as="p" hint-placeholder-count="0"><circle cx="{{ p.cx }}" cy="{{ p.cy }}" r="24" fill="{{ p.ink }}"></circle></sc-for></svg>
                 <svg viewBox="0 0 320 320" width="100%" height="100%" style="position:absolute;inset:0;display:block"><sc-for list="{{ f.strokes }}" as="s" hint-placeholder-count="0"><polyline points="{{ s.pts }}" fill="none" stroke="{{ s.color }}" stroke-width="{{ s.w }}" stroke-linecap="round" stroke-linejoin="round"></polyline></sc-for></svg>
                 <sc-for list="{{ f.stamps }}" as="s" hint-placeholder-count="0"><div style="position:absolute;left:{{ s.lx }}%;top:{{ s.ly }}%;transform:translate(-50%,-50%);font-family:var(--font-heading);font-weight:800;font-size:{{ s.px }}px;line-height:1;color:{{ s.color }}">{{ s.text }}</div></sc-for>
-                <sc-for list="{{ f.edgeMarks }}" as="e" hint-placeholder-count="0"><div style="position:absolute;left:{{ e.x }}%;top:{{ e.y }}%;transform:translate(-50%,-50%) rotate({{ e.rot }}deg);font-family:var(--font-heading);font-weight:800;font-size:{{ f.edgePx }}px;line-height:1;color:{{ e.ink }};pointer-events:none">{{ e.text }}</div></sc-for>
               </div>
               <svg viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%" style="position:absolute;inset:0;display:block"><polygon points="{{ f.poly }}" fill="none" stroke="{{ f.outline }}" stroke-width="{{ f.outlineW }}" vector-effect="non-scaling-stroke"></polygon></svg>
             </div>
@@ -713,14 +711,6 @@ a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}
       <span style="flex:1"></span>
       <label class="radio" style="font-size:12px"><input type="checkbox" checked="{{ showGuide }}" onChange="{{ toggleGuide }}"><span class="dot" style="border-radius:0"></span>Guide</label>
     </div>
-    <sc-if value="{{ hasEdges }}" hint-placeholder-val="{{ true }}">
-      <div style="display:flex;align-items:center;gap:8px;padding:0 12px 10px;flex-wrap:wrap">
-        <span style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;opacity:.6;flex:none">{{ edgeLabel }}</span>
-        <sc-for list="{{ edgeFields }}" as="e" hint-placeholder-count="3"><input class="input" value="{{ e.value }}" onChange="{{ e.set }}" aria-label="Edge {{ e.no }}" style="flex:none;width:52px;min-height:36px;text-align:center;font-family:var(--font-heading);font-weight:800"></sc-for>
-        <button type="button" class="btn btn-ghost" onClick="{{ fillEdges }}" style="font-size:12px">{{ edgeResetLabel }}</button>
-      </div>
-      <div style="padding:0 12px 10px;font-size:12px;opacity:.6">{{ edgeNote }}</div>
-    </sc-if>
     <sc-if value="{{ stampOn }}" hint-placeholder-val="{{ false }}">
       <div style="display:flex;align-items:center;gap:8px;padding:0 12px 10px">
         <input class="input" value="{{ stampText }}" onChange="{{ onStampText }}" aria-label="Text to place" style="flex:1;min-height:38px;font-family:var(--font-heading);font-weight:800"><div class="seg" style="flex:none"><sc-for list="{{ stampSizes }}" as="o" hint-placeholder-count="3"><label class="seg-opt" style="padding:6px 9px;font-size:12px"><input type="radio" checked="{{ o.on }}" onChange="{{ o.pick }}">{{ o.label }}</label></sc-for></div>
@@ -1060,7 +1050,7 @@ a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}
 const SIDES_OK={2:1,4:1,6:1,8:1,10:1,12:1,18:1,20:1,100:1,F:1};
 const ALL_SIDES=[2,4,6,8,10,12,18,20,100];
 const RAD={2:10,3:11,4:12,6:13.9,8:13,10:14,12:14.5,18:15,20:15.5,30:16,100:14,F:13.9};
-const SHAPES={2:'M50 6a44 44 0 1 0 0 88a44 44 0 1 0 0-88Z',3:'M12 26h76v48H12Z',4:'M50 8 92 84H8Z',6:'M14 14h72v72H14Z',8:'M50 6 90 28v44L50 94 10 72V28Z',10:'M50 4 88 42 50 96 12 42Z',12:'M50 6 94 38 77 92H23L6 38Z',18:'M32 6h36l26 26v36L68 94H32L6 68V32Z',20:'M50 5 89 27.5v45L50 95 11 72.5v-45Z',30:'M50 4 84 18 96 50 84 82 50 96 16 82 4 50 16 18Z',100:'M50 4 88 42 50 96 12 42Z',F:'M14 14h72v72H14Z'};
+const SHAPES={2:'M50 6a44 44 0 1 0 0 88a44 44 0 1 0 0-88Z',3:'M12 26h76v48H12Z',4:'M4 50 22 32H78L96 50 78 68H22Z',6:'M14 14h72v72H14Z',8:'M50 6 90 28v44L50 94 10 72V28Z',10:'M50 4 88 42 50 96 12 42Z',12:'M50 6 94 38 77 92H23L6 38Z',18:'M32 6h36l26 26v36L68 94H32L6 68V32Z',20:'M50 5 89 27.5v45L50 95 11 72.5v-45Z',30:'M50 4 84 18 96 50 84 82 50 96 16 82 4 50 16 18Z',100:'M50 4 88 42 50 96 12 42Z',F:'M14 14h72v72H14Z'};
 const PICKER=[2,4,6,8,10,12,20,100];
 const SETS=[{key:null,name:'Built-in',meta:'bundled · 9 dice',dice:[2,4,6,8,10,12,18,20,100],fill:'#d7d3d3',ink:'#201e1d'},{key:'brass',name:'Brass & Bone',meta:'1.2.0 · bone resin, brass numerals',dice:[4,6,8,10,20],fill:'#e8dcc0',ink:'#8a6d1e'},{key:'mine',name:'My dice',meta:'face designer · doodled dice',dice:[2,4,6,8,10,12,18,20],fill:'#f3f2f2',ink:'#201e1d'},{key:'marble',name:'Marble',meta:'came with the app · artwork on every face',dice:[2,4,6,8,10,12,18,20,100],fill:'#ece8e1',ink:'#2e2c2a'},{key:'steel',name:'Steel',meta:'came with the app · satin metal',dice:[2,4,6,8,10,12,18,20,100],fill:'#9ea2a6',ink:'#1b1c1e'},{key:'green-resin',name:'Green resin',meta:'came with the app · translucent resin',dice:[2,4,6,8,10,12,18,20,100],fill:'#2f8a55',ink:'#f4f1e8'},{key:'red-glass',name:'Red glass',meta:'came with the app · clear glass',dice:[2,4,6,8,10,12,18,20,100],fill:'#c4182b',ink:'#ffffff'}];
 SHAPES[18]='M50 3 82 44 50 97 18 44Z';
@@ -1239,30 +1229,18 @@ function seedHistory(){const rng=mulberry(7);const out=[];const days=[new Date(2
 days.forEach((d,di)=>{const n=di===2?9:17;for(let k=0;k<n;k++){const g=rng()<0.78?'thorin':'ezren';const pool=SEED_ROLLS.filter(r=>r.group===g);const r=pool[Math.floor(rng()*pool.length)];const res=rollFormula(r.formula,rng);if(!res||res.refused)continue;out.push({...res,ts:d.getTime()+k*6*60000+Math.floor(rng()*120000),name:r.name,session:g==='thorin'?'Thorin':'Ezren',rollId:r.id})}});return out}
 function dieStats(history,sides,setKey='all'){const seq=[];history.slice().sort((a,b)=>a.ts-b.ts).forEach(h=>h.groups.forEach(g=>g.dice.forEach(d=>{if(d.sides===sides&&(setKey==='all'||(d.set||null)===setKey))seq.push(d.v)})));const n=seq.length;const hist=Array.from({length:sides},(_,i)=>seq.filter(v=>v===i+1).length);const highs=hist[sides-1]||0,lows=hist[0]||0;const avg=n?seq.reduce((a,b)=>a+b,0)/n:0;let best=0,cur=0;seq.forEach(v=>{cur=v===sides?cur+1:0;best=Math.max(best,cur)});return{n,hist,highs,lows,avg,best,expected:n/sides}}
 function makeFaces(n=6){return Array.from({length:n},()=>({strokes:[],stamps:[],bg:null,edges:[],past:[],redo:[]}))}
-const MASKS={2:'M160 14a146 146 0 1 0 0 292a146 146 0 1 0 0-292Z',4:'M160 22 302 282H18Z',6:'M28 28h264v264H28Z',7:'M160 14 275 68 304 190 233 302H87L16 190 45 68Z',8:'M160 22 302 282H18Z',10:'M160 6.4 280.75 65.07 160 313.6 39.25 65.07Z',12:'M160 16 304 120 249 292H71L16 120Z',18:'M160 6.4 233.13 24.93 160 313.6 86.87 24.93Z',20:'M160 22 302 282H18Z',30:'M160 12 300 160 160 308 20 160Z'};
+const MASKS={2:'M160 14a146 146 0 1 0 0 292a146 146 0 1 0 0-292Z',4:'M72.2 6.4H247.8V313.6H72.2Z',6:'M28 28h264v264H28Z',7:'M160 14 275 68 304 190 233 302H87L16 190 45 68Z',8:'M160 22 302 282H18Z',10:'M160 6.4 280.75 65.07 160 313.6 39.25 65.07Z',12:'M160 16 304 120 249 292H71L16 120Z',18:'M160 6.4 233.13 24.93 160 313.6 86.87 24.93Z',20:'M160 22 302 282H18Z',30:'M160 12 300 160 160 308 20 160Z'};
 const DZ_DICE=[2,4,6,8,10,12,18,20];
 const PHYS={builtin:{w:4.2,a:0,s:100},mine:{w:4.2,a:0,s:100},brass:{w:6.8,a:18,s:108},runes:{w:9.1,a:0,s:115}};
 const physOf=k=>PHYS[k||'builtin']||PHYS.builtin;
-const POLY={4:[[160,22],[302,282],[18,282]],6:[[28,28],[292,28],[292,292],[28,292]],8:[[160,22],[302,282],[18,282]],10:[[160,6.4],[280.75,65.07],[160,313.6],[39.25,65.07]],12:[[160,16],[304,120],[249,292],[71,292],[16,120]],18:[[160,6.4],[233.13,24.93],[160,313.6],[86.87,24.93]],20:[[160,22],[302,282],[18,282]]};
-const NUM={2:[160,160,190],6:[160,160,180],8:[160,200,118],10:[160,112,125],12:[160,168,172],18:[160,76,95],20:[160,200,104],100:[160,200,104]};
-const CORNER=76;
+const POLY={4:[[247.8,6.4],[247.8,313.6],[72.2,313.6],[72.2,6.4]],6:[[28,28],[292,28],[292,292],[28,292]],8:[[160,22],[302,282],[18,282]],10:[[160,6.4],[280.75,65.07],[160,313.6],[39.25,65.07]],12:[[160,16],[304,120],[249,292],[71,292],[16,120]],18:[[160,6.4],[233.13,24.93],[160,313.6],[86.87,24.93]],20:[[160,22],[302,282],[18,282]]};
+const NUM={2:[160,160,190],4:[160,160,110],6:[160,160,180],8:[160,200,118],10:[160,112,125],12:[160,168,172],18:[160,76,95],20:[160,200,104],100:[160,200,104]};
 const PIPG=[96,160,224];
 const PIPS={1:[[1,1]],2:[[0,0],[2,2]],3:[[0,0],[1,1],[2,2]],4:[[0,0],[2,0],[0,2],[2,2]],5:[[0,0],[2,0],[1,1],[0,2],[2,2]],6:[[0,0],[2,0],[0,1],[2,1],[0,2],[2,2]]};
 const pipDots=(n,ink)=>(PIPS[n]||[]).map(p=>({cx:PIPG[p[0]],cy:PIPG[p[1]],ink:ink||'#201e1d'}));                                        // authored glyph size for d4 corner values
-const _CV={};
-function cornerVals(face){const key='c'+face;if(_CV[key])return _CV[key];
-  const g=solidGeom(4),vals=faceVals(4),f=g[face];
-  const byVertex=f.vi.map((q,i)=>{const j=g.findIndex(o=>!o.vi.includes(q));   // the face opposite this corner
-    const p=f.pts2[i];return {v:vals[j]??'',a:Math.atan2(p[1],p[0])}});
-  const P=POLY[4],c=[P.reduce((a,p)=>a+p[0],0)/3,P.reduce((a,p)=>a+p[1],0)/3];
-  const out=P.map(p=>{const a=Math.atan2(p[1]-c[1],p[0]-c[0]);              // match the flat mask's corner order
-    let best=byVertex[0],bd=9;
-    for(const m of byVertex){let d=Math.abs(((m.a-a+Math.PI*3)%(Math.PI*2))-Math.PI);if(d<bd){bd=d;best=m}}
-    const t=String(best.v);return (t==='6'||t==='9')?t+'.':t});
-  _CV[key]=out;return out}
 const _FV={};
 function faceVals(sides){if(_FV[sides])return _FV[sides];
-  const N=solidGeom(sides).map(f=>f.n||[0,0,1]),out=new Array(N.length).fill(null);let v=1;
+  const N=solidGeom(sides).slice(0,sides).map(f=>f.n||[0,0,1]),out=new Array(N.length).fill(null);let v=1;   // a long d4's ends read nothing
   for(let i=0;i<N.length;i++){if(out[i]!=null)continue;out[i]=v;
     const j=N.findIndex((m,k)=>k!==i&&out[k]==null&&Math.abs(m[0]+N[i][0])<1e-6&&Math.abs(m[1]+N[i][1])<1e-6&&Math.abs(m[2]+N[i][2])<1e-6);
     if(j>=0)out[j]=sides+1-v;                              // its opposite takes the complement
@@ -1271,20 +1249,6 @@ function faceVals(sides){if(_FV[sides])return _FV[sides];
 function faceLabel(sides,i){const n=faceVals(sides)[i]??(i+1);
   const v=(sides===10&&n===10)?'0':String(n);
   return (v==='6'||v==='9')?v+'.':v}   // a d10's tenth face is 0
-function edgeMarks(sides,vals,ink){ink=ink||'#201e1d';const P=POLY[sides];if(!P)return[];
-  const c=[P.reduce((a,p)=>a+p[0],0)/P.length,P.reduce((a,p)=>a+p[1],0)/P.length];
-  if(sides===4)return P.map((v,i)=>{                       // corner values, the d4 convention
-    const ux=v[0]-c[0],uy=v[1]-c[1];                       // glyph 'up' points at its own corner
-    const L=Math.hypot(ux,uy)||1,t=Math.min(0.46,(CORNER*1.5)/L);
-    return {text:(vals&&vals[i])||'',ink,
-      x:(v[0]+(c[0]-v[0])*t)/320*100,y:(v[1]+(c[1]-v[1])*t)/320*100,
-      rot:Math.atan2(uy,ux)*180/Math.PI+90}});             // upright when its own corner is the apex
-  return P.map((v,i)=>{let a=v,b=P[(i+1)%P.length];
-    let dx=b[0]-a[0],dy=b[1]-a[1],L=Math.hypot(dx,dy)||1;
-    let n=[dy/L,-dx/L];const m=[(a[0]+b[0])/2,(a[1]+b[1])/2];
-    if(n[0]*(c[0]-m[0])+n[1]*(c[1]-m[1])<0){[a,b]=[b,a];dx=-dx;dy=-dy;n=[-n[0],-n[1]]}  // keep the label upright, reading in from outside
-    const inset=Math.min(34,L*0.22);
-    return {text:(vals&&vals[i])||'',ink,x:(m[0]+n[0]*inset)/320*100,y:(m[1]+n[1]*inset)/320*100,rot:Math.atan2(dy,dx)*180/Math.PI}})}
 const _SG={};
 function _hullFaces(V){const pl=[];
   const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]];
@@ -1314,7 +1278,7 @@ function solidGeom(sides,R=112){
   const mid=vs=>[0,1,2].map(i=>vs.reduce((t,v)=>t+v[i],0)/vs.length);
   let V=[],coin=false;
   if(sides===2){coin=true;V=[[0,0,1],[0,0,-1]]}
-  else if(sides===4){V=[[1,1,1],[1,-1,-1],[-1,1,-1],[-1,-1,1]]}
+  else if(sides===4){V=[[1,0,0],[-1,0,0]];for(const x of[-0.7,0.7])for(const y of[-0.4,0.4])for(const z of[-0.4,0.4])V.push([x,y,z])}   // the long d4: a square prism 0.8 wide and 1.4 long, a point 0.3 out at each end (LongDieShape)
   else if(sides===6){for(const x of[-1,1])for(const y of[-1,1])for(const z of[-1,1])V.push([x,y,z])}
   else if(sides===8){V=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]]}
   else if(sides===20){for(const a of[-1,1])for(const b of[-1,1])V.push([0,a,b*PHI],[a,b*PHI,0],[b*PHI,0,a])}
@@ -1326,7 +1290,7 @@ function solidGeom(sides,R=112){
     V=[[0,0,h],[0,0,-h],...A,...B]}
   const norm=Math.max(...V.map(len));V=V.map(v=>[v[0]/norm,v[1]/norm,v[2]/norm]);
   // authored mask reference: centre x, centre y, circumradius, inradius (320-space)
-  const MREF={2:[160,160,146,146],4:[160,195.33,173.33,83.07],6:[160,160,186.68,132],8:[160,195.33,173.33,83.07],10:[160,112.53,201.07,87.87],12:[160,168,152.6,123.2],18:[160,92.47,221.14,54.31],20:[160,195.33,173.33,83.07]}[sides]||[160,160,160,140];
+  const MREF={2:[160,160,146,146],4:[160,160,176.9,87.8],6:[160,160,186.68,132],8:[160,195.33,173.33,83.07],10:[160,112.53,201.07,87.87],12:[160,168,152.6,123.2],18:[160,92.47,221.14,54.31],20:[160,195.33,173.33,83.07]}[sides]||[160,160,160,140];
   const plate=(c,t,b,n,pts)=>{
     const rad=Math.max(...pts.map(p=>Math.hypot(p[0],p[1])))||1,box=2*rad*R;
     const poly=pts.map(p=>[((p[0]/(2*rad))+0.5)*100,((p[1]/(2*rad))+0.5)*100]);
@@ -1346,10 +1310,11 @@ function solidGeom(sides,R=112){
   else out=_hullFaces(V).map(f=>{const _vi=f.idx;
     const vs=f.idx.map(i=>V[i]),c=mid(vs),n=f.N;
     // which way is "up" on the face, to match how the flat mask is drawn
-    const rule=sides===6?'edge':(sides===10||sides===18?'kite':'far');
+    const rule=sides===6?'edge':(sides===4&&vs.length===4?'short':(sides===10||sides===18?'kite':'far'));
     const rs=vs.map(v=>len(sub(v,c))),tag=r=>r.toFixed(4);
     let cand;
     if(rule==='edge')cand=vs.map((v,i)=>{const w=vs[(i+1)%vs.length];return[0,1,2].map(q=>(v[q]+w[q])/2)});  // square: an edge is up, never a corner
+    else if(rule==='short'){const es=vs.map((v,i)=>{const w=vs[(i+1)%vs.length];return{m:[0,1,2].map(q=>(v[q]+w[q])/2),L:len(sub(v,w))}});const mn=Math.min(...es.map(e=>e.L));cand=es.filter(e=>e.L<mn+1e-6).map(e=>e.m)}  // a long face: one of its short ends is up, so the drawing runs along it
     else if(rule==='kite'){                                               // kite: the short tip on its axis
       const axis=vs.filter((v,i)=>rs.filter(r=>tag(r)===tag(rs[i])).length===1);
       const pool=axis.length?axis:vs;let t=pool[0];for(const v of pool)if(len(sub(v,c))<len(sub(t,c)))t=v;cand=[t]}
@@ -1357,9 +1322,10 @@ function solidGeom(sides,R=112){
     let up=cand[0];for(const v of cand)if(v[1]<up[1])up=v;                // of the equivalent choices, the most upright
     const d0=sub(c,up),b=unit([d0[0]-n[0]*dot(d0,n),d0[1]-n[1]*dot(d0,n),d0[2]-n[2]*dot(d0,n)]);
     const t=cross(b,n);
-    const pl=plate(c,t,b,n,vs.map(v=>{const q=sub(v,c);return[dot(q,t),dot(q,b)]}));pl.vi=_vi;return pl});
+    const pl=plate(c,t,b,n,vs.map(v=>{const q=sub(v,c);return[dot(q,t),dot(q,b)]}));pl.vi=_vi;pl.bare=sides===4&&vs.length!==4;return pl});
+  if(sides===4)out=[...out.filter(f=>!f.bare),...out.filter(f=>f.bare)];   // the four long faces are faces 0-3; the eight ends read nothing
   _SG[key]=out;return out}
-const MASK_NAMES={2:'coin',4:'tetrahedron',6:'cube',8:'octahedron',10:'pentagonal trapezohedron',12:'dodecahedron',18:'enneagonal trapezohedron',20:'icosahedron',30:'rhombic triacontahedron'};
+const MASK_NAMES={2:'coin',4:'elongated square bipyramid',6:'cube',8:'octahedron',10:'pentagonal trapezohedron',12:'dodecahedron',18:'enneagonal trapezohedron',20:'icosahedron',30:'rhombic triacontahedron'};
 function timeOf(ts){const d=new Date(ts);return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0')}
 function dayLabel(ts){const d=new Date(ts);const today=new Date(2026,8,11);if(d.toDateString()===today.toDateString())return'Today';return d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}
 function errParts(f,pos){return{pre:f.slice(0,pos[0]),mid:f.slice(pos[0],pos[1])||' ',post:f.slice(pos[1])}}
@@ -1481,8 +1447,8 @@ class Component extends DCLogic {
   sdUp=()=>{if(this.state.sdDrag)this.setState({sdDrag:null})}
   solidView(){const faces=this.dz();
     return solidGeom(this.sides()).map((f,i)=>{const fc=faces[i]||{strokes:[],stamps:[],bg:null};
-      const sel=i===this.state.face;return {m:f.m,clip:f.clip,poly:f.poly,box:Math.round(f.box),off:Math.round(f.off),edgePx:Math.max(7,Math.round(CORNER*f.k)),bg:sel?`color-mix(in srgb, var(--color-accent) 16%, ${fc.bg||this.state.dzBody||'#e8dcc0'})`:(fc.bg||this.state.dzBody||'#e8dcc0'),
-        sel,edgeMarks:this.sides()===4?edgeMarks(4,fc.edges,fc.edgeColor):[],outline:sel?'var(--color-accent-700)':'#201e1d',outlineW:sel?4:1.4,
+      const sel=i===this.state.face;return {m:f.m,clip:f.clip,poly:f.poly,box:Math.round(f.box),off:Math.round(f.off),bg:sel?`color-mix(in srgb, var(--color-accent) 16%, ${fc.bg||this.state.dzBody||'#e8dcc0'})`:(fc.bg||this.state.dzBody||'#e8dcc0'),
+        sel,outline:sel?'var(--color-accent-700)':'#201e1d',outlineW:sel?4:1.4,
         cbox:Math.round(f.cbox),cleft:Math.round(f.cleft),ctop:Math.round(f.ctop),
         strokes:fc.strokes,pipDots:pipDots(fc.pips,fc.pipColor),stamps:fc.stamps.map(s=>({text:s.text,color:s.color,lx:s.x/320*100,ly:s.y/320*100,px:Math.max(6,Math.round(s.size*f.k))}))}})}
   dz(){const S=this.state;const n=this.sides();return S.designs[n]||makeFaces(n)}
@@ -1516,7 +1482,7 @@ class Component extends DCLogic {
     stamps:f.stamps.filter(x=>!x.auto),pips:faceVals(6)[i]||i+1,pipColor:s.color}));
     return{designs:{...s.designs,6:faces}}})}
   clearFace=()=>this.updFace(f=>({...f,strokes:[],stamps:[],bg:null,pips:null,edges:[]}),true)
-  fillNumbers=()=>{this.setState(s=>{const n=this.sides();const faces=(s.designs[n]||makeFaces(n)).map((f,i)=>(f.strokes.length&&f.stamps.length)?f:({...f,past:[...(f.past||[]),{strokes:f.strokes,stamps:f.stamps,bg:f.bg,pips:f.pips,pipColor:f.pipColor,edges:f.edges}],redo:[],pips:null,stamps:n===4?[]:[(g=>({x:g[0],y:g[1],size:g[2],auto:true,text:faceLabel(n,i),color:s.color}))(NUM[n]||[160,160,180])],edges:n===4?cornerVals(i):[],edgeColor:s.color}));return{designs:{...s.designs,[n]:faces}}})}
+  fillNumbers=()=>{this.setState(s=>{const n=this.sides();const faces=(s.designs[n]||makeFaces(n)).map((f,i)=>(f.strokes.length&&f.stamps.length)?f:({...f,past:[...(f.past||[]),{strokes:f.strokes,stamps:f.stamps,bg:f.bg,pips:f.pips,pipColor:f.pipColor,edges:f.edges}],redo:[],pips:null,stamps:[(g=>({x:g[0],y:g[1],size:g[2],auto:true,text:faceLabel(n,i),color:s.color}))(NUM[n]||[160,160,180])]}));return{designs:{...s.designs,[n]:faces}}})}
   bars(pmf,st,atLeast,picked){const cum=[];let acc=0;for(let i=pmf.p.length-1;i>=0;i--){acc+=pmf.p[i];cum[i]=acc}
     let items=[];for(let k=st.min;k<=st.max;k++)items.push({k,k2:k,p:pmf.p[k-pmf.off],c:cum[k-pmf.off]});
     if(items.length>110){const b=Math.ceil(items.length/110);const out=[];for(let i=0;i<items.length;i+=b){const sl=items.slice(i,i+b);out.push({k:sl[0].k,k2:sl[sl.length-1].k,p:sl.reduce((a,x)=>a+x.p,0),c:sl[0].c})}items=out}
@@ -1746,16 +1712,12 @@ class Component extends DCLogic {
         const i=TABLES.findIndex(x=>x.id===id);if(i<0)TABLES.push(row);else TABLES[i]=row;
         this.setState(st=>({uploadOpen:false,uploadFile:null,uploadName:'',table:id,groupTable:{...(st.groupTable||{}),[st.activeGroup]:undefined}}))},
       // designer
-      faceNo:S.face+1,faceValue:this.sides()===4?'':faceLabel(this.sides(),S.face),
+      faceNo:S.face+1,faceValue:faceLabel(this.sides(),S.face),
       ...(g=>({guideX:g[0]/320*100,guideY:g[1]/320*100,guidePx:g[2]}))(NUM[this.sides()]||[160,160,180]),
-      isD6:this.sides()===6,fillPips:this.fillPips,clearFace:this.clearFace,faceBlank:!face.strokes.length&&!face.stamps.length&&!face.bg&&!face.pips&&!(face.edges||[]).some(x=>x),
+      isD6:this.sides()===6,fillPips:this.fillPips,clearFace:this.clearFace,faceBlank:!face.strokes.length&&!face.stamps.length&&!face.bg&&!face.pips,
       pipDots:pipDots(face.pips,face.pipColor),
-      showGuideNum:!!this.state.showGuide&&!face.pips,faceBg:face.bg||(this.state.dzBody||'#e8dcc0'),edgeMarks:this.sides()===4?edgeMarks(4,face.edges,face.edgeColor):[],
-      edgeFields:(this.sides()===4?[0,1,2]:[]).map((p,i)=>({no:i+1,value:(face.edges||[])[i]||'',set:e=>{const v=e.target.value;this.updFace(f=>{const ar=(f.edges||[]).slice();ar[i]=v;return{...f,edges:ar,edgeColor:S.color}})}})),
-      hasEdges:this.sides()===4,edgeCount:3,
-      edgeLabel:'Corner values',edgeResetLabel:'Reset to standard',
-      edgeNote:'Each corner carries the value of the face opposite it, so the three faces meeting at the apex all read the same number — the value of the face the die is resting on.',
-      fillEdges:()=>this.updFace(f=>({...f,edges:cornerVals(S.face),edgeColor:S.color}),true),strokes:face.strokes,stamps:face.stamps.map(stampView),drawing:S.drawing||{pts:'',color:'',w:0},drawingOn:!!S.drawing,cvDown:this.cvDown,cvMove:this.cvMove,cvUp:this.cvUp,undo:this.undo,redo:this.redo,noUndo:!(face.past||[]).length,noRedo:!(face.redo||[]).length,showGuide:S.showGuide,toggleGuide:e=>this.setState({showGuide:e.target.checked}),
+      showGuideNum:!!this.state.showGuide&&!face.pips,faceBg:face.bg||(this.state.dzBody||'#e8dcc0'),
+      strokes:face.strokes,stamps:face.stamps.map(stampView),drawing:S.drawing||{pts:'',color:'',w:0},drawingOn:!!S.drawing,cvDown:this.cvDown,cvMove:this.cvMove,cvUp:this.cvUp,undo:this.undo,redo:this.redo,noUndo:!(face.past||[]).length,noRedo:!(face.redo||[]).length,showGuide:S.showGuide,toggleGuide:e=>this.setState({showGuide:e.target.checked}),
       stampOn:S.tool==='stamp',stampText:S.stampText??faceLabel(this.sides(),S.face),onStampText:e=>this.setState({stampText:e.target.value}),
       stampSizes:[['S',90],['M',150],['L',210]].map(o=>({label:o[0],on:(S.stampSize||150)===o[1],pick:()=>this.setState({stampSize:o[1]})})),
       tools,palette:PALETTE.map(hex=>({hex,border:S.color===hex?'var(--color-text)':'var(--color-divider)',pick:()=>this.setState({color:hex})})),
@@ -1780,7 +1742,7 @@ class Component extends DCLogic {
       // step 2: the die's material, colour and edges, under the turning die (docs/face-designer.md, "Material, colour and edges")
       ...(()=>{const MATS=[['plastic','Plastic',0.35,0,0],['pearl','Pearl',0.35,0,0.25],['resin','Resin',0.15,0,0.6],['glass','Glass',0.05,0,1],['metal','Metal',0.6,1,0],['stone','Stone',0.8,0,0]];
         const BODIES=['#000000','#ffffff','#ec3013','#e15b47','#f5a623','#f8e71c','#7ed321','#1f5e3a','#50e3c2','#4a90d9','#9013fe','#8b572a'];
-        const bodyHex=S.dzBody||'#e8dcc0';const pct=S.dzEdgePct??3;const mm=(pct/100*16*(this.sides()===4?0.52:1)).toFixed(2);
+        const bodyHex=S.dzBody||'#e8dcc0';const pct=S.dzEdgePct??3;const mm=(pct/100*16).toFixed(2);
         const mat=S.dzMat||'plastic';const m=MATS.find(x=>x[0]===mat)||MATS[0];
         const body=Math.max(0.2,1-m[4]);const glint=(0.1+0.9*(1-m[2])*(0.5+0.5*m[3])).toFixed(2);const spread=Math.round((0.04+0.36*m[2])*100);
         return{dzMaterial:mat,dzMaterials:MATS.map(x=>({id:x[0],label:x[1]})),dzPickMaterial:e=>this.setState({dzMat:e.target.value}),
@@ -1799,7 +1761,7 @@ class Component extends DCLogic {
       newSetName:S.newSetName||'',onNewSetName:e=>this.setState({newSetName:e.target.value}),
       cantCreateSet:!(S.newSetName||'').trim(),createSet:()=>this.saveToSet(null,(S.newSetName||'').trim()),
       savedNote:S.savedNote||'',hasSavedNote:!!S.savedNote,
-      designerNote:`${this.dz().reduce((a,fc)=>a+fc.strokes.length,0)} strokes · ${this.sides()===4?'corner values':'centre value'} · 256 px per face`,
+      designerNote:`${this.dz().reduce((a,fc)=>a+fc.strokes.length,0)} strokes · centre value · 256 px per face`,
       // stats
       statsSets:[{key:'all',name:'All sets'},...SETS.filter(x=>!S.removedSets.includes(x.key)).map(x=>({key:x.key,name:x.name}))].map(x=>({name:x.name,on:statsSet===x.key,pick:()=>this.setState({statsSet:x.key})})),
       statsDice:statsDiceList.map(s=>({id:dieId(s),on:statsSides===s,pick:()=>this.setState({statsDie:s})})),statsDieId:(statsSetDef?statsSetDef.name+' · ':'all sets · ')+dieId(statsSides),statsSides,

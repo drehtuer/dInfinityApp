@@ -902,7 +902,7 @@ class DesignerScreenTest {
   }
 
   private val d6 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.Cube }
-  private val d4 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.Tetrahedron }
+  private val d4 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.ElongatedSquareBipyramid }
   private val d20 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.Icosahedron }
 
   /** A kite-faced die: the one whose cells have no turn of their own. */

@@ -9,7 +9,6 @@ import de.drehtuer.dinfinity.core.glyphs.Typeface
 import de.drehtuer.dinfinity.core.glyphs.Typesetter
 import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.Face
-import de.drehtuer.dinfinity.core.model.FaceRead
 import de.drehtuer.dinfinity.core.model.ShapeAtlas
 
 /**
@@ -40,16 +39,14 @@ object DieNumbers {
    */
   const val FACE_SHARE: Double = LabelRoom.FACE_SHARE
 
-  /** How tall a d4's numbers are, as a fraction of the cell ([LabelRoom.CORNER_HEIGHT]). */
-  const val CORNER_HEIGHT: Double = LabelRoom.CORNER_HEIGHT
-
   /**
    * What is printed in each cell of [die]'s atlas.
    *
-   * [mesh] is asked rather than the catalogue, and only for the d4: the
-   * corners of a cell are where the *mesh* put them, and a second construction
-   * of the same thing is how a printed face and a scored face come to disagree
-   * (`docs/architecture.md`, decision 45).
+   * One number in the middle of every face, for every die: the d4 too, since
+   * it became a long die read from the face on top (decision 109). [mesh] is
+   * asked for the face's shape rather than the catalogue, because a printed
+   * face and a scored face are the same face only if they come from one
+   * construction (`docs/architecture.md`, decision 45).
    */
   fun plan(
     die: Die,
@@ -63,12 +60,7 @@ object DieNumbers {
         index = index,
         column = column,
         row = row,
-        marks =
-          when (die.shape.naturalRead) {
-            FaceRead.FaceUp ->
-              centred(die, die.faces[index], mesh.faces.first { it.index == index }, grid, column to row, face)
-            FaceRead.VertexUp -> corners(die, mesh, index, grid, face)
-          },
+        marks = centred(die, die.faces[index], mesh.faces.first { it.index == index }, grid, column to row, face),
       )
     }
   }
@@ -85,8 +77,7 @@ object DieNumbers {
    * printed**: a face somebody drew carries the drawing and nothing else, and
    * a number showing through the clear parts of a drawing is a number nobody
    * drew (`docs/dice-sets.md`, "Labels, and the artwork over them";
-   * `docs/architecture.md`, decision 96). On a d4 that is the three numbers
-   * at the corners of that one triangle; its neighbours keep theirs.
+   * `docs/architecture.md`, decision 96).
    */
   fun fieldOf(
     die: Die,
@@ -159,49 +150,6 @@ object DieNumbers {
     text: String,
     die: Die,
   ): Boolean = FaceLabel.isAmbiguous(text, die)
-
-  /**
-   * A d4 prints three, one at each corner, each turned to face its own corner.
-   *
-   * The value at a corner is the value of the *catalogue face* that corner is,
-   * because a d4's readable positions are its corners (`docs/dice-sets.md`,
-   * "The d4"). So the number that ends up at the top of a settled d4 appears
-   * on all three faces a player can see, and two faces sharing an edge agree
-   * along it — which is what makes the reading unambiguous rather than a
-   * convention somebody has to know.
-   *
-   * *Which* corner a corner is comes off the mesh
-   * ([MeshFace.reads]), which got it from `simulation/api`, which is also
-   * where the face designer's guide gets it: one derivation from the solid, so
-   * a printed d4 and a drawn one cannot number the same corner differently
-   * (`docs/architecture.md`, decision 35).
-   */
-  private fun corners(
-    die: Die,
-    mesh: DieMesh,
-    index: Int,
-    grid: ShapeAtlas.Grid,
-    face: Typeface,
-  ): List<Mark> {
-    val surface = mesh.faces.first { it.index == index }
-    val cell = ShapeAtlas.cellOf(die.shape, index)
-    val (column, row) = cell
-    val corners = FaceRoom.cornersOf(surface, grid, cell)
-    return surface.reads.mapIndexedNotNull { corner, at ->
-      val uv = surface.uvs[corner]
-      val text = textOf(die.faces[at])
-      // The corner in this cell's own coordinates, which is what a placement
-      // is measured in: the atlas runs over the whole grid, a cell runs 0..1.
-      LabelRoom
-        .cornered(
-          corners = corners,
-          corner = uv.u * grid.columns - column to uv.v * grid.rows - row,
-          text = text,
-          face = face,
-          marked = isAmbiguous(text, die),
-        )?.let { Mark(text = text, placement = it) }
-    }
-  }
 
   /**
    * What a face is printed with: its label, or its value when the built-in

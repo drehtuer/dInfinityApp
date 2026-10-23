@@ -6,6 +6,7 @@ import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.simulation.api.Placement
 import de.drehtuer.dinfinity.simulation.api.Quaternion
 import de.drehtuer.dinfinity.simulation.api.ShapeGeometry
+import de.drehtuer.dinfinity.simulation.api.SolidFaces
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.Vector3
 import org.junit.Assert.assertEquals
@@ -40,8 +41,8 @@ import kotlin.math.sqrt
  * 2. **The mass is in the middle.** A centre of mass away from the origin is
  *    the definition of a loaded die.
  * 3. **The inertia has the solid's own symmetry.** A cube, an octahedron, a
- *    dodecahedron, an icosahedron and a tetrahedron all spin the same about
- *    every axis; a trapezohedron and a coin have one axis of their own and two
+ *    dodecahedron and an icosahedron all spin the same about every axis; a
+ *    trapezohedron, a coin and a long d4 have one axis of their own and two
  *    that match each other. An inertia tensor that does not say that is a body
  *    that is not the solid, however right its corners look.
  */
@@ -130,14 +131,14 @@ class DieBodyTest {
    * How many faces the hull of [shape] has.
    *
    * The same as the number of readable positions, except for the two shapes
-   * that are not read from their faces: a tetrahedron is read from its corners
-   * and has four faces anyway, and a coin is a cylinder whose rim is drawn as
-   * a polygon (`ShapeGeometry`).
+   * with faces that read nothing: a coin is a cylinder whose rim is drawn as a
+   * polygon, and a long d4 has eight end triangles besides its four long faces
+   * (`ShapeGeometry`, `SolidFaces.bareOf`).
    */
   private fun facesExpected(shape: DieShape): Int =
     when (shape) {
       DieShape.Coin -> COIN_FACES
-      else -> shape.faceCount
+      else -> shape.faceCount + SolidFaces.bareOf(shape).size
     }
 
   private fun offCentre(centre: Vector3): Double = sqrt(centre.x * centre.x + centre.y * centre.y + centre.z * centre.z)
@@ -156,7 +157,7 @@ class DieBodyTest {
   ): String? {
     val (low, middle, high) = moments
     return when (shape) {
-      DieShape.Tetrahedron, DieShape.Cube, DieShape.Octahedron, DieShape.Dodecahedron, DieShape.Icosahedron ->
+      DieShape.Cube, DieShape.Octahedron, DieShape.Dodecahedron, DieShape.Icosahedron ->
         "spins differently about different axes: %s"
           .format(moments)
           .takeIf { (high - low) / high > MOMENT_TOLERANCE }

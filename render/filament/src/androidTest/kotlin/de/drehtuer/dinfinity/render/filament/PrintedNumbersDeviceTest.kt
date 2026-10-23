@@ -3,7 +3,6 @@ package de.drehtuer.dinfinity.render.filament
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.DieInstance
-import de.drehtuer.dinfinity.core.model.FaceRead
 import de.drehtuer.dinfinity.core.model.ShapeAtlas
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.fixtures.StandardDice
@@ -96,9 +95,8 @@ class PrintedNumbersDeviceTest {
   }
 
   @Test
-  fun aD4PrintsItsCornerNumbersTheRightWayRound() {
-    // Three numbers to a face, each turned to its own corner, so a face as a
-    // whole is lopsided in a way a reflection changes.
+  fun aD4PrintsItsNumbersTheRightWayRound() {
+    // One number in the middle of a long face, read upright like a d6's.
     assertReadsRightWayRound(StandardDice.d4)
   }
 
@@ -247,19 +245,15 @@ class PrintedNumbersDeviceTest {
    * How far from the middle of its cell the frame reaches, in the cell's own
    * coordinates (which run `0..1`).
    *
-   * All of it for a d4, whose numbers sit in its corners and whose other
-   * three faces all lean away from a camera looking square at one. For a
-   * solid read by its top face, the square inside the face's inscribed
-   * circle: its neighbours lean *towards* the camera and carry numbers of
+   * The square inside the face's inscribed circle, for every solid — the d4
+   * too, since it is read by its top face like the rest: its neighbours lean *towards* the camera and carry numbers of
    * their own, and that square is all face. The numbers are sized to fit it.
    */
   private fun reachOf(
     die: Die,
     solid: SolidFace,
   ): Double =
-    if (die.shape.naturalRead == FaceRead.VertexUp) {
-      HALF
-    } else {
+    run {
       val inscribed =
         solid.corners.indices.minOf { at ->
           val from = solid.corners[at]
@@ -480,9 +474,6 @@ class PrintedNumbersDeviceTest {
 
     /** A little inside the inscribed square, so that no edge of the face is in frame. */
     const val INSIDE = 0.95
-
-    /** The middle of a cell, and the reach of a whole one. */
-    const val HALF = 0.5
 
     /** Where a distance field's edge is: a half, as a byte. */
     const val EDGE = 128

@@ -409,7 +409,7 @@ data class Draft(
    */
   val shownFinish: DieFinish get() = finish ?: DieFinish.of(die.material)
 
-  /** The guide for [cell] — one number, or a d4's three (`FaceGuide`). */
+  /** The guide for [cell]: the one number in the middle of its face (`FaceGuide`). */
   fun guide(cell: Int): List<GuideMark> = FaceGuide.of(die, cell)
 
   /**

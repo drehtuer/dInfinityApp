@@ -533,7 +533,7 @@ class JoltBridgeTest {
     )
   }
 
-  private fun d4(): Die = Die.standard("d4", DieShape.Tetrahedron)
+  private fun d4(): Die = Die.standard("d4", DieShape.ElongatedSquareBipyramid)
 
   private fun d20(): Die = Die.standard("d20", DieShape.Icosahedron)
 

@@ -568,7 +568,7 @@ tools/harness.sh -n 200                  # a quick look
 
 dinfinity-phone                          # the reference device
 tools/harness.sh -n 10000                # the run Step 5.5 asks for
-tools/harness.sh -n 200 -c 100 -s d4     # the worst case there is
+tools/harness.sh -n 200 -c 100 -s d4     # a hundred long d4s at the capacity cap
 tools/harness.sh --soak 5m               # soak mode: roll for five minutes
 tools/harness.sh --frames -n 50          # what a frame's simulation costs
 tools/harness.sh --rendered              # what a drawn frame costs (Step 5.7)

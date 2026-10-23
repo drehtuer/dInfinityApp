@@ -1,9 +1,8 @@
 package de.drehtuer.dinfinity.core.model
 
 /**
- * One readable position of a die — a face, or a vertex for a
- * [FaceRead.VertexUp] die — with the value it scores and the text printed on
- * it.
+ * One readable position of a die — a face it can come to rest with on top —
+ * with the value it scores and the text printed on it.
  *
  * The value carries the whole meaning: a cube with faces `1,2,1,2,1,2` *is* a
  * d2, and both the physics and the outcome graph treat it as one without being

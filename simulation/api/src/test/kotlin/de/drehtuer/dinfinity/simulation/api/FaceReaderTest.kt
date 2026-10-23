@@ -40,20 +40,22 @@ class FaceReaderTest {
   }
 
   @Test
-  fun `a die read from a vertex is read from a vertex`() {
-    assertTrue(FaceReader.readsFromVertex(StandardDice.d4))
-    assertTrue(!FaceReader.readsFromVertex(StandardDice.d6))
-  }
-
-  @Test
-  fun `a d4 reads the number at the corner pointing up`() {
+  fun `a d4 reads the long face on top`() {
     val d4 = StandardDice.d4
-    ShapeGeometry.directionsOf(DieShape.Tetrahedron).forEachIndexed { index, corner ->
-      val reading = FaceReader.read(d4, Quaternion.taking(corner, Vector3.Up))
+    ShapeGeometry.directionsOf(DieShape.ElongatedSquareBipyramid).forEachIndexed { index, face ->
+      val reading = FaceReader.read(d4, Quaternion.taking(face, Vector3.Up))
       assertIs<Reading.Face>(reading)
       assertEquals(index, reading.index)
       assertEquals(index + 1, d4.valueAt(reading.index))
     }
+  }
+
+  @Test
+  fun `a d4 stood on an end is cocked, not read`() {
+    // It cannot rest there (`SolidFacesTest`), and if it is ever found so the
+    // answer is to throw it again, never a long face nearest to up.
+    val alongItsLength = ShapeGeometry.verticesOf(DieShape.ElongatedSquareBipyramid).maxBy { it.length }
+    assertIs<Reading.Cocked>(FaceReader.read(StandardDice.d4, Quaternion.taking(alongItsLength, Vector3.Up)))
   }
 
   @Test

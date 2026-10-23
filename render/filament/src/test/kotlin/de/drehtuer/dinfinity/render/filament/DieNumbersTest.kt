@@ -6,8 +6,6 @@ import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.core.model.Face
 import de.drehtuer.dinfinity.core.model.ShapeAtlas
-import de.drehtuer.dinfinity.simulation.api.ShapeGeometry
-import de.drehtuer.dinfinity.simulation.api.Vector3
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -31,7 +29,7 @@ import kotlin.math.sin
 class DieNumbersTest {
   private val d6 = Die.standard("d6", DieShape.Cube)
   private val d20 = Die.standard("d20", DieShape.Icosahedron)
-  private val d4 = Die.standard("d4", DieShape.Tetrahedron)
+  private val d4 = Die.standard("d4", DieShape.ElongatedSquareBipyramid)
 
   @Test
   fun `prints one number in the middle of every face of a face-read solid`() {
@@ -57,50 +55,12 @@ class DieNumbersTest {
   }
 
   @Test
-  fun `prints a d4's values at its corners, one per corner of every face`() {
-    val mesh = DieMesh.of(DieShape.Tetrahedron)
-    val directions = ShapeGeometry.directionsOf(DieShape.Tetrahedron).map(Vector3::normalised)
-    DieNumbers.plan(d4, mesh).forEach { cell ->
-      assertEquals(3, cell.marks.size)
-      // The cell of face i carries the three corners that are *not* i, which
-      // is what makes a settled d4 readable from any of its visible faces.
-      val surface = mesh.faces.first { it.index == cell.index }
-      val expected =
-        surface.positions
-          .map { position -> directions.indices.minBy { (directions[it] - position.normalised()).length } }
-          .map { "${it + 1}" }
-          .toSet()
-      assertEquals(expected, cell.marks.map { it.text }.toSet())
-      assertFalse("face ${cell.index} prints its own value", "${cell.index + 1}" in expected)
-    }
-  }
-
-  @Test
-  fun `turns each of a d4's numbers to face its own corner`() {
-    // A number that read upright on every corner would be upside down on two
-    // of the three ways the die can come to rest.
+  fun `prints a d4's value once, upright, in the middle of each long face`() {
     DieNumbers.plan(d4).forEach { cell ->
-      cell.marks.forEach { mark ->
-        val x = mark.placement.centreX - 0.5
-        val y = mark.placement.centreY - 0.5
-        // Up, after the turn, is (-sin, -cos) in cell coordinates.
-        val angle = mark.placement.turns * 2 * Math.PI
-        val upX = -kotlin.math.sin(angle)
-        val upY = -kotlin.math.cos(angle)
-        val length = kotlin.math.sqrt(x * x + y * y)
-        assertTrue("a corner number sits at the middle of the cell", length > 0.1)
-        assertEquals("the number does not face its corner", 1.0, (upX * x + upY * y) / length, 0.001)
-      }
-    }
-  }
-
-  @Test
-  fun `keeps a d4's numbers inside the cell they belong to`() {
-    DieNumbers.plan(d4).forEach { cell ->
-      cell.marks.forEach { mark ->
-        assertTrue(mark.placement.centreX in 0.0..1.0)
-        assertTrue(mark.placement.centreY in 0.0..1.0)
-      }
+      val mark = cell.marks.single()
+      assertEquals("${cell.index + 1}", mark.text)
+      assertEquals(0.0, mark.placement.turns, 0.0)
+      assertEquals(0.5, mark.placement.centreX, 1e-6)
     }
   }
 
@@ -447,11 +407,11 @@ class DieNumbersTest {
   }
 
   @Test
-  fun `a d4 drawn on one triangle loses that triangle's three numbers and no other`() {
+  fun `a d4 drawn on one face loses that face's number and no other`() {
     val all = DieNumbers.plan(d4).associate { it.index to it }
     val field = requireNotNull(DieNumbers.fieldOf(d4, cellPixels = 16, drawn = setOf(1)))
     val full = requireNotNull(DieNumbers.fieldOf(d4, cellPixels = 16))
-    val grid = ShapeAtlas.gridFor(DieShape.Tetrahedron)
+    val grid = ShapeAtlas.gridFor(DieShape.ElongatedSquareBipyramid)
 
     fun cellOf(
       field: NumberField,

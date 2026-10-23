@@ -61,7 +61,8 @@ geometry, the capacity rule and how the *look* of the table can be swapped.
 Every die is a **convex** rigid body:
 
 - Built-in shapes come from the shape catalogue (see `docs/dice-sets.md`):
-  tetrahedron, cube, octahedron, pentagonal trapezohedron (d10), dodecahedron,
+  the long d4 (an elongated square bipyramid), cube, octahedron, pentagonal
+  trapezohedron (d10), dodecahedron,
   icosahedron, enneagonal trapezohedron (d18), coin (d2), etc.
 - The catalogue is closed in v1 (`docs/dice-sets.md`), so every body is one
   of eight known solids. A set changes a die's size, material, face values and
@@ -87,7 +88,7 @@ Every die is a **convex** rigid body:
   It was 150 mm/s for a while, chosen as "about where a die lands and stays" —
   which it is, and which also gave every contact after the first landing a
   restitution of exactly zero, so a die bounced once and then dead-dropped.
-- Rounded edges: shapes with sharp corners (d4 especially) get a hull margin of
+- Rounded edges: every shape gets a hull margin of
   3 % of the die's nominal size by default (`HullMargin.SHARE`, 0.48 mm on a
   16 mm die), so they tumble instead of catching on the floor. **The share is
   each die's own**: a set may ask for 1.5 % to 6 % with `edge_rounding`
@@ -100,12 +101,12 @@ Every die is a **convex** rigid body:
   stand more than `mMaxErrorConvexRadius` inside the sharp one — and never more
   than half the die's thinnest width. That error is set per die, **in
   proportion to the share asked for** (`HullMargin.maxErrorMm`): Jolt's own
-  0.5 mm at the default 3 %, which cuts a d4 to 0.25 mm, and 1 mm at 6 %,
-  which cuts it to 0.5 mm. Held at 0.5 mm, a rounder die would have got what it
-  asked for only where its corners are blunt — a d6 would stop at 0.68 mm and
-  a d4 would not get rounder at all — so the error grows with the share and
-  every shape is rounded in the proportions it has at the default: the d4
-  half of what it asks for at every value, everything else all of it. At the
+  0.5 mm at the default 3 % and 1 mm at 6 %. Held at 0.5 mm, a rounder die
+  would have got what it asked for only where its corners are blunt — a d6
+  would stop at 0.68 mm — so the error grows with the share and every shape is
+  rounded in the proportions it has at the default. Every shape in the
+  catalogue gets all of what it asks for: the long d4's points are blunt enough
+  (the tetrahedron it replaced got half, decision 109). At the
   default the bridge hands Jolt exactly the floats it always did
   (`HullRoundingTest`), so the built-in set and every golden are the same
   bodies. The share is of the *nominal* size, clamped to the set file's limits,
@@ -1102,11 +1103,11 @@ use (`docs/dice-sets.md`).
 
 Special cases:
 
-- **d4:** a tetrahedron never has a face pointing up. The value is read from
-  the vertex pointing up, following the common "top number" convention. In the
-  set file a d4 declares `read = "vertex-up"` and the values are mapped to
-  vertices rather than faces; the cocked check then uses the vertex direction
-  instead of a face normal.
+- **d4:** a long die, read from the long face on top like any other die. It
+  cannot rest on one of its pointed ends (`docs/dice-sets.md`, "The d4"); one
+  found on an end has no face within fifteen degrees of up and is cocked. It
+  replaced the tetrahedron, which had no face on top and was read from the
+  corner pointing up (decision 109).
 - **d2 (coin):** two faces; landing on the edge counts as cocked.
 - **d100:** two d10s rolled together; one is flagged as the tens die in the
   `RollPlan`. 0 + 0 reads as 100.
@@ -1298,7 +1299,7 @@ not a margin.
 **Settling**, 200 throws of 20 dice each (`tools/harness.sh -n 200 -c 20
 -s <shape> --rounding <share>`):
 
-| | d4 | d6 | d20 |
+| | d4 (the tetrahedron, before decision 109) | d6 | d20 |
 | --- | --- | --- | --- |
 | re-thrown at 1.5 % / 3 % / 12 % | 2.43 / 2.35 / 0.00 % | 0.88 / 0.48 / 0.20 % | 1.10 / 1.28 / 1.20 % |
 | median settle at 1.5 % / 3 % / 12 % | 0.76 / 0.76 / 0.73 s | 0.85 / 0.85 / 0.85 s | 0.96 / 0.96 / 0.94 s |
@@ -1331,7 +1332,7 @@ stirring is a bug of its own, and has its own task (`docs/TODO.md`, Step 5.2).
 | shape | χ² | limit | worst face off |
 | --- | --- | --- | --- |
 | coin | 0.80 | 10.83 | 0.141 % |
-| tetrahedron | 0.34 | 16.27 | 0.062 % |
+| tetrahedron (retired, decision 109) | 0.34 | 16.27 | 0.062 % |
 | cube | 1.99 | 20.52 | 0.136 % |
 | octahedron | 12.83 | 24.32 | 0.286 % |
 | pentagonal trapezohedron (d10) | 5.29 | 27.88 | 0.135 % |
@@ -2665,10 +2666,8 @@ impact sounds rather than a crash in the middle of a roll.
   decoded atlas once, when it is uploaded (`AtlasCoverage`), asked of the
   stage before a die is added (`Stage.drawnCells`), and those cells are left
   out of the die's number field (`PrintedDice`, keyed by the die and the
-  faces drawn). A d4 draws three numbers per triangle, one at each corner,
-  because its values belong to corners rather than to faces
-  (`docs/dice-sets.md`, "The d4"); a drawn triangle drops its three
-  (`docs/architecture.md`, decision 96).
+  faces drawn; `docs/architecture.md`, decision 96). Every die draws one
+  number in the middle of each face, the long d4 included.
 - **How big a number is, is solved rather than chosen.** A cell is the circle
   drawn round a face, and how much of one a face fills depends on what polygon
   it is: a dodecahedron's pentagon nearly all of it, a d20's triangle half, a
@@ -2787,9 +2786,8 @@ impact sounds rather than a crash in the middle of a roll.
   image and no pixel projected anywhere: the face is square to the camera, so
   the frame is the face at one scale, and the only number worked out is how
   far back the camera stands for the frame to be a known square of the cell
-  (all of it for a d4, whose numbers sit in its corners; the square inside the
-  face's inscribed circle for a solid whose neighbouring faces lean towards
-  the camera). The d6, the d20 and the d4 are asked on every face that leans
+  (the square inside the face's inscribed circle, for every solid). The d6,
+  the d20 and the d4 are asked on every face that leans
   far enough to tell; two controls print a deliberately reflected field and
   fail exactly the question their reflection belongs to, so a pass is not the
   instrument being blind. Underneath it the frame's own orientation is pinned
@@ -2904,7 +2902,7 @@ die was never sharp ("Dice bodies"): Jolt rounds every edge and corner by its
 convex radius, and for most of the app's life the picture of that die was the
 sharp solid it was cut from. Where the two differ the sharp picture stood
 *outside* the die that collides — a cube balanced on a corner was drawn
-0.35 mm into the felt and a d4 on its point 0.5 mm, and two dice touching at
+0.35 mm into the felt and the tetrahedron d4 on its point 0.5 mm, and two dice touching at
 their corners were drawn inside each other.
 
 `RoundedEdges` builds the same construction over the same faces, with the
@@ -2928,7 +2926,7 @@ same radius (decision 91):
 | Shape | Radius, 16 mm die | Corner inside the sharp hull | Triangles, sharp → rounded |
 | --- | --- | --- | --- |
 | coin | 0.48 mm | 0.20 mm | 92 → 1,052 |
-| d4 | 0.25 mm (Jolt's limit) | 0.50 mm | 4 → 100 |
+| d4 (long die) | 0.48 mm | 0.24 mm | 16 → 208 |
 | d6 | 0.48 mm | 0.35 mm | 12 → 204 |
 | d8 | 0.48 mm | 0.35 mm | 8 → 200 |
 | d10 | 0.48 mm | 0.24 mm | 20 → 260 |
@@ -2956,9 +2954,8 @@ polygon. The coin's rim, and the rim's half of every bend beside it, carry no
 cell, as before.
 Labels are still sized against the sharp face (`FaceRoom`), which is what the
 face designer sizes them against too. Every solid's printed numbers stay on
-the flat with room to spare except the d4's, which `LabelRoom.cornered` sets
-hard against its edges: their tips reach 0.19 mm onto the start of the bend
-on a 16 mm die, where they are painted, not cut off.
+the flat with room to spare, the long d4's included; the bare ends of a long d4,
+like a coin's rim, carry no cell at all.
 
 **A bend's glint is spread over the pixels the bend covers.** The first
 gallery of rounded resin dice showed thin, broken white lines along some edges
@@ -2986,9 +2983,9 @@ packet compiled without them is not read back.
 **A rounder die is the same construction at a larger radius** (decision 94).
 `RoundedEdges.radiusFor` reads the die's own `edge_rounding` and the error
 Jolt is given for it, so the picture follows the solver at every value a set
-may ask for. At the roundest, 6 % of a 16 mm die, every solid but the d4 is
-rounded by the 0.96 mm it asks for — the coin too, which is thick enough to
-take twice that across — and the d4 by 0.5 mm. `RoundedEdgesRoundnessTest`
+may ask for. At the roundest, 6 % of a 16 mm die, every solid is rounded by
+the 0.96 mm it asks for — the coin too, which is thick enough to take twice
+that across, and the long d4, whose points are blunt enough. `RoundedEdgesRoundnessTest`
 holds the mesh to the same promises at 1.5 %, 3 % and 6 % as
 `RoundedEdgesTest` does at 3 %:
 closed, every flat face on its own plane and inside the sharp one, a die on a

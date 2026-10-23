@@ -29,14 +29,16 @@ class DieVolumeTest {
   }
 
   @Test
-  fun `a tetrahedron is the smallest solid in the catalogue and an octahedron is rational`() {
-    val tetrahedron = DieVolume.perCircumradiusCubed(DieShape.Tetrahedron)
+  fun `a long d4 is a prism and two pyramids, the thinnest solid in the catalogue, and an octahedron is rational`() {
+    val long = DieVolume.perCircumradiusCubed(DieShape.ElongatedSquareBipyramid)
     val octahedron = DieVolume.perCircumradiusCubed(DieShape.Octahedron)
 
-    // a³/(6√2) with a = R√(8/3), and 4/3 exactly.
-    assertEquals((8.0 / 3).pow(1.5) / (6 * kotlin.math.sqrt(2.0)), tetrahedron, TIGHT)
+    // 0.8 square and 1.4 long, and two pyramids 0.3 tall on that square.
+    val square = 0.8 * 0.8
+    assertEquals(square * 1.4 + 2 * square * 0.3 / 3, long, TIGHT)
+    assertEquals(1.024, long, TIGHT)
     assertEquals(4.0 / 3, octahedron, TIGHT)
-    assertTrue(tetrahedron < octahedron, "a d4 is the thinnest solid inside its sphere")
+    assertTrue(long < octahedron, "a d4 is the thinnest solid inside its sphere")
   }
 
   @Test
@@ -101,7 +103,7 @@ class DieVolumeTest {
     // than a d4 would be visible on the screen before it was visible here.
     val ordered =
       listOf(
-        DieShape.Tetrahedron,
+        DieShape.ElongatedSquareBipyramid,
         DieShape.Octahedron,
         DieShape.Cube,
         DieShape.PentagonalTrapezohedron,

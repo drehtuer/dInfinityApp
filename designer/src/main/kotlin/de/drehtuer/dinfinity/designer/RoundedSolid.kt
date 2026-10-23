@@ -1,8 +1,10 @@
 package de.drehtuer.dinfinity.designer
 
 import de.drehtuer.dinfinity.core.model.DieMaterial
+import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.simulation.api.HullMargin
 import de.drehtuer.dinfinity.simulation.api.SolidFace
+import de.drehtuer.dinfinity.simulation.api.SolidFaces
 import de.drehtuer.dinfinity.simulation.api.Vector3
 import kotlin.math.abs
 
@@ -24,8 +26,8 @@ import kotlin.math.abs
  *
  * **The radius is the solver's**, by Jolt's own rule as `HullMargin` states it:
  * what the die asks for, cut down until no corner stands more than the error
- * the die is allowed inside the sharp one. That is what keeps a d4 at half of
- * what it asks for, as on the tray. In the solid's own units, one to the
+ * the die is allowed inside the sharp one, as on the tray. No die in the
+ * catalogue is cut back since the long d4 replaced the tetrahedron. In the solid's own units, one to the
  * bounding radius, which is half the die's size.
  */
 class RoundedSolid(
@@ -134,15 +136,33 @@ class RoundedSolid(
     val sharpness: Double = (m.length - 1).coerceAtLeast(0.0)
   }
 
-  private companion object {
+  companion object {
+    /**
+     * Every face of [shape] that is drawn: its cells, in the catalogue's
+     * order, and after them the faces that carry no cell — a long d4's ends
+     * ([SolidFaces.bareOf]) — numbered on from the last cell, so a face is
+     * one index here and the rounding keeps them all apart. An index at or
+     * past the shape's face count is an end and never a cell.
+     */
+    fun facesOf(shape: DieShape): List<SolidFace> {
+      val cells = SolidFaces.of(shape)
+      return cells + SolidFaces.bareOf(shape).mapIndexed { at, end -> end.copy(index = cells.size + at) }
+    }
+
+    /** [shape] rounded for [material], ends and all. */
+    fun of(
+      shape: DieShape,
+      material: DieMaterial,
+    ): RoundedSolid = RoundedSolid(facesOf(shape), material)
+
     /** Corners closer than this are one corner: the faces list each separately. */
     const val SAME = 1e-6
 
-    fun SolidFace.has(point: Vector3): Boolean = corners.any { it.near(point) }
+    private fun SolidFace.has(point: Vector3): Boolean = corners.any { it.near(point) }
 
-    fun Vector3.near(other: Vector3): Boolean = (this - other).length < SAME
+    private fun Vector3.near(other: Vector3): Boolean = (this - other).length < SAME
 
-    fun cornersOf(faces: List<SolidFace>): List<Corner> {
+    private fun cornersOf(faces: List<SolidFace>): List<Corner> {
       val points = mutableListOf<Vector3>()
       faces.flatMap(SolidFace::corners).forEach { point -> if (points.none { it.near(point) }) points += point }
       return points.map { point -> Corner(point, faces.filter { it.has(point) }) }
@@ -154,7 +174,7 @@ class RoundedSolid(
      * where a kite die's tip has five or nine. Solved from the normal
      * equations, `(Σ n nᵀ) m = Σ n`, by Cramer's rule: three unknowns.
      */
-    fun unitAlongEvery(normals: List<Vector3>): Vector3 {
+    private fun unitAlongEvery(normals: List<Vector3>): Vector3 {
       // The columns of Σ n nᵀ, which is symmetric, and Σ n.
       val across = normals.fold(Vector3.Zero) { sum, n -> sum + n * n.x }
       val along = normals.fold(Vector3.Zero) { sum, n -> sum + n * n.y }

@@ -7,7 +7,7 @@ format = 1
 [set]
 id = "green-resin"
 name = "Green resin"
-version = "1.0.0"
+version = "2.0.0"
 author = "dInfinity"
 license = "CC0-1.0"
 description = "Bottle-green cast resin, about half translucent, so the felt shows softly through it."
@@ -31,8 +31,7 @@ faces = [1, 2]
 
 [[die]]
 id = "d4"
-shape = "tetrahedron"
-read = "vertex-up"
+shape = "elongated-square-bipyramid"
 faces = [1, 2, 3, 4]
 
 [[die]]

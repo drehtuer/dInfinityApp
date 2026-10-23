@@ -23,7 +23,7 @@ class ShapeHullTest {
   @Test
   fun `every solid has the corners it should`() {
     assertEquals(48, ShapeGeometry.verticesOf(DieShape.Coin).size, "a coin is a 24-sided rim, top and bottom")
-    assertEquals(4, ShapeGeometry.verticesOf(DieShape.Tetrahedron).size)
+    assertEquals(10, ShapeGeometry.verticesOf(DieShape.ElongatedSquareBipyramid).size, "two points and a prism's eight")
     assertEquals(8, ShapeGeometry.verticesOf(DieShape.Cube).size)
     assertEquals(6, ShapeGeometry.verticesOf(DieShape.Octahedron).size)
     assertEquals(12, ShapeGeometry.verticesOf(DieShape.PentagonalTrapezohedron).size)
@@ -33,8 +33,10 @@ class ShapeHullTest {
   }
 
   @Test
-  fun `every corner of every solid is on one sphere`() {
-    DieShape.entries.forEach { shape ->
+  fun `every corner of every other solid is on one sphere`() {
+    // The long d4 is the one that is not: its points are, its prism's corners
+    // inside (see below).
+    DieShape.entries.filter { it != DieShape.ElongatedSquareBipyramid }.forEach { shape ->
       ShapeGeometry.verticesOf(shape).forEach { corner ->
         assertEquals(1.0, corner.length, 1e-9, "${shape.id} has a corner at ${corner.length}")
       }
@@ -75,17 +77,10 @@ class ShapeHullTest {
   }
 
   @Test
-  fun `a vertex-read solid's directions are its corners, exactly one each`() {
-    DieShape.entries
-      .filter { it.naturalRead == FaceRead.VertexUp }
-      .forEach { shape ->
-        val corners = ShapeGeometry.verticesOf(shape)
-        ShapeGeometry.directionsOf(shape).forEach { direction ->
-          val furthest = corners.maxOf { it dot direction }
-          assertEquals(1.0, furthest, 1e-9, "${shape.id}'s reading direction is not a corner")
-          assertEquals(1, corners.count { abs((it dot direction) - furthest) < 1e-9 })
-        }
-      }
+  fun `a long d4's points are on its sphere and its prism inside it`() {
+    val corners = ShapeGeometry.verticesOf(DieShape.ElongatedSquareBipyramid)
+    assertEquals(2, corners.count { abs(it.length - 1.0) < 1e-12 }, "the two points reach the bounding sphere")
+    assertTrue(corners.all { it.length <= 1.0 + 1e-12 }, "a corner outside the bounding sphere")
   }
 
   @Test

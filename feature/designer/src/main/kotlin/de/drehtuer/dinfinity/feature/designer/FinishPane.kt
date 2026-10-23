@@ -142,8 +142,9 @@ private fun OpacitySlider(
  * Said in words under it twice over — the share of the size the slider moves
  * and the millimetres that come to on *this* die — because a per cent is the
  * number a set file writes and a millimetre is the one a person can picture.
- * The millimetres are the solver's: on a d4 that is half what is asked for,
- * because its points are cut back (`RoundedSolid.radius`).
+ * The millimetres are the solver's, which cuts back a die whose corners are
+ * too sharp for what it asks (`RoundedSolid.radius`); no die in the
+ * catalogue is, since the long d4 replaced the tetrahedron.
  */
 @Composable
 @NonRestartableComposable

@@ -85,7 +85,20 @@ class LabelRoomTest {
   @Test
   fun `has nothing to place for an empty label`() {
     assertNull(LabelRoom.centred(square, ""))
-    assertNull(LabelRoom.cornered(triangle, 0.5 to 0.04, ""))
+  }
+
+  @Test
+  fun `fits a number across a long d4's face, which is far longer than it is wide`() {
+    // The long rectangle stood upright, as the designer and the atlas cell
+    // have it: 0.8 wide against 1.4 long. The number is held by the narrow
+    // sides, and sits in the middle.
+    val long = listOf(0.33 to 0.02, 0.33 to 0.98, 0.67 to 0.98, 0.67 to 0.02)
+    val placement = assertNotNull(LabelRoom.centred(long, "4"))
+    val room = LabelRoom.heightAt(long, Typesetter.inkWidth("4", 1.0), placement.centreX, placement.centreY)
+
+    assertEquals(0.5, placement.centreX, 1e-9)
+    assertTrue(placement.height <= room + 1e-9, "a label of ${placement.height} in room of $room")
+    assertEquals(0.0, placement.turns, 0.0)
   }
 
   @Test
@@ -95,34 +108,6 @@ class LabelRoomTest {
     val slit = listOf(0.5 to 0.5, 0.5 to 0.5, 0.5 to 0.5)
 
     assertNull(LabelRoom.centred(slit, "6"))
-  }
-
-  @Test
-  fun `turns a corner number to face its own corner`() {
-    val top = assertNotNull(LabelRoom.cornered(triangle, triangle[0], "4"))
-    val left = assertNotNull(LabelRoom.cornered(triangle, triangle[1], "4"))
-
-    assertEquals(0.0, top.turns, 1e-9, "the number at the top of the cell is upright")
-    assertTrue(abs(left.turns) > 1e-3, "the number at a side corner was left upright")
-  }
-
-  @Test
-  fun `keeps a corner number inside the triangle it is on`() {
-    triangle.forEach { corner ->
-      val placement = assertNotNull(LabelRoom.cornered(triangle, corner, "4"))
-      val room = LabelRoom.heightAt(triangle, Typesetter.inkWidth("4", 1.0), placement.centreX, placement.centreY)
-      assertTrue(placement.height <= room + 1e-9, "a corner label of ${placement.height} in room of $room")
-      assertTrue(placement.height <= LabelRoom.CORNER_HEIGHT, "three to a triangle and one of them ${placement.height}")
-    }
-  }
-
-  @Test
-  fun `pulls a corner in towards the middle, and leaves the middle alone`() {
-    assertEquals(0.5 to 0.5, LabelRoom.inside(0.5 to 0.5))
-
-    val (x, y) = LabelRoom.inside(0.0 to 1.0)
-    assertEquals(0.5 - 0.5 * LabelRoom.CORNER_REACH, x, 1e-9)
-    assertEquals(0.5 + 0.5 * LabelRoom.CORNER_REACH, y, 1e-9)
   }
 
   @Test
@@ -147,7 +132,6 @@ class LabelRoomTest {
   fun `marks the label when it is asked to, and not otherwise`() {
     assertTrue(assertNotNull(LabelRoom.centred(square, "6", marked = true)).marked)
     assertTrue(!assertNotNull(LabelRoom.centred(square, "6")).marked)
-    assertTrue(assertNotNull(LabelRoom.cornered(triangle, triangle[0], "6", marked = true)).marked)
   }
 
   @Test
@@ -159,14 +143,6 @@ class LabelRoomTest {
     val marked = assertNotNull(LabelRoom.centred(triangle, "6", marked = true)).height
     assertTrue(marked < bare, "a marked 6 was given $marked, the same room as a bare one's $bare")
     assertEquals(assertNotNull(LabelRoom.centred(triangle, "6.")).height, marked, 1e-9)
-  }
-
-  @Test
-  fun `a marked number at a corner is measured with its dot too`() {
-    val bare = assertNotNull(LabelRoom.cornered(triangle, triangle[0], "6"))
-    val marked = assertNotNull(LabelRoom.cornered(triangle, triangle[0], "6", marked = true))
-    assertTrue(marked.height <= bare.height, "${marked.height} against ${bare.height}")
-    assertEquals(bare.centreX, marked.centreX, 1e-9)
   }
 
   @Test

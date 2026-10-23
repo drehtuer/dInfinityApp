@@ -1,6 +1,5 @@
 package de.drehtuer.dinfinity.designer
 
-import de.drehtuer.dinfinity.core.glyphs.LabelRoom
 import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.simulation.api.SolidFaces
 import org.junit.Assert.assertEquals
@@ -176,58 +175,22 @@ class FaceShapesTest {
   }
 
   @Test
-  fun `a single number sits in the middle`() {
-    assertEquals(0.5f, FaceShapes.spot(FaceOutline.Square, GuideSpot.Middle).x, 1e-3f)
-    assertEquals(0.5f, FaceShapes.spot(FaceOutline.Square, GuideSpot.Middle).y, 1e-3f)
+  fun `a number sits in the middle, on every outline`() {
+    assertEquals(0.5f, FaceShapes.middle.x, 1e-6f)
+    assertEquals(0.5f, FaceShapes.middle.y, 1e-6f)
   }
 
   @Test
-  fun `a d4's three numbers sit at three different corners, inside the shape`() {
-    // Inside rather than on the edge, which is where a moulded d4 has them.
-    val spots =
-      listOf(GuideSpot.FirstCorner, GuideSpot.SecondCorner, GuideSpot.ThirdCorner)
-        .map { FaceShapes.spot(FaceOutline.Triangle, it) }
+  fun `a d4's face is its long rectangle, stood upright and as tall as any outline`() {
+    val corners = FaceShapes.corners(FaceOutline.LongRectangle)
+    val wide = corners.maxOf { it.x } - corners.minOf { it.x }
+    val tall = corners.maxOf { it.y } - corners.minOf { it.y }
 
-    assertEquals("two numbers landed in the same place", 3, spots.distinct().size)
-    val corners = FaceShapes.corners(FaceOutline.Triangle)
-    spots.forEachIndexed { index, spot ->
-      val corner = corners[index]
-      assertTrue(
-        "the number is not between its corner and the centre: $spot",
-        abs(spot.x - 0.5f) < abs(corner.x - 0.5f) + 1e-3f && abs(spot.y - 0.5f) < abs(corner.y - 0.5f) + 1e-3f,
-      )
-    }
-  }
-
-  @Test
-  fun `a corner spot on a shape with no corners falls back to the middle`() {
-    // It cannot happen from a real die — only a tetrahedron reads from its
-    // corners and a tetrahedron's cells are triangles — but a guide in the
-    // middle is better than one off the canvas.
-    val spot = FaceShapes.spot(FaceOutline.Circle, GuideSpot.FirstCorner)
-
-    assertEquals(0.5f, spot.x, 1e-3f)
-    assertEquals(0.5f, spot.y, 1e-3f)
-  }
-
-  @Test
-  fun `a guide sits exactly where a stamp of the same number lands`() {
-    // One answer to "how far in from the corner", in `core/glyphs`, because
-    // the tray prints a d4's numbers there too (`FaceStamp.numbers`).
-    val corner = FaceShapes.corner(FaceOutline.Triangle, GuideSpot.SecondCorner)
-    val (x, y) = LabelRoom.inside(corner.x.toDouble() to corner.y.toDouble())
-
-    val spot = FaceShapes.spot(FaceOutline.Triangle, GuideSpot.SecondCorner)
-    assertEquals(x.toFloat(), spot.x, 1e-6f)
-    assertEquals(y.toFloat(), spot.y, 1e-6f)
-  }
-
-  @Test
-  fun `the middle is a corner nothing pulls on`() {
-    val middle = FaceShapes.corner(FaceOutline.Square, GuideSpot.Middle)
-
-    assertEquals(0.5f, middle.x, 1e-6f)
-    assertEquals(0.5f, middle.y, 1e-6f)
+    assertEquals(4, corners.size)
+    assertEquals(0.96f, tall, 1e-5f)
+    // 0.8 wide against 1.4 long, measured off the solid.
+    assertEquals(0.8f / 1.4f, wide / tall, 1e-5f)
+    assertEquals(0.5f, (corners.maxOf { it.x } + corners.minOf { it.x }) / 2, 1e-6f)
   }
 }
 

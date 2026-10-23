@@ -82,7 +82,7 @@ data class DieMesh(
       val grid = ShapeAtlas.gridFor(shape)
       val painted = SolidFaces.of(shape).map { solid -> solid to paintOf(shape, solid, grid) }
       val numbered = painted.map { (solid, paint) -> face(solid, paint) }
-      val faces = numbered + rimOf(shape, numbered)
+      val faces = numbered + rimOf(shape, numbered) + SolidFaces.bareOf(shape).map(::bare)
       if (rounding == 0.0) return DieMesh(shape, faces)
       val facets =
         faces.map { face ->
@@ -130,10 +130,24 @@ data class DieMesh(
       MeshFace(
         index = solid.index,
         positions = solid.corners,
-        reads = solid.cornerReads,
         normal = solid.normal,
         tangent = solid.along,
         uvs = solid.corners.map(paint),
+        triangles = fan(solid.corners.size),
+      )
+
+    /**
+     * One of a long d4's ends, which carries no number and no cell
+     * ([SolidFaces.bareOf]): drawn in the die's plain colour, like a coin's
+     * rim, and rounded with the rest of the die.
+     */
+    private fun bare(solid: SolidFace): MeshFace =
+      MeshFace(
+        index = null,
+        positions = solid.corners,
+        normal = solid.normal,
+        tangent = solid.along,
+        uvs = emptyList(),
         triangles = fan(solid.corners.size),
       )
 
@@ -212,13 +226,9 @@ data class DieMesh(
  *
  * @param index the catalogue face this is, which is also the atlas cell it is
  *   painted from and the entry of the set file's `faces` list it scores
- *   (`docs/dice-sets.md`). Null for a coin's rim, which is none of those.
+ *   (`docs/dice-sets.md`). Null for a coin's rim and a long d4's ends, which
+ *   are none of those.
  * @param positions the corners, in winding order, one unit from the middle.
- * @param reads which readable position of the solid each of [positions] is,
- *   in the same order — `simulation/api`'s answer, carried here so that what
- *   is printed at a corner is chosen by the same list the corner came from
- *   ([de.drehtuer.dinfinity.simulation.api.SolidFace.cornerReads]). Empty for
- *   a face-read solid and for a rim, neither of which reads from a corner.
  * @param normal which way the surface faces. For a face-read solid this is
  *   exactly the direction `simulation/api` reads that face from.
  * @param tangent which way the texture runs across the surface — `u`
@@ -236,14 +246,10 @@ data class MeshFace(
   override val tangent: Vector3,
   override val uvs: List<TextureCoordinate>,
   override val triangles: List<Int>,
-  val reads: List<Int> = emptyList(),
 ) : Surface {
   init {
     require(uvs.isEmpty() || uvs.size == positions.size) {
       "a face has a texture coordinate per corner or none at all, not ${uvs.size} for ${positions.size}"
-    }
-    require(reads.isEmpty() || reads.size == positions.size) {
-      "a face reads one position per corner or none at all, not ${reads.size} for ${positions.size}"
     }
   }
 }

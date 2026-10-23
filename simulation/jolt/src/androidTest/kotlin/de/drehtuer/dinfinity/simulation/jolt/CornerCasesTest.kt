@@ -249,7 +249,7 @@ class CornerCasesTest {
       dieScale = (TableCapacity.check(dice, geometry) as CapacityVerdict.Fits).scale,
     )
 
-  private fun d4(): Die = Die.standard("d4", DieShape.Tetrahedron)
+  private fun d4(): Die = Die.standard("d4", DieShape.ElongatedSquareBipyramid)
 
   private fun d6(): Die = Die.standard("d6", DieShape.Cube)
 

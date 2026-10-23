@@ -5,7 +5,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -16,8 +15,8 @@ import kotlin.test.assertTrue
  * tests are about the solids rather than about a table somebody typed.
  */
 class FaceNumberingTest {
-  /** Every shape but the tetrahedron, which has no opposite faces at all. */
-  private val paired = DieShape.entries.filter { it != DieShape.Tetrahedron }
+  /** Every shape: since the long d4 replaced the tetrahedron, every one has opposite faces. */
+  private val paired = DieShape.entries
 
   @Test
   fun `every face of a paired solid faces away from exactly one other`() {
@@ -44,11 +43,8 @@ class FaceNumberingTest {
   }
 
   @Test
-  fun `a tetrahedron has no opposites, because its numbers are corners`() {
-    assertEquals(
-      List(DieShape.Tetrahedron.faceCount) { null },
-      ShapeGeometry.oppositesOf(DieShape.Tetrahedron),
-    )
+  fun `a long d4's four long faces are two opposite pairs`() {
+    assertEquals(listOf(3, 2, 1, 0), ShapeGeometry.oppositesOf(DieShape.ElongatedSquareBipyramid))
   }
 
   @Test
@@ -67,8 +63,8 @@ class FaceNumberingTest {
   }
 
   @Test
-  fun `a d4 keeps one to four at its corners`() {
-    assertEquals(listOf(1, 2, 3, 4), FaceNumbering.plain(DieShape.Tetrahedron))
+  fun `a d4 is one across from four and two across from three`() {
+    assertEquals(listOf(1, 2, 3, 4), FaceNumbering.plain(DieShape.ElongatedSquareBipyramid))
   }
 
   @Test
@@ -115,7 +111,7 @@ class FaceNumberingTest {
   @Test
   fun `a shape's opposites are the same list every time it is asked`() {
     assertEquals(ShapeGeometry.oppositesOf(DieShape.Cube), ShapeGeometry.oppositesOf(DieShape.Cube))
-    assertNull(ShapeGeometry.oppositesOf(DieShape.Tetrahedron).first())
+    assertEquals(3, ShapeGeometry.oppositesOf(DieShape.ElongatedSquareBipyramid).first())
   }
 
   /** Slack for arithmetic, not for geometry: a real opposite is exact. */

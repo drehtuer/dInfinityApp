@@ -79,6 +79,25 @@ class PreinstalledSetsTest {
   }
 
   @Test
+  fun `a copy that no longer loads is put right by the newer one the app carries`() {
+    // The sample sets installed before the long d4 named the tetrahedron, which
+    // this version refuses: they are broken on disk, not removed.
+    seeder.seed("1", archives) { onDisk() }
+    val steel = File(root, "steel/diceset.toml")
+    steel.writeText(steel.readText().replace("elongated-square-bipyramid", "tetrahedron"))
+    val meta = File(root, "steel/${PackageMeta.FILE_NAME}")
+    meta.writeText(meta.readText().replace(Regex("\"version\"\\s*:\\s*\"[^\"]*\""), "\"version\":\"1.0.0\""))
+    val scanned = InstalledSets(root).scan()
+    assertTrue(scanned.single { it.id == "steel" } is InstalledPackage.Broken)
+    assertEquals("1.0.0", PreinstalledSets.versionsOf(scanned)["steel"])
+
+    val outcomes = seeder.seed("2", archives) { PreinstalledSets.versionsOf(InstalledSets(root).scan()) }
+
+    assertTrue(outcomes.single { it.name == "steel.zip" } is PreinstalledSets.Outcome.Installed)
+    assertTrue(InstalledSets(root).scan().single { it.id == "steel" } is InstalledPackage.Ready)
+  }
+
+  @Test
   fun `a newer copy the player installed is never downgraded, and counts as seen`() {
     val players = mapOf("steel" to "9.0.0")
 

@@ -59,10 +59,15 @@ internal class DieReader(
     val shape = DieShape.ofId(name)
     if (shape != null) return shape
     val hint =
-      if (name == "mesh") {
-        "author-supplied meshes are designed but not in this version"
-      } else {
-        "the shapes are ${DieShape.entries.joinToString(", ") { it.id }}"
+      when (name) {
+        "mesh" -> "author-supplied meshes are designed but not in this version"
+        // The one shape a published set can name that the catalogue had and no
+        // longer has (decision 109). Said in full, because every set with a d4
+        // will meet it once.
+        RETIRED_D4 ->
+          "the d4 is now a long die: write shape = \"${DieShape.ElongatedSquareBipyramid.id}\", " +
+            "drop read = \"$RETIRED_READ\", and paint four long faces rather than four triangles"
+        else -> "the shapes are ${DieShape.entries.joinToString(", ") { it.id }}"
       }
     report.error(ValidationCode.UnknownShape, "$where has no shape called '$name': $hint", line(table, "shape"))
     return null
@@ -132,9 +137,10 @@ internal class DieReader(
     val name = fields.string(table, "read", where) ?: return shape.naturalRead
     val mode = FaceRead.ofId(name)
     if (mode != null) return mode
+    val retired = if (name == RETIRED_READ) " (reading the top corner went with the tetrahedron)" else ""
     report.error(
       ValidationCode.UnknownPreset,
-      "$where reads '$name'; a die is read ${FaceRead.entries.joinToString(" or ") { "'${it.id}'" }}",
+      "$where reads '$name'; a die is read ${FaceRead.entries.joinToString(" or ") { "'${it.id}'" }}$retired",
       line(table, "read"),
     )
     return shape.naturalRead
@@ -147,5 +153,11 @@ internal class DieReader(
 
   private companion object {
     val KNOWN = setOf("id", "shape", "faces", "labels", "read", "texture")
+
+    /** The d4's shape before the long die (decision 109), which a set file is told to replace. */
+    const val RETIRED_D4 = "tetrahedron"
+
+    /** And the way it was read, which went with it. */
+    const val RETIRED_READ = "vertex-up"
   }
 }

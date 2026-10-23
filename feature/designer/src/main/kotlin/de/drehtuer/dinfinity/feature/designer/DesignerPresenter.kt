@@ -24,7 +24,6 @@ import de.drehtuer.dinfinity.designer.SolidTurn
 import de.drehtuer.dinfinity.designer.Stage
 import de.drehtuer.dinfinity.designer.StampSize
 import de.drehtuer.dinfinity.designer.Stroke
-import de.drehtuer.dinfinity.simulation.api.SolidFaces
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -302,7 +301,7 @@ data class DesignerState(
    */
   val stage: Stage get() = SolidStage.of(draft, turn)
 
-  /** The numbers under it — one, or a d4's three (`docs/dice-sets.md`, "The d4"). */
+  /** The number under it, in the middle of the face (`FaceGuide`). */
   val guide: List<GuideMark> get() = if (guideShown) draft.guide(cell) else emptyList()
 
   /** What a stamp would put down: what somebody typed, or this face's own number. */
@@ -356,7 +355,7 @@ data class DesignerState(
    */
   val roundedMm: Double get() {
     val material = draft.shownFinish.on(draft.die.material)
-    return RoundedSolid(SolidFaces.of(draft.die.shape), material).radius * material.sizeMm / 2
+    return RoundedSolid.of(draft.die.shape, material).radius * material.sizeMm / 2
   }
 
   val canUndo: Boolean get() = face.canUndo
