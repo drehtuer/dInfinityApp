@@ -91,7 +91,14 @@ class DieBodyTest {
     val wrong = mutableListOf<String>()
 
     DieShape.entries.filterNot { it == DieShape.Coin }.forEach { shape ->
-      val distances = bodyOf(shape).faces.map(FacePlane::distanceMm)
+      // Only the faces a die is read from: a long d4's ends are bare and sit
+      // further out on purpose (see below).
+      val numbered = numberedFacesOf(shape, bodyOf(shape).faces)
+      if (numbered.size != shape.faceCount) {
+        wrong += "${shape.id} has ${numbered.size} hull faces along its numbered directions, not ${shape.faceCount}"
+        return@forEach
+      }
+      val distances = numbered.map(FacePlane::distanceMm)
       val smallest = distances.min()
       val largest = distances.max()
       val spread = (largest - smallest) / largest
@@ -104,6 +111,34 @@ class DieBodyTest {
 
     println(report)
     assertTrue("$report\nwrong: $wrong", wrong.isEmpty())
+  }
+
+  @Test
+  fun aLongDiesEndsSitFurtherOutThanItsLongFaces() {
+    // What keeps a long d4 off its ends is geometry, not a rule: its centre
+    // stands further from an end triangle than from a long face, so resting on
+    // an end is a balance it falls out of (`docs/dice-sets.md`, "The d4").
+    val shape = DieShape.ElongatedSquareBipyramid
+    val faces = bodyOf(shape).faces
+    val numbered = numberedFacesOf(shape, faces)
+    val ends = faces - numbered.toSet()
+
+    assertEquals("a long d4's end triangles", SolidFaces.bareOf(shape).size, ends.size)
+    val longest = numbered.maxOf(FacePlane::distanceMm)
+    val nearestEnd = ends.minOf(FacePlane::distanceMm)
+    assertTrue(
+      "an end at %.4f mm is no further out than a long face at %.4f mm".format(nearestEnd, longest),
+      nearestEnd > longest,
+    )
+  }
+
+  /** The hull faces of [shape] that lie along one of its numbered directions. */
+  private fun numberedFacesOf(
+    shape: DieShape,
+    faces: List<FacePlane>,
+  ): List<FacePlane> {
+    val directions = ShapeGeometry.directionsOf(shape)
+    return faces.filter { face -> directions.any { (it dot face.normal) > SAME_DIRECTION } }
   }
 
   /** The body Jolt built for one die of [shape], thrown nowhere. */
@@ -242,6 +277,9 @@ class DieBodyTest {
 
     /** How far two principal moments that should match may be apart, as a share. */
     const val MOMENT_TOLERANCE = 0.001
+
+    /** How closely a hull face's normal must match a numbered direction to be that face. */
+    const val SAME_DIRECTION = 0.9999
 
     const val SIZE = 3
     const val SWEEPS = 16
