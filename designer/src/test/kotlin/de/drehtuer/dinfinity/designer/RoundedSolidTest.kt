@@ -17,7 +17,7 @@ class RoundedSolidTest {
   private fun rounded(
     shape: DieShape,
     share: Double = DieMaterial.DEFAULT_EDGE_ROUNDING,
-  ) = RoundedSolid(SolidFaces.of(shape), DieMaterial(edgeRounding = share))
+  ) = RoundedSolid.of(shape, DieMaterial(edgeRounding = share))
 
   @Test
   fun `the radius is what the die asks for, in units of half its size`() {
@@ -27,12 +27,21 @@ class RoundedSolidTest {
   }
 
   @Test
-  fun `a d4's points are cut back as the solver cuts them, to about half`() {
-    val d4 = rounded(DieShape.Tetrahedron)
+  fun `a d4 is rounded as much as it asks, its points blunt enough for it`() {
+    // The tetrahedron it replaced was cut to about half (decision 109).
+    val d4 = rounded(DieShape.ElongatedSquareBipyramid)
     val asked = HullMargin.requestedMm(DieMaterial()) / (DieMaterial().sizeMm / 2)
 
-    assertTrue("a d4 was rounded as much as it asked", d4.radius < asked * 0.6)
-    assertTrue(d4.radius > asked * 0.4)
+    assertEquals(asked, d4.radius, 1e-12)
+  }
+
+  @Test
+  fun `a d4's ends are rounded with it, numbered after its four cells`() {
+    val faces = RoundedSolid.facesOf(DieShape.ElongatedSquareBipyramid)
+
+    assertEquals((0 until 12).toList(), faces.map { it.index })
+    assertTrue("an end is not a triangle", faces.drop(4).all { it.corners.size == 3 })
+    assertEquals(SolidFaces.of(DieShape.Cube), RoundedSolid.facesOf(DieShape.Cube))
   }
 
   @Test
@@ -67,7 +76,9 @@ class RoundedSolidTest {
     assertEquals(8, rounded(DieShape.Cube).patches.size)
     assertEquals(30, rounded(DieShape.Icosahedron).bands.size)
     assertEquals(12, rounded(DieShape.Icosahedron).patches.size)
-    assertEquals(6, rounded(DieShape.Tetrahedron).bands.size)
+    // A long d4's four long faces and eight end triangles: twenty edges, ten corners.
+    assertEquals(20, rounded(DieShape.ElongatedSquareBipyramid).bands.size)
+    assertEquals(10, rounded(DieShape.ElongatedSquareBipyramid).patches.size)
     rounded(DieShape.Cube).bands.forEach { assertEquals(2, it.faces.size) }
     rounded(DieShape.Cube).patches.forEach { assertEquals(3, it.faces.size) }
   }

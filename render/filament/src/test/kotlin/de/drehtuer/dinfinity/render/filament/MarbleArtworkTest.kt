@@ -162,7 +162,7 @@ class MarbleArtworkTest {
     val DICE: List<Die> =
       listOf(
         die("d2", DieShape.Coin, "coin", (1..2).toList()),
-        die("d4", DieShape.Tetrahedron, "tetrahedron", (1..4).toList()),
+        die("d4", DieShape.ElongatedSquareBipyramid, "elongated-square-bipyramid", (1..4).toList()),
         die("d6", DieShape.Cube, "cube", (1..6).toList()),
         die("d8", DieShape.Octahedron, "octahedron", (1..8).toList()),
         die("d10", DieShape.PentagonalTrapezohedron, "d10", (1..10).toList(), (1..9).map { "$it" } + "0"),

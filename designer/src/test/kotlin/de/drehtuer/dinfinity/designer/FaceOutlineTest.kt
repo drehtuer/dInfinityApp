@@ -32,10 +32,16 @@ class FaceOutlineTest {
   }
 
   @Test
-  fun `three shapes are triangles, which is why the mask is shared`() {
-    listOf(DieShape.Tetrahedron, DieShape.Octahedron, DieShape.Icosahedron).forEach {
+  fun `two shapes are triangles, which is why the mask is shared`() {
+    listOf(DieShape.Octahedron, DieShape.Icosahedron).forEach {
       assertEquals(it.id, FaceOutline.Triangle, FaceOutline.of(it))
     }
+  }
+
+  @Test
+  fun `the d4's is a long rectangle, which turns in halves`() {
+    assertEquals(FaceOutline.LongRectangle, FaceOutline.of(DieShape.ElongatedSquareBipyramid))
+    assertEquals(2, FaceTransform.stepsOf(FaceOutline.LongRectangle))
   }
 
   @Test

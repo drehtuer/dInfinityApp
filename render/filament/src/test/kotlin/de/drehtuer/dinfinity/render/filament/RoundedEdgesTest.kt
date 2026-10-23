@@ -66,7 +66,6 @@ class RoundedEdgesTest {
         val height = sharp.positions.first() dot sharp.normal
         assertEquals(sharp.normal, flat.normal)
         assertEquals(sharp.index, flat.index)
-        assertEquals(sharp.reads, flat.reads)
         flat.positions.forEach { corner ->
           assertEquals("${shape.id} face ${sharp.index} left its plane", height, corner dot sharp.normal, PLANE)
           assertTrue(
@@ -229,14 +228,15 @@ class RoundedEdgesTest {
   @Test
   fun `a 16 mm die is rounded by the radius the solver gives it`() {
     // Jolt's rule over a 16 mm die: 0.48 mm asked for, which every solid gets
-    // but the d4, whose spike would stand more than half a millimetre inside
-    // the sharp corner and is cut to 0.25 mm. The second figure is that
-    // standing-in, the one `docs/physics-and-rendering.md` quotes.
+    // — the long d4 too, whose points are blunt enough, where the tetrahedron
+    // it replaced was cut to 0.25 mm. The second figure is how far the worst
+    // rounded corner stands inside the sharp one, the one
+    // `docs/physics-and-rendering.md` quotes.
     val boundingRadiusMm = 8.0
     val expected =
       mapOf(
         DieShape.Coin to (0.48 to 0.202),
-        DieShape.Tetrahedron to (0.25 to 0.500),
+        DieShape.ElongatedSquareBipyramid to (0.48 to 0.240),
         DieShape.Cube to (0.48 to 0.351),
         DieShape.Octahedron to (0.48 to 0.351),
         DieShape.PentagonalTrapezohedron to (0.48 to 0.238),
@@ -283,7 +283,7 @@ class RoundedEdgesTest {
     val expected =
       mapOf(
         DieShape.Coin to Counts(92, 144, 1052, 1680),
-        DieShape.Tetrahedron to Counts(4, 12, 100, 156),
+        DieShape.ElongatedSquareBipyramid to Counts(16, 40, 208, 392),
         DieShape.Cube to Counts(12, 24, 204, 312),
         DieShape.Octahedron to Counts(8, 24, 200, 312),
         DieShape.PentagonalTrapezohedron to Counts(20, 40, 260, 440),
@@ -307,11 +307,8 @@ class RoundedEdgesTest {
     // The number is sized against the sharp face, as it always was; the flat
     // that is left once the edges are rounded has to hold its ink, or the
     // rounding has bent a numeral over an edge. Every solid's numbers stay on
-    // the flat with room to spare but one, measured: a d4's numbers are held
-    // right up against its edges (`LabelRoom.cornered`), and their tips reach
-    // [SPILL] of a cell — 0.19 mm on a 16 mm die — onto the start of the
-    // bend. They are painted there rather than cut off, because the bend
-    // samples its face's own cell.
+    // the flat with room to spare — the d4's too, since it became a long die
+    // with one number in the middle of each face (decision 109).
     val furthest =
       DieShape.entries.associateWith { shape ->
         val mesh = rounded(shape)
@@ -324,8 +321,7 @@ class RoundedEdgesTest {
         }
       }
     furthest.forEach { (shape, cells) ->
-      val allowed = if (shape == DieShape.Tetrahedron) SPILL else 0.0
-      assertTrue("${shape.id}'s numbers run $cells of a cell off the flat", cells <= allowed)
+      assertTrue("${shape.id}'s numbers run $cells of a cell off the flat", cells <= 0.0)
     }
   }
 
@@ -336,11 +332,9 @@ class RoundedEdgesTest {
     // samples it — bilinear, clamped — anywhere on any triangle of any bend,
     // the printed field stays short of the half that is the edge of a numeral.
     // The worst is a d10's 0.09 and a d18's 0.30; a d12's and a d20's are
-    // nought. The d4 is the one exception, by design: its numbers spill onto
-    // the start of the bend ([SPILL]) and are painted on round it. (The lines
-    // were the lacquer's glint, thinner than a pixel — `DiceMaterial`'s
-    // specular anti-aliasing.)
-    DieShape.entries.filter { it != DieShape.Tetrahedron }.forEach { shape ->
+    // nought. (The lines were the lacquer's glint, thinner than a pixel —
+    // `DiceMaterial`'s specular anti-aliasing.)
+    DieShape.entries.forEach { shape ->
       val die = standard(shape)
       val mesh = rounded(shape)
       val field = DieNumbers.fieldOf(die, mesh) ?: return@forEach
@@ -603,9 +597,6 @@ class RoundedEdgesTest {
     const val MILLIMETRE = 5e-4
 
     const val ROUNDING = 1e9
-
-    /** How far, in cells, a d4's number reaches past the flat onto the bend: 0.0125, measured. */
-    const val SPILL = 0.013
 
     /** Steps along each side of a bend's triangle the printed field is sampled at. */
     const val SAMPLES = 16

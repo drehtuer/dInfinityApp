@@ -55,7 +55,7 @@ What it changed, all of it in `dInfinityPhone.dc.html`:
   ([../docs/physics-and-rendering.md](../docs/physics-and-rendering.md),
   "What is drawn over the table").
 - **The face designer gained a Solid tab** — the real polyhedron, with
-  opposite-face numbering, d4 values at the corners and d6 pips. Built:
+  opposite-face numbering, the long d4's bare ends and d6 pips. Built:
   [../docs/face-designer.md](../docs/face-designer.md), "The solid, not just
   the face".
 - **The d10's and the d18's kites are each their own die's face** — the
@@ -191,8 +191,8 @@ its value (`faceText` beside `pipDot`); the throw buttons are gone — the
 `rollAgain` handler is left in the script, unreferenced); and the face
 designer's `Clear eyes` is `Clear face` (`clearFace`, dead on a blank face),
 which takes everything off the face in front of the player in one undoable
-step, with the undo snapshots now carrying the pips and the d4's corner
-numbers so that undo brings them back
+step, with the undo snapshots now carrying the pips so that undo brings them
+back
 ([../docs/face-designer.md](../docs/face-designer.md), "Clear face"); and every
 formula input — the roll screen's two, the graph's and the editor's — carries
 a `#ic-x` button, "Clear the formula", while it has text, which empties it

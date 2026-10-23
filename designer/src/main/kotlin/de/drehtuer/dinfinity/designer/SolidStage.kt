@@ -184,12 +184,12 @@ object SolidStage {
   ): Stage {
     val shape = draft.die.shape
     val faces = SolidFaces.of(shape)
-    val rounded = RoundedSolid(faces, draft.shownFinish.on(draft.die.material))
-    val facing = faces.filter { facesTheEye(it, turn) }.map(SolidFace::index).toSet()
-    val seen =
-      faces.mapNotNull { face ->
-        faceOf(face, draft, turn, rounded)
-      }
+    // A long d4's ends as well as its cells, numbered after them: drawn in the
+    // die's colour with nothing on them ([endOf]).
+    val drawn = RoundedSolid.facesOf(shape)
+    val rounded = RoundedSolid(drawn, draft.shownFinish.on(draft.die.material))
+    val facing = drawn.filter { facesTheEye(it, turn) }.map(SolidFace::index).toSet()
+    val seen = drawn.mapNotNull { face -> faceOf(face, draft, turn, rounded) }
     val bends =
       (rounded.bands + rounded.patches)
         .filter { bend -> bend.faces.any { it in facing } }
@@ -222,11 +222,14 @@ object SolidStage {
   ): StageFace? {
     if (!facesTheEye(face, turn)) return null
     val middle = turn.turnedTo(face.centre)
-    val basis = FaceOnSolid.basisOf(face, draft.outline)
+    // A long d4's ends come after its cells ([RoundedSolid.facesOf]): drawn in
+    // the die's colour with nothing on them, and [SolidFace.BARE] for a cell,
+    // which no cell of the canvas is, so an end is never shown as chosen.
+    val cell = face.index.takeIf { it in draft.die.faces.indices }
     return StageFace(
-      cell = face.index,
+      cell = cell ?: SolidFace.BARE,
       outline = rounded.flats.getValue(face.index).map { corner -> pointOf(turn.turnedTo(corner)) },
-      marks = shapesOf(draft.face(face.index).marks, basis, turn),
+      marks = cell?.let { shapesOf(draft.face(it).marks, FaceOnSolid.basisOf(face, draft.outline), turn) }.orEmpty(),
       light = lightOn(turn.turnedTo(face.normal)),
       depth = (EYE - middle).length,
       reach = face.corners.map { corner -> pointOf(turn.turnedTo(corner)) },

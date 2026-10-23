@@ -22,7 +22,7 @@ class DieTest {
 
   @Test
   fun `a die takes its shape's natural read unless told otherwise`() {
-    assertEquals(FaceRead.VertexUp, Die.standard("d4", DieShape.Tetrahedron).read)
+    assertEquals(FaceRead.FaceUp, Die.standard("d4", DieShape.ElongatedSquareBipyramid).read)
     assertEquals(FaceRead.FaceUp, Die.standard("d6", DieShape.Cube).read)
   }
 

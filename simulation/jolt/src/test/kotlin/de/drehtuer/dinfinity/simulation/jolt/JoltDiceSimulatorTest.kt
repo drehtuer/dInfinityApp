@@ -63,9 +63,9 @@ class JoltDiceSimulatorTest {
 
   @Test
   fun `a mixed throw is laid out for its largest die`() {
-    // A d4 and a d20 of the same nominal size are very different sizes: the
-    // tetrahedron's corners are much closer in than the icosahedron's. Cells
-    // sized for the d4 would have the d20 starting inside its neighbour.
+    // A d4 and a d20 of the same nominal size are very different solids: the
+    // long d4 is slender and the icosahedron fills its sphere. Cells sized for
+    // the slender one would have the d20 starting inside its neighbour.
     val small = FakeWorld(2) { _, _, _ -> FakeWorld.settled() }
     JoltDiceSimulator { small }.run(spec(listOf(StandardDice.d4, StandardDice.d20)))
 

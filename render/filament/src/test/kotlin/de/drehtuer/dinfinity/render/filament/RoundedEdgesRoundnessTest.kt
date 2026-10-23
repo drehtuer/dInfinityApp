@@ -97,15 +97,13 @@ class RoundedEdgesRoundnessTest {
 
   @Test
   fun `at the roundest a 16 mm die is rounded by what Jolt gives it`() {
-    // 0.96 mm asked for. A d4 is cut to half of it, as it is at every rounding
-    // (its spike stands `2 r` inside the sharp one and the error Jolt allows
-    // grows with the share). Every other solid gets what it asked for — the
-    // coin too, which is thick enough to take twice that across.
+    // 0.96 mm asked for, and every solid gets it: the long d4's points are
+    // blunt enough, and the coin is thick enough to take twice that across.
     val boundingRadiusMm = 8.0
     val expected =
       mapOf(
         DieShape.Coin to 0.96,
-        DieShape.Tetrahedron to 0.5,
+        DieShape.ElongatedSquareBipyramid to 0.96,
         DieShape.Cube to 0.96,
         DieShape.Octahedron to 0.96,
         DieShape.PentagonalTrapezohedron to 0.96,
@@ -122,7 +120,7 @@ class RoundedEdgesRoundnessTest {
 
   @Test
   fun `every shape is rounded in proportion to the share it asks for`() {
-    // The error Jolt allows grows with the share, so a d4 at twice the share
+    // The error Jolt allows grows with the share, so a die at twice the share
     // is rounded by twice as much — the default's proportions, kept.
     DieShape.entries.filter { it != DieShape.Coin }.forEach { shape ->
       val facets = facetsOf(shape)

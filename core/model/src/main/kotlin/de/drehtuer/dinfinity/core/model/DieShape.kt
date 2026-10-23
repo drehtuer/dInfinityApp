@@ -16,9 +16,8 @@ package de.drehtuer.dinfinity.core.model
  *
  * @param id the name written in a set file. Stable: it is part of the file
  *   format, so renaming one breaks every set that uses it.
- * @param faceCount how many entries `faces` must have. For [Tetrahedron] this
- *   counts vertices rather than faces, because that is what is read — see
- *   [FaceRead].
+ * @param faceCount how many entries `faces` must have: how many faces it can
+ *   be read from. A coin's rim and a long d4's ends are not among them.
  * @param naturalRead how this solid is read when the set file does not say.
  */
 enum class DieShape(
@@ -30,10 +29,12 @@ enum class DieShape(
   Coin("coin", faceCount = 2, naturalRead = FaceRead.FaceUp),
 
   /**
-   * The d4. A tetrahedron resting on a face never has a face pointing up, so
-   * its values belong to vertices and [FaceRead.VertexUp] is its natural read.
+   * The d4: a long die, a square prism with a short pyramid on each end
+   * ([LongDieShape]). It rests on one of its four long faces and is read from
+   * the face on top, like every other die. It replaced the tetrahedron, which
+   * had no face on top and was read from its corners (decision 109).
    */
-  Tetrahedron("tetrahedron", faceCount = 4, naturalRead = FaceRead.VertexUp),
+  ElongatedSquareBipyramid("elongated-square-bipyramid", faceCount = 4, naturalRead = FaceRead.FaceUp),
 
   /** The d6, and the d2 of a set with no coin (`docs/dice-notation.md`). */
   Cube("cube", faceCount = 6, naturalRead = FaceRead.FaceUp),
@@ -74,11 +75,12 @@ enum class DieShape(
 enum class FaceRead(
   val id: String,
 ) {
-  /** The face whose outward normal points most nearly up. */
+  /**
+   * The face whose outward normal points most nearly up — the one way every
+   * die in the catalogue is read since the tetrahedron, which was read from
+   * its top corner, was replaced by the long d4 (decision 109).
+   */
   FaceUp("face-up"),
-
-  /** The vertex pointing up — the "top number" convention every d4 uses. */
-  VertexUp("vertex-up"),
   ;
 
   companion object {

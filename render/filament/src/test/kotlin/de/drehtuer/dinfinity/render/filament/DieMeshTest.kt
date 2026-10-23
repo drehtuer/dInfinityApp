@@ -1,7 +1,6 @@
 package de.drehtuer.dinfinity.render.filament
 
 import de.drehtuer.dinfinity.core.model.DieShape
-import de.drehtuer.dinfinity.core.model.FaceRead
 import de.drehtuer.dinfinity.core.model.ShapeAtlas
 import de.drehtuer.dinfinity.simulation.api.ShapeGeometry
 import de.drehtuer.dinfinity.simulation.api.Vector3
@@ -46,10 +45,9 @@ class DieMeshTest {
       val directions = ShapeGeometry.directionsOf(shape)
       DieMesh.of(shape).faces.filter { it.index != null }.forEach { face ->
         val read = directions[face.index!!].normalised()
-        val expected = if (shape.naturalRead == FaceRead.FaceUp) read else -read
         assertTrue(
           "${shape.id} face ${face.index} is drawn facing ${face.normal} but read from $read",
-          face.normal.approximates(expected, TOLERANCE),
+          face.normal.approximates(read, TOLERANCE),
         )
       }
     }
@@ -70,9 +68,15 @@ class DieMeshTest {
 
   @Test
   fun `every corner sits on the same sphere, so a die scales by one number`() {
+    // The long d4's points are on it and its prism's corners inside, which
+    // scales by the same one number all the same.
     DieShape.entries.forEach { shape ->
       DieMesh.of(shape).positions.forEach { position ->
-        assertEquals("${shape.id} is drawn out of round", 1.0, position.length, TOLERANCE)
+        if (shape == DieShape.ElongatedSquareBipyramid) {
+          assertTrue("${shape.id} is drawn outside its sphere", position.length <= 1.0 + TOLERANCE)
+        } else {
+          assertEquals("${shape.id} is drawn out of round", 1.0, position.length, TOLERANCE)
+        }
       }
     }
   }
@@ -215,103 +219,24 @@ class DieMeshTest {
   }
 
   @Test
-  fun `a d4 carries its cells on the faces opposite its corners`() {
-    // A tetrahedron is read from the corner pointing up, so its four cells
-    // have to be paired with its four faces somehow. This is the pairing
-    // (`docs/dice-sets.md`, "The d4").
-    val corners = ShapeGeometry.directionsOf(DieShape.Tetrahedron)
+  fun `a d4's long faces carry its cells and its ends carry none`() {
+    val faces = DieMesh.of(DieShape.ElongatedSquareBipyramid).faces
+    val cells = faces.filter { it.index != null }
+    val ends = faces.filter { it.index == null }
 
-    DieMesh.of(DieShape.Tetrahedron).faces.forEach { face ->
-      assertTrue(
-        "cell ${face.index} is not on the face opposite corner ${face.index}",
-        face.normal.approximates(-corners[face.index!!].normalised(), TOLERANCE),
-      )
-      assertEquals("a tetrahedron's faces are triangles", TRIANGLE, face.positions.size)
-    }
-  }
-
-  @Test
-  fun `a d4's cell is drawn on the three corners that are not its own`() {
-    // What makes a d4 readable: a number belongs to a corner and is drawn on
-    // every face meeting it, so the corner pointing up shows its number on all
-    // three faces you can see. That only works if cell i's triangle is the one
-    // whose corners are the three that are not i — which is the same statement
-    // as "the face opposite corner i", said in the terms an author draws in.
-    val corners = ShapeGeometry.directionsOf(DieShape.Tetrahedron).map { it.normalised() }
-
-    DieMesh.of(DieShape.Tetrahedron).faces.forEach { face ->
-      val drawn = face.positions.map { position -> corners.indexOfFirst { it.approximates(position, TOLERANCE) } }
-
-      assertEquals(
-        "cell ${face.index} is not drawn on the corners it has to carry numbers for",
-        (corners.indices - face.index!!).toSet(),
-        drawn.toSet(),
-      )
-    }
-  }
-
-  @Test
-  fun `a d4's mesh carries which corner each of its corners is`() {
-    // What `DieNumbers` prints a corner's number from. It is
-    // `simulation/api`'s answer carried through rather than worked out again
-    // here, so the guide in the face designer and the number on the die name
-    // the same corner (`docs/architecture.md`, decision 35).
-    val corners = ShapeGeometry.directionsOf(DieShape.Tetrahedron).map { it.normalised() }
-
-    DieMesh.of(DieShape.Tetrahedron).faces.forEach { face ->
-      assertEquals("cell ${face.index} reads a corner it does not have", face.positions.size, face.reads.size)
-      face.positions.forEachIndexed { corner, position ->
-        assertTrue(
-          "cell ${face.index} calls corner $corner position ${face.reads[corner]}, which it is not",
-          corners[face.reads[corner]].approximates(position, TOLERANCE),
-        )
-      }
-    }
-  }
-
-  @Test
-  fun `a face reads one position per corner or none at all`() {
-    val face = DieMesh.of(DieShape.Tetrahedron).faces.first()
-
-    assertThrows(IllegalArgumentException::class.java) { face.copy(reads = listOf(0)) }
+    assertEquals((0 until 4).toList(), cells.map { it.index })
+    assertTrue("a long face is not a rectangle", cells.all { it.positions.size == 4 && it.uvs.size == 4 })
+    assertEquals(8, ends.size)
+    assertTrue("an end is painted from the atlas", ends.all { it.positions.size == TRIANGLE && it.uvs.isEmpty() })
   }
 
   @Test
   fun `a face has a texture coordinate per corner or none at all`() {
     // One short would leave a corner sampling whatever the buffer held next,
     // which is a smear of somebody else's face across this one.
-    val face = DieMesh.of(DieShape.Tetrahedron).faces.first()
+    val face = DieMesh.of(DieShape.Cube).faces.first()
 
     assertThrows(IllegalArgumentException::class.java) { face.copy(uvs = face.uvs.drop(1)) }
-  }
-
-  @Test
-  fun `a face-read solid's mesh reads nothing from its corners, and nor does a rim`() {
-    DieMesh.of(DieShape.Cube).faces.forEach { assertTrue("a cube's corner is no face", it.reads.isEmpty()) }
-    DieMesh
-      .of(DieShape.Coin)
-      .faces
-      .filter { it.index == null }
-      .forEach { assertTrue("a rim reads nothing", it.reads.isEmpty()) }
-  }
-
-  @Test
-  fun `two faces of a d4 that share an edge share both its corners`() {
-    // So the value drawn at each end of a shared edge is the same on both
-    // sides of it. A die whose two faces disagree along an edge reads as two
-    // different numbers depending on which way you look at it.
-    val faces = DieMesh.of(DieShape.Tetrahedron).faces
-    val pairs = faces.flatMap { first -> faces.filter { it.index!! > first.index!! }.map { first to it } }
-
-    assertEquals("a tetrahedron has six edges", EDGES_OF_A_TETRAHEDRON, pairs.size)
-    pairs.forEach { (first, second) ->
-      val shared = first.positions.filter { corner -> second.positions.any { it.approximates(corner, TOLERANCE) } }
-      assertEquals(
-        "faces ${first.index} and ${second.index} meet along ${shared.size} corners, not an edge",
-        2,
-        shared.size,
-      )
-    }
   }
 
   @Test
@@ -411,7 +336,6 @@ class DieMeshTest {
     const val COIN_SEGMENTS = 24
     const val ROUNDING = 1e6
     const val HALF = 0.5
-    const val EDGES_OF_A_TETRAHEDRON = 6
 
     /** Past this, a face is lying flat and has no "up" of its own to check. */
     const val LYING_FLAT = 0.999
@@ -419,7 +343,7 @@ class DieMeshTest {
     val CORNERS_PER_FACE =
       mapOf(
         DieShape.Coin to COIN_SEGMENTS,
-        DieShape.Tetrahedron to TRIANGLE,
+        DieShape.ElongatedSquareBipyramid to 4,
         DieShape.Cube to 4,
         DieShape.Octahedron to TRIANGLE,
         DieShape.PentagonalTrapezohedron to 4,

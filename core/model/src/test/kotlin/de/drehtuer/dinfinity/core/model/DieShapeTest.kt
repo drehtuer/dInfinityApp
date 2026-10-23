@@ -12,7 +12,7 @@ class DieShapeTest {
     assertEquals(
       listOf(
         "coin",
-        "tetrahedron",
+        "elongated-square-bipyramid",
         "cube",
         "octahedron",
         "pentagonal-trapezohedron",
@@ -27,7 +27,7 @@ class DieShapeTest {
   @Test
   fun `each solid has the face count its die name promises`() {
     assertEquals(2, DieShape.Coin.faceCount)
-    assertEquals(4, DieShape.Tetrahedron.faceCount)
+    assertEquals(4, DieShape.ElongatedSquareBipyramid.faceCount)
     assertEquals(6, DieShape.Cube.faceCount)
     assertEquals(8, DieShape.Octahedron.faceCount)
     assertEquals(10, DieShape.PentagonalTrapezohedron.faceCount)
@@ -37,9 +37,16 @@ class DieShapeTest {
   }
 
   @Test
-  fun `only the tetrahedron is read from a vertex`() {
-    val vertexUp = DieShape.entries.filter { it.naturalRead == FaceRead.VertexUp }
-    assertEquals(listOf(DieShape.Tetrahedron), vertexUp)
+  fun `every solid is read from the face on top, the d4 too`() {
+    assertEquals(DieShape.entries, DieShape.entries.filter { it.naturalRead == FaceRead.FaceUp })
+    assertEquals(listOf(FaceRead.FaceUp), FaceRead.entries)
+  }
+
+  @Test
+  fun `the tetrahedron is not a shape any more`() {
+    // Refused by name: a set naming it is told what to write instead (decision 109).
+    assertEquals(null, DieShape.ofId("tetrahedron"))
+    assertEquals(DieShape.ElongatedSquareBipyramid, DieShape.ofId("elongated-square-bipyramid"))
   }
 
   @Test
@@ -71,7 +78,7 @@ class DieShapeTest {
   @Test
   fun `every read mode resolves from its file spelling`() {
     assertEquals(FaceRead.FaceUp, FaceRead.ofId("face-up"))
-    assertEquals(FaceRead.VertexUp, FaceRead.ofId("vertex-up"))
+    assertEquals(null, FaceRead.ofId("vertex-up"))
   }
 
   @Test

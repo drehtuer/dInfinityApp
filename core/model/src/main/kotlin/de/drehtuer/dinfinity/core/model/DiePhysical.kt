@@ -7,7 +7,7 @@ package de.drehtuer.dinfinity.core.model
  *
  * A set is a bag of dice and its dice need not agree. They *always* disagree
  * about weight, in fact, because a d4 and a d20 of one size and one density
- * are not the same amount of material — the d4 is the thinner solid inside the
+ * are not the same amount of material — the long d4 is the thinner solid inside the
  * same sphere (`docs/dice-sets.md`, "Size"). So the screen says what is true
  * of every die in the set rather than picking one and quoting it as if it
  * spoke for the rest.

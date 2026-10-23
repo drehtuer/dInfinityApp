@@ -15,8 +15,14 @@ enum class FaceOutline {
   /** The d2's, which is a disc rather than a polygon. */
   Circle,
 
-  /** The d4, d8 and d20: equilateral triangles. */
+  /** The d8 and d20: equilateral triangles. */
   Triangle,
+
+  /**
+   * The d4's: a long rectangle, one of the four long faces of a long die
+   * (decision 109), stood upright on the canvas.
+   */
+  LongRectangle,
 
   /** The d6. */
   Square,
@@ -50,7 +56,8 @@ enum class FaceOutline {
     fun of(shape: DieShape): FaceOutline =
       when (shape) {
         DieShape.Coin -> Circle
-        DieShape.Tetrahedron, DieShape.Octahedron, DieShape.Icosahedron -> Triangle
+        DieShape.ElongatedSquareBipyramid -> LongRectangle
+        DieShape.Octahedron, DieShape.Icosahedron -> Triangle
         DieShape.Cube -> Square
         DieShape.Dodecahedron -> Pentagon
         DieShape.PentagonalTrapezohedron -> PentagonalKite

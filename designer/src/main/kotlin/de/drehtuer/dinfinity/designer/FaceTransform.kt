@@ -84,12 +84,15 @@ data class FaceTransform(
     fun stepsOf(outline: FaceOutline): Int =
       when (outline) {
         FaceOutline.Triangle -> THIRDS
+        FaceOutline.LongRectangle -> HALVES
         FaceOutline.Square -> QUARTERS
         FaceOutline.Pentagon -> FIFTHS
         FaceOutline.Circle -> QUARTERS
         FaceOutline.PentagonalKite, FaceOutline.EnneagonalKite -> NO_TURN
       }
 
+    /** A rectangle's: it is the same rectangle turned upside down, and no other way. */
+    private const val HALVES = 2
     private const val THIRDS = 3
     private const val QUARTERS = 4
     private const val FIFTHS = 5

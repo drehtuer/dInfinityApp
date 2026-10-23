@@ -89,9 +89,8 @@ color = "#2b2b2b"                # per-die override
 
 [[die]]
 id = "d4"
-shape = "tetrahedron"
-read = "vertex-up"               # value at the top vertex, not the top face
-faces = [1, 2, 3, 4]             # for vertex-up shapes: value per *vertex*
+shape = "elongated-square-bipyramid"   # the long d4: read from the face on top
+faces = [1, 2, 3, 4]             # one value per long face
 
 [[die]]
 id = "d10-tens"
@@ -136,9 +135,9 @@ sound = "felt"
 | `defaults.*` | no | Material and physics defaults, all clamped. |
 | `die.id` | yes | Slug of 1–40 characters, unique within the set — shorter than a set id, because `d2`, `d4` and `d6` are the ids plain notation resolves. Standard names (`d2`, `d4`, `d6`, `d8`, `d10`, `d10-tens`, `d12`, `d18`, `d20`, `df`) are what typed notation resolves — there is no `d100` die, because `d100`/`d%` is always a `d10-tens` and `d10` pair (`docs/dice-notation.md`, "d100 and d%"), optionally set-qualified as `brass:2d20`. A die with any other id is named in braces — `3{skull-d6}kh1`, or `3{brass:skull-d6}kh1` from a named set — because a slug and a modifier are made of the same characters and only the `}` says where the id ends; the dice picker offers it too and writes the braces for you (`docs/dice-notation.md`, "A set's own dice"). |
 | `die.shape` | yes | A name from the shape catalogue below. v1 has no other option. |
-| `die.faces` | yes | Integer values, one per face (or vertex). Length must match the shape. Range −9999..9999. Duplicates allowed (a d6 numbered 1–3 twice, say). |
+| `die.faces` | yes | Integer values, one per face a value is read from. Length must match the shape. Range −9999..9999. Duplicates allowed (a d6 numbered 1–3 twice, say). |
 | `die.labels` | no | Strings printed on faces when no texture. Defaults to `faces` as text. Max 4 characters each. |
-| `die.read` | no | `face-up` (default) or `vertex-up`. |
+| `die.read` | no | `face-up`, the default and the only value: every die is read from the face on top. `vertex-up` went with the tetrahedron (decision 109) and is refused. |
 | `die.texture` | no | Path to a PNG/WebP atlas, relative, inside the set folder. |
 | `defaults.translucency`, `die.translucency` | no | Per cent, `0` solid to `100` glass, clamped. Above `0` the die is drawn as resin: the felt and the dice behind it show *through* it, bent and tinted by the die's own `color` — more of it the higher the value, and wholly at `100` (`docs/physics-and-rendering.md`, "A die you can see into"). How milky it is, how thick and how it tints what is behind it are worked out from this, `color`, `size_mm` and `roughness` — a low translucency is milky, a high one glassy, and a rough die is frosted — so there are no resin fields of their own. The numerals and any artwork stay fully opaque whatever it is, because a face you cannot read is not a die. |
 | `defaults.edge_rounding`, `die.edge_rounding` | no | How round the die's edges and corners are, as a share of `size_mm`: `0.03` (0.48 mm on a 16 mm die) when not given, clamped to `0.015`–`0.06` with a warning, refused when it is not a number. The top is measured, not chosen: past 6 % a coin's rim starts to roll like a wheel and throws stop settling (`docs/physics-and-rendering.md`, "How round a die may be"; decision 100). It is a physical property, not a look: it is the solver's *convex radius*, and the renderer draws the die with exactly the rounding the solver collides (`docs/physics-and-rendering.md`, "Dice bodies" and "Rounded edges"). The solver gives a sharp corner less than is asked — a d4 gets half, at every value — so a d4's points never go blunt. Rounder dice tumble a little longer and land a little differently; a fairness run can be asked about any value of it (`FairnessTest`'s `edgeRounding`) (`docs/architecture.md`, decision 94). |
@@ -242,7 +241,7 @@ over.
 | Name | Faces | Typical use |
 | --- | --- | --- |
 | `coin` | 2 | d2 |
-| `tetrahedron` | 4 | d4 |
+| `elongated-square-bipyramid` | 4 | d4: the long die (below) |
 | `cube` | 6 | d6 |
 | `octahedron` | 8 | d8 |
 | `pentagonal-trapezohedron` | 10 | d10, d10-tens (together: d100 / `d%`) |
@@ -278,32 +277,32 @@ polygon. It turns each cell to this rule now (`docs/face-designer.md`,
 
 ### The d4
 
-The one shape where a cell and a readable position are different things. A
-tetrahedron is read from the corner pointing up, so its four **numbers belong
-to corners**, while its four **cells are painted on faces**.
+The d4 is a **long die**: a square prism lying on one of its four long faces,
+with a short pyramid on each end (`core/model`'s `LongDieShape`). It is read
+like every other die, from the face on top, and its four long faces are its
+four cells. The ends carry no value and no cell; they are drawn in the die's
+colour and it never rests on them.
 
-Cell *i* is the face **opposite** corner *i* — which is to say, the triangle
-whose three corners are the three that are *not* *i*.
+```mermaid
+flowchart LR
+  end1["point"] --- body["four long faces, 1 to 4<br/>0.8 wide, 1.4 long"] --- end2["point"]
+```
 
-A number is drawn at the corner it belongs to, on **every face that meets that
-corner**. So cell *i* carries three numbers, not one: the values of the three
-corners other than *i*, each at its own corner of the triangle. That is what a
-moulded d4 does, and it is what makes the die readable — when a corner points
-up, all three faces you can see carry that corner's number at their apex.
-
-It also means the two faces sharing an edge agree along it: both draw the same
-value at each end of that edge, because the value belongs to the corner rather
-than to either face. An author who draws them differently has drawn a die that
-reads as two different numbers depending on which way you look at it.
-
-**Which corner of a cell is which corner of the die is geometry, not index
-arithmetic.** The three corners cell *i* carries are the three that are not
-*i*, but the order they are numbered in is not the order they go round the
-triangle, so anything that hands them to the three corners of a cell as they
-come is right about one of the six edges. `simulation/api` answers it once —
-`SolidFace.cornerReads` names the readable position each corner of the real
-polygon is — and the tray's printed numbers and the face designer's guide both
-read that answer rather than working it out (`docs/face-designer.md`).
+- **Proportions.** In units of the bounding radius, half of `size_mm`: the
+  points are on the bounding sphere, so the die is `size_mm` long; it is 0.8
+  wide, the prism is 1.4 long and each end 0.3, which is 2.5 to 1 overall.
+- **It cannot rest on an end.** A die rests on a face when its middle is over
+  that face. An end's triangle is short enough that the point under the middle
+  is past its base, a fifth beyond it, so a die on an end tips back onto a long
+  face (`LongDieShape.BODY_HALF_LENGTH`, held by `SolidFacesTest`). One found on
+  an end anyway is cocked and thrown again like any other.
+- **Its cells are long rectangles**, stood upright in their square cells, the
+  long side along the die.
+- **It replaced the tetrahedron** (decision 109), which had no face on top and
+  was read from the corner pointing up, with three numbers on every face. A set
+  file that still says `shape = "tetrahedron"` or `read = "vertex-up"` is
+  refused, and told what to write instead: this is a breaking change to the
+  set format.
 
 **Face order.** Faces are numbered from the top of the shape's reference
 orientation downwards, and anticlockwise around each ring starting from the
@@ -338,9 +337,8 @@ It is the same rule for values that are not `1..n`. A Fudge die's
 `−1, −1, 0, 0, 1, 1` comes out a minus across from a plus and a blank across
 from a blank; a tens d10's `0`–`90` comes out `0` across from `90`.
 
-**A tetrahedron is the exception**, and not by special case: no two of its
-readable positions face opposite ways, so there is no pair to make and a d4
-keeps 1–4 at its corners.
+Every shape in the catalogue has a face across from every face. The long d4's
+four long faces are two pairs, so it is 1 across from 4 and 2 across from 3.
 
 A set author is not obliged to follow any of this. `faces` is whatever the
 author writes and the app prints it where the order says; the rule is what the
@@ -367,7 +365,8 @@ dodecahedron's edge is 0.36 of its width to get one. Read as an edge length,
 ordinary gravity fall slowly enough to look weightless.
 
 One consequence worth knowing: a d4 and a d20 of the same `size_mm` have the
-same bounding sphere, so the d4 is the smaller solid inside it. That is how a
+same bounding sphere, so the long d4 — as long as the d20 is wide, and
+slender — is the smaller solid inside it. That is how a
 real set looks — the dice are sized to sit together in a hand, not to enclose
 the same volume.
 
@@ -390,8 +389,8 @@ uses:
   hull it collides, and nothing on the JVM can ask it for one — so the app does
   not ask. Every catalogue shape is a *known* solid, so its volume is a
   constant times the cube of the die's circumradius, and the constants are
-  derived from the solids themselves in `core/model`'s `DieVolume`: `8/(9√3)`
-  for a tetrahedron, `8/(3√3)` for a cube, `4/3` for an octahedron, and so on.
+  derived from the solids themselves in `core/model`'s `DieVolume`: `1.024`
+  for the long d4 (a prism and two pyramids), `8/(3√3)` for a cube, `4/3` for an octahedron, and so on.
   The two trapezohedra have no textbook constant and are still exact — the
   solid is cut into an antiprism, whose volume the prismatoid rule gives
   exactly, and a pyramid over each ring. A coin is the prism its rim is
@@ -599,8 +598,6 @@ and every face drawn in the face designer came to the tray with the set's
 number over it. A number nobody drew is not part of anybody's artwork. An
 author who wants the number *and* a border draws both, which the face
 designer's "fill all with numbers" does in one tap (`docs/face-designer.md`).
-On a d4 the face is a triangle and its three corner numbers go with it: a
-drawn triangle loses its three, and its neighbours keep theirs.
 
 The decoder says which face cells came out empty, as a warning, because the
 other way to arrive at an empty cell is an atlas saved in the wrong grid and

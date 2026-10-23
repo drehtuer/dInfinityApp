@@ -126,7 +126,8 @@ private const val TWO = 2.0
  * sit a fixed multiple of the ring height up: `2 / (1 − cos(π/n)) − 1`.
  *
  * And every corner has to be on one sphere, which is what a fair die is: an
- * insphere touching every face, a circumsphere through every corner.
+ * insphere touching every face, a circumsphere through every corner. (The
+ * long d4 is fair by its symmetry instead, and is not built here.)
  */
 private fun ringHeight(n: Int): Double = 1 / sqrt(apexRatio(n) * apexRatio(n) - 1)
 
@@ -145,8 +146,8 @@ private const val COIN_SEGMENTS = CoinShape.RIM_SEGMENTS
  *
  * The whole solid is first turned so that its **first position points straight
  * up**. That is worth doing rather than taking whatever orientation the
- * construction happened to produce: a tetrahedron built out of cube corners
- * has no corner up, an octahedron built the same way has no face up, and a
+ * construction happened to produce: an octahedron built out of cube corners
+ * has no face up, and a
  * trapezohedron has two rings and neither of them at the top — so in every one
  * of those the "reference orientation" would be a die balanced on an edge,
  * which is not a thing a die is ever in. With this, face 0 is the face that is

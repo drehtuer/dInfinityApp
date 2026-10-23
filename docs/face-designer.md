@@ -46,19 +46,10 @@ already know the die and open on the faces (`DesignerStep.openingFor`).
    faces. The number that belongs on the face is shown faintly under the
    drawing as something to trace, and can be hidden ("The guide").
 
-   **A d4 is the exception and needs three guides, not one.** Its numbers
-   belong to corners rather than to faces, so each of its four triangles
-   carries the values of its three corners, one at each corner of the canvas
-   (`docs/dice-sets.md`, "The d4"). Which corner of the canvas carries which
-   of the three is read off the solid rather than off the face order ("The d4
-   rule is derived, not checked"). The guide shows all three in place, and
-   the two triangles sharing an edge have to agree along it — a die drawn
-   otherwise reads as a different number depending on which way it is looked
-   at, which the designer should make hard to do by accident rather than
-   merely warn about afterwards.
-   The **Solid** tab beside the flat editor shows the real
-   polyhedron with each authored face on the face it was drawn for, turning on
-   its own until a drag takes over ("The solid, not just the face").
+   The d4 is no exception: it is a long die, read from the face on top, so
+   its canvas is a long rectangle stood upright and its guide is one number in
+   the middle, like every other die's (`docs/dice-sets.md`, "The d4";
+   decision 109). It turns in halves, the only turn a rectangle has.
 
 The footer of the last step:
 
@@ -134,22 +125,6 @@ strip. Each of them is arithmetic over the stored vectors and lives in
 `designer/` where a plain test can reach it; what is left in the screen is a
 path and a mask.
 
-**The d4 rule is derived, not checked — and derived from the solid.** A cell's
-three numbers are read from the three corners that cell meets, and *which of
-them goes at which corner of the canvas* is asked of `simulation/api`:
-`SolidFaces` says which corner of the real triangle is which readable position
-(`SolidFace.cornerReads`) and where that corner lands in the cell, and the
-guide, the stamp and the tray's own printed numbers all come from that one
-answer. Two cells sharing an edge are asking about the same two corners of one
-tetrahedron, so they draw the same value at each end of it; there is no second
-copy to disagree with and so nothing to warn about.
-
-It was derived from the *face order* until v0.1.2 — the three face indices that
-are not this cell's, handed to the three corners of the canvas as they came —
-which is a rule about arithmetic rather than about a tetrahedron. It agrees
-with the solid on one edge in six, so a d4 drawn from the guide met its
-neighbour's number along one edge and two strangers along the other five.
-
 **Changing the base die changes the drawing, and keeps both.** A different die
 has different faces, a different number of them, and different values under the
 guide, so nothing carries over from one canvas to the other — but nothing is
@@ -179,7 +154,7 @@ which is now only a die no installed set has.
 into the cell square on, while the die samples that cell in the face's own
 frame with its up taken as `+z` flattened onto it (`docs/dice-sets.md`, "Up
 is `+z`"). Those are not the same polygon — the canvas outline is turned by
-15° on a d4, 36° on a d12, 60° on a d8 and a d20, 154° on a d10 and 166° on
+36° on a d12, 60° on a d8 and a d20, 154° on a d10 and 166° on
 a d18, and drawn at 0.96 of the size the die shows — so a drawing came out
 turned and a fill of a whole face came out covering part of it, with the
 printed number showing through the rest. Each cell now carries its own turn
@@ -419,8 +394,8 @@ across from 20, a d12 has 1 across from 12. That is a fact about the *die*
 rather than about this button — the pairing is worked out from the shape's own
 normals and the bundled set's `faces` lists are written from it
 (`docs/dice-sets.md`, "Numbering") — so the stamp gets it right by copying the
-face's own number, which is all it has ever done. A tetrahedron has no opposite
-faces at all and keeps 1–4 at its corners.
+face's own number, which is all it has ever done. A d4 is 1 across from 4 and 2
+across from 3, like the long die it is.
 
 **Where a numeral sits on its face** is the face's own centroid, at a size
 taken from that face's inradius. In the design's authored 320-unit face, as
@@ -458,14 +433,6 @@ face it was made on, so the number comes off the face in front of the player
 with one press and off the others as they are reached. A single step spanning
 twenty faces would be an undo stack that reached across faces, which is not
 what the button on this screen has ever meant.
-
-**A d4 gets three, one at each corner**, each turned to face its own corner,
-because its values belong to corners rather than to faces (`docs/dice-sets.md`,
-"The d4"). They land exactly where the guide already showed them: which corner
-carries which number is `SolidFaces`' one answer and how far in from the corner
-a number sits is one number in `core/glyphs`, and the guide and the stamp both
-read both, so tracing the guide and stamping the number cannot come out in two
-places.
 
 A face an author left blank stays blank, and a face whose label the font cannot
 draw gets its **value** — the one thing about a face the app can always write
@@ -538,8 +505,7 @@ needs one.
 That is the point of it rather than a nicety. A guide and a stamp that were
 solved separately could drift apart, and then tracing the guide and pressing
 the button would put ink in two different places; there is one solve
-(`designer`'s `FaceStamp.printed`) and both read it. A d4 gets three, one at
-each corner, for the same reason the stamp does.
+(`designer`'s `FaceStamp.printed`) and both read it.
 
 **A face with nothing printed on it still gets its dot.** Half a Fudge die is a
 blank side an author asked for, and printing a `0` on it would be the app
@@ -928,7 +894,7 @@ so the slider cannot write a value the validator would bring back
 (`EdgeRounding`). Under it the rounding is said
 twice, as the share a set file writes and as the millimetres that come to on
 *this* die as the solver rounds it: "Rounded by 6.0 % of its size: 0.96 mm",
-and about half that on a d4, whose points the solver cuts back. TalkBack hears
+on every die the d4 included, whose points are blunt enough. TalkBack hears
 the same sentence as the slider's state. A rounding from somebody else's set
 is wherever it is on the slider — inside the range by the validator's clamp —
 and moving the slider puts it on a step.
@@ -944,23 +910,22 @@ made (`docs/physics-and-rendering.md`, "How round a die may be"). The steps
 also hid the one thing a person choosing them needs to see, which is how
 little rounding shows on some dice:
 
-**Why the steps looked the same on everything but a d4.** Not the solver:
-every shape but the d4 gets the full radius it asks for at every value
-(`HullMargin.maxErrorMm` grows with the share), and the d4 half of it. Two
+**Why the steps looked the same on most dice.** Not the solver: every shape
+gets the full radius it asks for at every value (`HullMargin.maxErrorMm` grows
+with the share; the tetrahedron, before the long d4 replaced it, got half). Two
 things did it. *The designer never showed the rounding* — the turning die was
 the sharp polyhedron whatever the step, so on this screen no step changed
 anything on any die, and only a throw could. And *how much rounding shows is
 the solid's, not the radius's*: what moves is how far a corner stands in,
 `r · (|m| − 1)`, and how wide the band over an edge is, `r · tan(θ / 2)` on
 either face, where `θ` is the angle between the two faces' normals — and the
-band is shaded by about `θ / 2` against its faces. A d4's faces meet at 109°
-apart and its corners stand in by twice the radius; a d20's meet at 42° and
-its corners stand in by a quarter of it. On a 16 mm die from the first step to
+band is shaded by about `θ / 2` against its faces. A d6's faces meet at 90°
+apart and its corners stand in by three quarters of the radius; a d20's meet
+at 42° and its corners stand in by a quarter of it. On a 16 mm die from the first step to
 the last:
 
 | Die | Angle between faces | Corner stands in | Band on each face |
 | --- | --- | --- | --- |
-| d4 (half the radius) | 109° | 0.25 → 1.0 mm | 0.18 → 0.71 mm |
 | d6 | 90° | 0.18 → 0.7 mm | 0.24 → 0.96 mm |
 | d8 | 71° | 0.18 → 0.7 mm | 0.17 → 0.68 mm |
 | d12 | 63° | 0.06 → 0.24 mm | 0.15 → 0.6 mm |

@@ -1,6 +1,5 @@
 package de.drehtuer.dinfinity.designer
 
-import de.drehtuer.dinfinity.core.glyphs.LabelRoom
 import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.simulation.api.SolidFace
 import de.drehtuer.dinfinity.simulation.api.SolidFaces
@@ -34,6 +33,7 @@ object FaceShapes {
     when (outline) {
       FaceOutline.Circle -> emptyList()
       FaceOutline.Triangle -> regular(sides = 3)
+      FaceOutline.LongRectangle -> LONG_RECTANGLE
       FaceOutline.Square -> regular(sides = 4)
       FaceOutline.Pentagon -> regular(sides = 5)
       // A kite is not regular, and the d10's and the d18's are not the same
@@ -43,44 +43,10 @@ object FaceShapes {
     }
 
   /**
-   * Where a guide number sits on [outline], and where a stamp of it lands.
-   *
-   * [GuideSpot.Middle] is the middle of the face. The three corner spots are
-   * a triangle's corners, pulled in towards the centre so a number sits
-   * *inside* the shape rather than on its edge — which is where a moulded d4
-   * has them (`docs/dice-sets.md`, "The d4").
-   *
-   * **How far in is `core/glyphs`' answer** ([LabelRoom.inside]) rather than
-   * one of this object's own, because the same pull-in decides where the tray
-   * prints a d4's numbers and where "fill all faces with numbers" puts them.
-   * A guide somebody traces and the number a stamp then drops in its place
-   * have to be the same place (`docs/face-designer.md`, "The stamp").
+   * Where a guide number sits, and where a stamp of it lands: the middle of
+   * the face, on every outline.
    */
-  fun spot(
-    outline: FaceOutline,
-    spot: GuideSpot,
-  ): Dot {
-    val corner = corner(outline, spot)
-    val (x, y) = LabelRoom.inside(corner.x.toDouble() to corner.y.toDouble())
-    return Dot(x = x.toFloat(), y = y.toFloat())
-  }
-
-  /**
-   * The corner of [outline] a spot belongs to, before it is pulled inwards.
-   *
-   * A corner spot on an outline that is not a triangle has nowhere sensible to
-   * go, and gets the middle: it cannot happen from a real die — only a
-   * tetrahedron reads from its corners, and a tetrahedron's cells are
-   * triangles — and a guide in the middle is better than one off the canvas.
-   */
-  fun corner(
-    outline: FaceOutline,
-    spot: GuideSpot,
-  ): Dot {
-    if (spot == GuideSpot.Middle) return CENTRE
-    val corners = corners(outline).takeIf { outline == FaceOutline.Triangle } ?: return CENTRE
-    return corners[CORNER_ORDER.getValue(spot)]
-  }
+  val middle: Dot get() = CENTRE
 
   /**
    * [face]'s own polygon laid on the canvas: a kite, short tip up.
@@ -135,6 +101,28 @@ object FaceShapes {
     return listOf(canvas[short], right, canvas[far], left)
   }
 
+  /**
+   * [face]'s own rectangle laid on the canvas, its long side upright and
+   * spanning what a regular outline does: measured off the solid like the
+   * kites, so the mask is the face. Corners come back in the order the
+   * square's do — top right, bottom right, bottom left, top left.
+   */
+  internal fun rectangleOf(face: SolidFace): List<Dot> {
+    val flat = face.corners.map(face::flatOf)
+    val across = flat.maxOf { it.first } - flat.minOf { it.first }
+    val upwards = flat.maxOf { it.second } - flat.minOf { it.second }
+    val long = max(across, upwards)
+    val halfWide = (RADIUS * minOf(across, upwards) / long).toFloat()
+    val halfTall = RADIUS.toFloat()
+    val middle = CENTRE
+    return listOf(
+      Dot(middle.x + halfWide, middle.y - halfTall),
+      Dot(middle.x + halfWide, middle.y + halfTall),
+      Dot(middle.x - halfWide, middle.y + halfTall),
+      Dot(middle.x - halfWide, middle.y - halfTall),
+    )
+  }
+
   /** How long the two edges meeting at corner [at] of [polygon] are together. */
   private fun edgesAt(
     polygon: List<Pair<Double, Double>>,
@@ -180,11 +168,5 @@ object FaceShapes {
   // solid does not change between frames.
   private val PENTAGONAL_KITE: List<Dot> = kiteOf(SolidFaces.of(DieShape.PentagonalTrapezohedron).first())
   private val ENNEAGONAL_KITE: List<Dot> = kiteOf(SolidFaces.of(DieShape.EnneagonalTrapezohedron).first())
-
-  private val CORNER_ORDER =
-    mapOf(
-      GuideSpot.FirstCorner to 0,
-      GuideSpot.SecondCorner to 1,
-      GuideSpot.ThirdCorner to 2,
-    )
+  private val LONG_RECTANGLE: List<Dot> = rectangleOf(SolidFaces.of(DieShape.ElongatedSquareBipyramid).first())
 }

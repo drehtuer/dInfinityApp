@@ -45,8 +45,7 @@ class DiceSetReadingTest {
 
     [[die]]
     id = "d4"
-    shape = "tetrahedron"
-    read = "vertex-up"
+    shape = "elongated-square-bipyramid"
     faces = [1, 2, 3, 4]
 
     [[die]]
@@ -123,8 +122,10 @@ class DiceSetReadingTest {
   }
 
   @Test
-  fun `a d4 declares that it is read from a vertex`() {
-    assertEquals(FaceRead.VertexUp, accepting(full).set.die("d4")!!.read)
+  fun `a d4 is a long die, read from the face on top`() {
+    val d4 = accepting(full).set.die("d4")!!
+    assertEquals(DieShape.ElongatedSquareBipyramid, d4.shape)
+    assertEquals(FaceRead.FaceUp, d4.read)
   }
 
   @Test

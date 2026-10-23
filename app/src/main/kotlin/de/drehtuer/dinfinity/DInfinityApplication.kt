@@ -355,9 +355,7 @@ class DInfinityApplication : Application() {
     ).seed(
       stamp = "${info.versionName}@${info.lastUpdateTime}",
       archives = SampleSets.ARCHIVES.map { name -> PreinstalledSets.Archive(name) { SampleSets.read(name) } },
-      installed = {
-        packages.scan().filterIsInstance<InstalledPackage.Ready>().associate { it.set.id to it.set.version }
-      },
+      installed = { PreinstalledSets.versionsOf(packages.scan()) },
     )
   }
 

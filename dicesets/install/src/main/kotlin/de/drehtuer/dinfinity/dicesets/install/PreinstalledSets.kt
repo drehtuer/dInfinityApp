@@ -175,6 +175,27 @@ class PreinstalledSets(
      */
     internal const val STAMP_KEY: String = "@app"
 
+    /**
+     * The version of every set on disk, by id, for [seed]'s `installed`: a
+     * set that loads at the version it says, and **one that no longer loads
+     * at the version it was installed at**. That second half is what lets an
+     * update repair what the update broke: the sample sets installed before
+     * the long d4 name a shape this version refuses (decision 109), and a set
+     * left out of this map would count as one the player removed and never be
+     * put right. A broken set whose version was never written down counts as
+     * older than anything.
+     */
+    fun versionsOf(packages: List<InstalledPackage>): Map<String, String> =
+      packages.associate { pack ->
+        when (pack) {
+          is InstalledPackage.Ready -> pack.set.id to pack.set.version
+          is InstalledPackage.Broken -> pack.id to (pack.meta.version ?: UNKNOWN_VERSION)
+        }
+      }
+
+    /** What a broken set whose version nobody wrote down is taken to be. */
+    private const val UNKNOWN_VERSION = "0.0.0"
+
     /** What an installed sample set says it was installed from. */
     const val SOURCE_PREFIX: String = "app:"
 

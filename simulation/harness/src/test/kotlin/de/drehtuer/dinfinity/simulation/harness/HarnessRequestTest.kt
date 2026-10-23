@@ -117,7 +117,7 @@ class HarnessRequestTest {
     assertEquals(DieShape.Icosahedron, HarnessRequest.shapeOf("d20"))
     assertEquals(DieShape.Icosahedron, HarnessRequest.shapeOf("20"))
     assertEquals(DieShape.Icosahedron, HarnessRequest.shapeOf(" D20 "))
-    assertEquals(DieShape.Tetrahedron, HarnessRequest.shapeOf("d4"))
+    assertEquals(DieShape.ElongatedSquareBipyramid, HarnessRequest.shapeOf("d4"))
     assertEquals(DieShape.Coin, HarnessRequest.shapeOf("d2"))
     assertEquals(DieShape.Coin, HarnessRequest.shapeOf("coin"))
     assertEquals(DieShape.EnneagonalTrapezohedron, HarnessRequest.shapeOf("d18"))
@@ -176,7 +176,7 @@ class HarnessRequestTest {
     val plan = requireNotNull(HarnessRequest.from(arguments("1", dice = "3", shape = "d4"))).plan()
 
     assertEquals(listOf(0, 1, 2), plan.dice.map { it.index })
-    assertTrue(plan.dice.all { it.die.shape == DieShape.Tetrahedron })
+    assertTrue(plan.dice.all { it.die.shape == DieShape.ElongatedSquareBipyramid })
   }
 
   @Test

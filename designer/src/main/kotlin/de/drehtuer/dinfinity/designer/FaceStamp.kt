@@ -43,9 +43,7 @@ private const val LARGE = 1.4
  * canvas, a test asking whether a number reaches past an edge — has it here
  * without drawing anything.
  *
- * @param face which of the die's faces this number belongs to. Its own cell
- *   for a face-read solid; one of the other three for a d4, whose numbers
- *   belong to corners (`docs/dice-sets.md`, "The d4").
+ * @param face which of the die's faces this number belongs to: its own cell.
  * @param spot where on the cell it sits.
  * @param text what is printed there — the label, or the value when the font
  *   cannot draw the label (`FaceLabel.textOf`).
@@ -148,12 +146,8 @@ object FaceStamp {
    * What "fill all faces with numbers" puts on cell [cell] of [die]: the
    * number the tray would print there, where the tray would print it.
    *
-   * One mark for most dice. **Three for a d4 read from its corners**, one at
-   * each corner of the triangle, turned to face its own corner — because a
-   * d4's values belong to corners rather than to faces and every cell carries
-   * the three it meets (`docs/dice-sets.md`, "The d4"). They land exactly
-   * where the guide already showed them, because [printed] is the one place
-   * either of them asks.
+   * One mark, in the middle of the face, landing exactly where the guide
+   * already showed it, because [printed] is the one place either of them asks.
    */
   fun numbers(
     die: Die,
@@ -172,22 +166,17 @@ object FaceStamp {
    * solved separately from the number that lands on it would be a target that
    * moved when it was hit.
    *
-   * One entry for most dice, three for a d4 read from its corners, and none
-   * for a cell this die does not have or a face whose label is empty: a face
-   * an author left blank has nothing printed on it (`FaceLabel.textOf`).
+   * One entry, or none for a cell this die does not have or a face whose
+   * label is empty: a face an author left blank has nothing printed on it
+   * (`FaceLabel.textOf`).
    */
   fun printed(
     die: Die,
     cell: Int,
     face: Typeface = BuiltinFont.face,
-  ): List<Numbering> =
-    when {
-      cell !in die.faces.indices -> emptyList()
-      FaceGuide.isCornerRead(die) -> atCorners(die, cell, face)
-      else -> inTheMiddle(die, cell, face)
-    }
+  ): List<Numbering> = if (cell !in die.faces.indices) emptyList() else inTheMiddle(die, cell, face)
 
-  /** The one number a face-read solid carries, in the middle of its cell. */
+  /** The one number a die carries on a face, in the middle of its cell. */
   private fun inTheMiddle(
     die: Die,
     cell: Int,
@@ -202,28 +191,6 @@ object FaceStamp {
         marked = FaceLabel.isAmbiguous(text, die),
       ) ?: return emptyList()
     return listOf(Numbering(face = cell, spot = GuideSpot.Middle, text = text, at = placement))
-  }
-
-  /** The three a d4 carries, one at each corner, turned to face it. */
-  private fun atCorners(
-    die: Die,
-    cell: Int,
-    face: Typeface,
-  ): List<Numbering> {
-    val outline = FaceOutline.of(die.shape)
-    val corners = corners(outline)
-    return FaceGuide.cornersOf(die, cell).mapNotNull { (index, spot) ->
-      val text = FaceLabel.textOf(die.faces[index])
-      val corner = FaceShapes.corner(outline, spot)
-      LabelRoom
-        .cornered(
-          corners = corners,
-          corner = corner.x.toDouble() to corner.y.toDouble(),
-          text = text,
-          face = face,
-          marked = FaceLabel.isAmbiguous(text, die),
-        )?.let { Numbering(face = index, spot = spot, text = text, at = it) }
-    }
   }
 
   /**

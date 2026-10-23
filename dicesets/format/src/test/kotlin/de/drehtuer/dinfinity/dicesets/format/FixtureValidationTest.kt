@@ -29,6 +29,15 @@ class FixtureValidationTest {
   }
 
   @Test
+  fun `a tetrahedron is refused, and says the d4 is a long die now and what to write`() {
+    val rejected = rejecting(Fixtures.diceSet("invalid-tetrahedron.toml"))
+    val shape = rejected.errors.first { it.code == ValidationCode.UnknownShape }
+    assertTrue("elongated-square-bipyramid" in shape.text, shape.text)
+    // The die stops at its shape, so the same message says what to do about `read`.
+    assertTrue("vertex-up" in shape.text, shape.text)
+  }
+
+  @Test
   fun `a mesh is refused, and says it is designed but not in this version`() {
     val rejected = rejecting(Fixtures.diceSet("invalid-mesh-not-in-v1.toml"))
     assertTrue(ValidationCode.UnknownShape in rejected.codes(), "${rejected.messages}")

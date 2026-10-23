@@ -38,7 +38,7 @@ friction = 0.5
 # die. Which face is across from which is geometry rather than a convention, so
 # these lists are checked against `simulation/api`'s `FaceNumbering` by
 # `BuiltinDiceSetTest` instead of being trusted because they are written down
-# here. A tetrahedron has no opposite faces and keeps 1-4 at its corners.
+# here.
 
 # A real d2 is a coin, not a cube. This is the coin every other set falls
 # back to when it has no d2 of its own (docs/dice-notation.md, "d2").
@@ -47,12 +47,12 @@ id = "d2"
 shape = "coin"
 faces = [1, 2]
 
-# A tetrahedron resting on a face never has a face pointing up, so a d4 is
-# read from the vertex at the top — the convention every d4 uses.
+# A long die: a square prism with a short point at each end, which it never
+# rests on. Read from the face on top like every other die, 1 across from 4
+# and 2 across from 3.
 [[die]]
 id = "d4"
-shape = "tetrahedron"
-read = "vertex-up"
+shape = "elongated-square-bipyramid"
 faces = [1, 2, 3, 4]
 
 [[die]]

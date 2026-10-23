@@ -19,8 +19,8 @@ import kotlin.math.sin
  * and grows the smaller solid back out by a ball of the same size, so what
  * meets the felt is the solid with every edge a strip of a cylinder and every
  * corner a patch of a sphere. A sharp picture of that die stood *outside* it
- * at every corner — sunk into the felt by up to half a millimetre on a d4
- * balanced on its point, and into its neighbours wherever two touched.
+ * at every corner — sunk into the felt by up to a third of a millimetre on a
+ * cube balanced on a corner, and into its neighbours wherever two touched.
  *
  * So this draws the same construction with the same radius:
  *
@@ -58,8 +58,9 @@ object RoundedEdges {
    * constructor): the radius [material] asks for ([HullMargin.requestedMm]),
    * cut down until it fits twice across the thinnest part of the die, and
    * until no corner stands more than [HullMargin.maxErrorMm] inside the
-   * sharp one ([gapOf]). The last is what a d4's spike is limited by; every
-   * other catalogue solid gets what it asked for. Both are the die's own, so
+   * sharp one ([gapOf]). The last limits a die with a sharp spike; every
+   * catalogue solid gets what it asked for, the long d4's points included.
+   * Both are the die's own, so
    * a set's `edge_rounding` reaches the picture exactly as it reaches the
    * solver (decision 94).
    */
@@ -88,7 +89,7 @@ object RoundedEdges {
    * vector that is a unit along every face normal meeting there
    * (`n · m = 1`). The sharp corner reaches `r·|m|` beyond that point in
    * `m`'s direction and the rounded one `r`, so the gap is `r·(|m| - 1)` —
-   * `0.73 r` for a cube, `2 r` for a d4's spike, `0.26 r` for a d20.
+   * `0.73 r` for a cube, `0.5 r` for a long d4's point, `0.26 r` for a d20.
    */
   fun gapOf(
     facets: List<Facet>,

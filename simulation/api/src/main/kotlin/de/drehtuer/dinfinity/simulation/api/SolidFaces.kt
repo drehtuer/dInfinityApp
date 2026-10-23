@@ -1,7 +1,6 @@
 package de.drehtuer.dinfinity.simulation.api
 
 import de.drehtuer.dinfinity.core.model.DieShape
-import de.drehtuer.dinfinity.core.model.FaceRead
 
 /**
  * One flat surface of a catalogue solid: which corners are on it, which way it
@@ -9,15 +8,11 @@ import de.drehtuer.dinfinity.core.model.FaceRead
  *
  * @param index the catalogue face this is, which is also the atlas cell it is
  *   painted from and the entry of a set file's `faces` list it scores
- *   (`docs/dice-sets.md`).
+ *   (`docs/dice-sets.md`) — or [BARE] for a face that carries no value, one of
+ *   a long d4's ends ([SolidFaces.bareOf]).
  * @param normal which way the surface faces, outward, one unit long.
  * @param corners the corners on that surface, anticlockwise as seen from
- *   outside, one unit from the middle of the solid.
- * @param cornerReads which readable position of the solid each of [corners]
- *   is, in the same order — so a corner and the value printed at it are one
- *   list apart and cannot be paired up by anything's own reckoning
- *   ([SolidFaces.readsOf]). **Empty for a face-read solid**, which has no such
- *   answer: a cube's corner is exactly as far from three of its faces.
+ *   outside, at most one unit from the middle of the solid.
  * @param along which way `u` increases across the cell — the face's "right".
  * @param up which way the cell is drawn up: `+z` flattened onto the face
  *   (`docs/dice-sets.md`, "Up is `+z`").
@@ -26,15 +21,11 @@ data class SolidFace(
   val index: Int,
   val normal: Vector3,
   val corners: List<Vector3>,
-  val cornerReads: List<Int>,
   val along: Vector3,
   val up: Vector3,
 ) {
-  init {
-    require(cornerReads.isEmpty() || cornerReads.size == corners.size) {
-      "a face reads one position per corner or none at all, not ${cornerReads.size} for ${corners.size}"
-    }
-  }
+  /** True for a face a value is read from and an atlas cell is painted on. */
+  val numbered: Boolean get() = index != BARE
 
   /** The middle of the face: the mean of its corners. */
   val centre: Vector3 = corners.reduce(Vector3::plus) * (1.0 / corners.size)
@@ -66,8 +57,11 @@ data class SolidFace(
     return HALF + across / (2 * radius) to HALF - upwards / (2 * radius)
   }
 
-  private companion object {
-    const val HALF = 0.5
+  companion object {
+    /** The [index] of a face that carries no value. */
+    const val BARE: Int = -1
+
+    private const val HALF = 0.5
   }
 }
 
@@ -87,11 +81,8 @@ data class SolidFace(
  * this, so face *i* is the same polygon in both by construction rather than by
  * inspection.
  *
- * For the same reason it owns *which corner a corner is*
- * ([SolidFace.cornerReads]) rather than leaving each side to work it out: a
- * d4's numbers belong to its corners, and a second account of which corner is
- * which is how the tray came to print one thing and the designer's guide
- * another (`docs/face-designer.md`, "The d4 rule is derived, not checked").
+ * The faces that carry no value — a long d4's ends — are found the same way
+ * ([bareOf]), so the tray and the designer draw the same ends too.
  *
  * It is plain arithmetic over closed forms, so it is worked out once per shape
  * and kept: a die being spun on the designer's stage asks for it every frame.
@@ -107,30 +98,28 @@ object SolidFaces {
    */
   const val PLANE_TOLERANCE: Double = 1e-9
 
-  /** The faces of [shape], in the catalogue's face order. */
+  /** The faces of [shape] a value is read from, in the catalogue's face order. */
   fun of(shape: DieShape): List<SolidFace> = FACES.getValue(shape)
 
   /**
-   * Which way each of the shape's cells faces.
-   *
-   * For a face-read solid that is the direction the face is read from, and the
-   * two are the same thing. For a tetrahedron they are not: a d4 is read from
-   * the corner pointing up, so the catalogue's directions are corners, and the
-   * flat surface that carries cell *i* is the face **opposite** corner *i* —
-   * the triangle whose corners are the three that are not *i*
-   * (`docs/dice-sets.md`, "The d4").
+   * The faces of [shape] that carry no value, each [SolidFace.BARE]: a long
+   * d4's eight end triangles, and nothing for any other shape. Drawn in the
+   * die's colour, rounded like the rest, and never read.
    */
-  private fun outwardNormals(shape: DieShape): List<Vector3> =
-    ShapeGeometry.directionsOf(shape).map { direction ->
-      when (shape.naturalRead) {
-        FaceRead.FaceUp -> direction.normalised()
-        FaceRead.VertexUp -> -direction.normalised()
-      }
-    }
+  fun bareOf(shape: DieShape): List<SolidFace> = BARE_FACES.getValue(shape)
 
   private fun facesOf(shape: DieShape): List<SolidFace> {
     val corners = ShapeGeometry.verticesOf(shape)
-    return outwardNormals(shape).mapIndexed { index, normal -> faceOn(shape, index, normal, corners) }
+    return ShapeGeometry.directionsOf(shape).mapIndexed { index, direction ->
+      faceOn(shape, index, direction.normalised(), corners)
+    }
+  }
+
+  private fun bareFacesOf(shape: DieShape): List<SolidFace> {
+    val corners = ShapeGeometry.verticesOf(shape)
+    return ShapeGeometry.bareDirectionsOf(shape).map { direction ->
+      faceOn(shape, SolidFace.BARE, direction.normalised(), corners)
+    }
   }
 
   private fun faceOn(
@@ -152,45 +141,10 @@ object SolidFaces {
       index = index,
       normal = normal,
       corners = wound,
-      cornerReads = readsOf(shape, wound),
       along = along,
       up = up,
     )
   }
-
-  /**
-   * Which readable position of [shape] each of [corners] is.
-   *
-   * **This is the whole of the d4 rule, and it is here so that there is one of
-   * it.** A tetrahedron is read from the corner pointing up, so every corner
-   * of every cell carries a value and the value is the one belonging to the
-   * corner it *is* — which two cells meeting along an edge cannot disagree
-   * about, because they are the same two corners of the same solid. Both the
-   * tray, which prints those numbers ([SolidFace.cornerReads] through the
-   * renderer's mesh), and the face designer, which draws the guide somebody
-   * traces, ask this rather than working it out from a face's index: a
-   * combinatorial answer — "the three faces that are not this one, in order" —
-   * looks right and is right for one edge in six (`docs/face-designer.md`,
-   * "The d4 rule is derived, not checked").
-   *
-   * A face-read solid has no answer and gets none. Its corners are not
-   * readable positions at all, and the nearest direction to a cube's corner is
-   * a three-way tie.
-   */
-  private fun readsOf(
-    shape: DieShape,
-    corners: List<Vector3>,
-  ): List<Int> =
-    when (shape.naturalRead) {
-      FaceRead.FaceUp -> emptyList()
-      FaceRead.VertexUp -> {
-        val directions = ShapeGeometry.directionsOf(shape).map(Vector3::normalised)
-        corners.map { corner ->
-          val unit = corner.normalised()
-          directions.indices.minBy { (directions[it] - unit).length }
-        }
-      }
-    }
 
   /** Where [offset] sits around the face, for winding its polygon. */
   private fun angleOf(
@@ -215,4 +169,5 @@ object SolidFaces {
   private const val TRIANGLE = 3
 
   private val FACES: Map<DieShape, List<SolidFace>> = DieShape.entries.associateWith(::facesOf)
+  private val BARE_FACES: Map<DieShape, List<SolidFace>> = DieShape.entries.associateWith(::bareFacesOf)
 }

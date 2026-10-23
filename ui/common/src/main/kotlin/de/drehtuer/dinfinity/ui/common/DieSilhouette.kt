@@ -89,7 +89,11 @@ internal fun outlineOf(sides: Sides): List<Offset>? =
 
 private fun corners(vararg xy: Float): List<Offset> = xy.toList().chunked(2) { Offset(it[0], it[1]) }
 
-private val TRIANGLE = corners(50f, 8f, 92f, 84f, 8f, 84f)
+/**
+ * The long d4 seen from above, lying across: its long face between two short
+ * points, 92 long and 36 wide — the 2.5 to 1 of the solid (`LongDieShape`).
+ */
+private val LONG_DIE = corners(4f, 50f, 22f, 32f, 78f, 32f, 96f, 50f, 78f, 68f, 22f, 68f)
 private val SQUARE = corners(14f, 14f, 86f, 14f, 86f, 86f, 14f, 86f)
 private val HEXAGON = corners(50f, 6f, 90f, 28f, 90f, 72f, 50f, 94f, 10f, 72f, 10f, 28f)
 private val KITE = corners(50f, 4f, 88f, 42f, 50f, 96f, 12f, 42f)
@@ -100,7 +104,7 @@ private val TALL_HEXAGON = corners(50f, 5f, 89f, 27.5f, 89f, 72.5f, 50f, 95f, 11
 /** Which outline each numeric die wears, by its number of sides. */
 private val OUTLINES: Map<Int, List<Offset>> =
   mapOf(
-    4 to TRIANGLE,
+    4 to LONG_DIE,
     6 to SQUARE,
     8 to HEXAGON,
     10 to KITE,

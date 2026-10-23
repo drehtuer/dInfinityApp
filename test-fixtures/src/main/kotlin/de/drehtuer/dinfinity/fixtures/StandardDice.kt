@@ -38,8 +38,8 @@ object StandardDice {
   /** The d2: a coin, not a cube. A set without one gets a d6 in its place. */
   val d2: Die = paired("d2", DieShape.Coin, listOf(1, 2))
 
-  /** The d4, read from the vertex pointing up, as every d4 is. A tetrahedron has no opposites to pair. */
-  val d4: Die = paired("d4", DieShape.Tetrahedron, listOf(1, 2, 3, 4))
+  /** The d4: a long die, read from the face on top, 1 across from 4 and 2 across from 3. */
+  val d4: Die = paired("d4", DieShape.ElongatedSquareBipyramid, listOf(1, 2, 3, 4))
 
   val d6: Die = paired("d6", DieShape.Cube, listOf(1, 2, 3, 5, 4, 6))
   val d8: Die = paired("d8", DieShape.Octahedron, listOf(1, 2, 3, 4, 5, 7, 6, 8))

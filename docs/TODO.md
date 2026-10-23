@@ -177,9 +177,8 @@ and read here, and a seed gives the same result with the renderer on and off.
       felt and on the oak — Pearl milky rather than faded, Resin clear enough
       to see the felt bent through it, Glass clear, Metal metal rather than
       grey plastic, Stone matte? Does the swatch beside the menu hint at the
-      right one? Then a d6 and a d4 at 6 %: do the edges look round
-      and do they still read as dice, and do the numbers near a d4's edges
-      still read where they wrap onto the bend?
+      right one? Then a d6 and a d4 at 6 %: do the edges look round and do
+      they still read as dice?
 - [ ] **Weight per die, so metal feels like metal** (owner, 2026-10-22: the
       metal colours look right). A set file already has `density` (steel's
       is 7.8 g/cm³), the solver already uses it for mass, and the set details
@@ -259,6 +258,14 @@ Fairness is done on the Pixel 10a (the d18 held to the worst-face bound), and
       be"), and the harness with coins (`-s d2`), which the sweep did not
       throw and which is what gave first
 
+- [ ] **Is the long d4's axis split chance?** The first release record
+      (2026-10-23) passes it at χ² 12.11 against 16.27, but its ±z faces came
+      up 50,491 times to the ±y faces' 49,509 — three standard deviations for
+      two pairs the solid's own symmetry makes identical, and `DieBodyTest`
+      finds the body symmetric. Roll it again on other seeds; if the split
+      holds, it is the d18's question on a second shape
+      (`docs/physics-and-rendering.md`, "What it measured")
+
 - [ ] Identical outcomes for identical seeds across JVM, emulator and device at
       ten thousand rolls and on a second phone. The golden suite already holds
       for its ten cases on both ABIs; any divergence is a release blocker.
@@ -280,16 +287,14 @@ while standing on another, p99 step at most 1.23 ms (60 dice) against 8.33.
 | deepest overlap (mm) | 0 | 3.6 | 5.6 | 4.4 | 6.4 | 5.3 | 6.0 | 6.4 | 4.8 |
 | turns after landing | 2.73 | 2.90 | 2.96 | 2.90 | 2.54 | 2.02 | 2.03 | 1.94 | 1.82 |
 
-- [ ] **`100d4` does not reliably settle.** Five of twenty-four seeds in
-      `JoltBridgeTest` reach the twelve-second backstop and give up (since #319
-      without taking the app with them). The bound is today's worst case. On
-      the Pixel 10a (2026-10-04, 200 throws, `tools/harness.sh -c 100 -s d4`):
-      median settle 1.29 s, p99 3.09 s, one roll gave up, and **3.07 % of the
-      dice are re-thrown** — at a hundred dice that is a second shake on
-      about 95 % of rolls. The watching is shortened (decision 88); the
-      cocked d4s are the next thing — spawn spread, d4 throw energy or
-      d4-on-d4 friction, each a physics change with the goldens and
-      `FairnessTest` behind it
+- [ ] **Long d4s are re-thrown more than the tetrahedron was** (decision
+      109; Pixel 10a, 2026-10-23, 200 throws each). The pile-ups are gone:
+      all twenty-four `100d4` seeds in `JoltBridgeTest` settle in under two
+      seconds (five gave up with the tetrahedron), and no harness roll gave
+      up. But 3.68 % of the dice in `20d4` and 5.28 % in `100d4` are re-thrown,
+      against 2.35 % and 3.07 % before. Find out why they end cocked — most
+      likely a long body leaning on a neighbour — and prevent it while they
+      move
 - [ ] **A hundred coins stack: 18–29 a seed are left on another coin by one
       throw** (Pixel 10a, 2026-10-04; four to ten under the old ladder, which
       re-threw them itself). None is read (decision 70), and
@@ -392,8 +397,8 @@ keeps them comparable.
       their surfaces with `5d6`; does `2d20` against `20d6` read as size? Is
       power-saving's one-second replay a throw or an effect?
 - [ ] **Legibility at arm's length.** `DieNumbers.FACE_SHARE` (with "0.78 or
-      0.78 squared", Open questions), the d4's `CORNER_HEIGHT`, the d18's small
-      numbers
+      0.78 squared", Open questions), the long d4's narrow faces, the d18's
+      small numbers
 - [ ] Power-saving feels instant and gives the same answer
 - [ ] **Exploding rolls:** does the wait between links read as part of the
       roll; does the added die look thrown (dropped from 25 mm); does it ever
@@ -526,20 +531,6 @@ Pixel 10a.
 
 ## After v1
 
-- [ ] **A long d4 in place of the tetrahedron** (owner, 2026-10-21). A
-      four-sided prism that lands on one of its four long faces, with short
-      ends it cannot stand on, read like every other die: the number on the
-      face that ends up on top. It would retire the d4's special rules —
-      numbers that belong to corners, three per face, the corner-pointing-up
-      reading (`docs/dice-sets.md`, "The d4"), `CORNER_HEIGHT`, the designer's
-      d4 masks, the oversized stamp clipping at a d4's edge — and should
-      help `100d4`, whose tetrahedra cock on one another (5.3). To decide
-      first: the ends' shape (a pyramid or a rounded cap steep enough that no
-      throw stands it up, which the harness has to show at zero), whether
-      `tetrahedron` stays in the catalogue for sets that name it, and how the
-      longer footprint counts in the capacity rule (`docs/tables.md`). A
-      physics change: fairness re-run, goldens re-recorded, and the prototype,
-      the designer and the docs changed together
 - [ ] More catalogue solids, `rhombic-triacontahedron` (d30) first
 - [ ] Author-supplied convex meshes, with the fairness preview they need
       (`docs/dice-sets.md`, "Shapes after v1")
@@ -639,7 +630,8 @@ None blocks code (design decision log of 2026-09-17).
 - [ ] History grouped by day, by saved roll, or by session as the app does?
 - [ ] Make-default on the set list rows as well as the detail screen?
 - [ ] The d18 as a true enneagonal trapezohedron, or a rounded barrel?
-- [ ] An oversized stamp on a d4 clips at the edge — keep, or shrink to fit?
+- [ ] An oversized stamp clips at the edge of a narrow face (a long d4's,
+      a d18's) — keep, or shrink to fit?
 - [ ] **A filled button's label is 3.65:1 on its accent, wants 4.5:1.** Fill
       with the 700 step, darken the label, or outline the primary action
       (`ModernistContrastTest` holds today's ratio)

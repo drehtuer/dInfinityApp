@@ -51,7 +51,7 @@ class DiePhysicalTest {
 
   @Test
   fun `a d4 and a d20 of one size do not weigh the same`() {
-    val d4 = DiePhysical.gramsOf(Die.standard("d4", DieShape.Tetrahedron))
+    val d4 = DiePhysical.gramsOf(Die.standard("d4", DieShape.ElongatedSquareBipyramid))
     val d20 = DiePhysical.gramsOf(Die.standard("d20", DieShape.Icosahedron))
 
     assertTrue(d4 < d20, "a d4 is the thinner solid inside the same sphere")
@@ -168,7 +168,7 @@ class DiePhysicalTest {
   fun `a set says what is true of every die in it`() {
     val dice =
       listOf(
-        Die.standard("d4", DieShape.Tetrahedron),
+        Die.standard("d4", DieShape.ElongatedSquareBipyramid),
         Die.standard("d20", DieShape.Icosahedron),
       )
 

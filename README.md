@@ -91,7 +91,8 @@ a tumble; everything else is real.
 - **Outcome graph** — see the exact probability distribution before you roll,
   for a typed formula or for a handful of dice picked by tapping, with mean
   and standard deviation.
-- **Standard dice** — d2, d4, d6, d8, d10, d12, d18, d20, d100 (as two d10s;
+- **Standard dice** — d2, d4 (a long die, read from the face on top like the
+  rest), d6, d8, d10, d12, d18, d20, d100 (as two d10s;
   `d%` is an alias for `d100`), and Fudge dice (`dF`), whose total carries its
   sign.
 - **Extensible dice sets** — dice are defined in plain text files with

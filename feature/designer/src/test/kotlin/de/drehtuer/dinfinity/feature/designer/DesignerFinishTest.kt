@@ -142,14 +142,14 @@ class DesignerFinishTest {
   }
 
   @Test
-  fun `the rounding is said in millimetres as the solver gives it, half on a d4`() {
+  fun `the rounding is said in millimetres as the solver gives it, the d4's included`() {
     val cube = DesignerPresenter(d6)
-    val tetrahedron = DesignerPresenter(BuiltinDiceSet.set.dice.first { it.shape == DieShape.Tetrahedron })
+    val d4 = DesignerPresenter(BuiltinDiceSet.set.dice.first { it.shape == DieShape.ElongatedSquareBipyramid })
 
-    // 3 % of a 16 mm die is 0.48 mm; a d4's points are cut back to about half
-    // (`docs/physics-and-rendering.md`, "Rounded edges": 0.25 mm).
+    // 3 % of a 16 mm die is 0.48 mm, and the long d4's points are blunt enough
+    // to take all of it (`docs/physics-and-rendering.md`, "Rounded edges").
     assertEquals(0.48, cube.state.roundedMm, 1e-9)
-    assertEquals(0.25, tetrahedron.state.roundedMm, 1e-9)
+    assertEquals(0.48, d4.state.roundedMm, 1e-9)
     cube.rounded(0.06)
     assertEquals(0.96, cube.state.roundedMm, 1e-9)
   }

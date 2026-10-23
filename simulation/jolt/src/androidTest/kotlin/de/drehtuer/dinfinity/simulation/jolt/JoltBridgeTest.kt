@@ -331,9 +331,8 @@ class JoltBridgeTest {
               world.addDie(ShapeGeometry.hullOf(die, scale), die.material, layout.placementOf(index, dice.size))
             }
             world.finish()
-            // Null when the roll gave up. A hundred d4s do, on some seeds, and
-            // always have — what is new is that giving up says so instead of
-            // reading every die off the face it was nearest.
+            // Null when the roll gave up, which says so instead of reading
+            // every die off the face it was nearest.
             RollLoop(spec, world, ShakeDriver(emptyList())).runOrGiveUp()
           }
         if (outcome != null) {
@@ -343,6 +342,9 @@ class JoltBridgeTest {
         seed to outcome
       }
 
+    // Said every run, so that the bound below can be set from what it does.
+    println("100d4: " + report.joinToString { (seed, o) -> "$seed:" + (o?.steps?.toString() ?: "gave up") })
+
     // The rule that may never bend, whatever the pile does: nothing touches a
     // die that has come to rest (`docs/physics-and-rendering.md`, rung 4).
     assertTrue(
@@ -351,19 +353,15 @@ class JoltBridgeTest {
       report.all { (_, outcome) -> outcome == null || outcome.postRestCorrections == 0 },
     )
 
-    // And the bar that is *not* met. `100d4` runs out of its twelve seconds on
-    // some seeds and always has: on this sample, five of twenty-four with the
-    // spawn streams as they are now and two of twenty-four with the correlated
-    // ones this replaced — a difference well inside noise at this size. What
-    // was hiding it was the eight seeds this used to try, which happened to be
-    // the easy ones. The target is zero and it belongs to prevention
-    // (`docs/TODO.md`, Step 5.3 and 5.5); the bound here is what today's worst
-    // case is, so that it cannot quietly get worse in the meantime.
+    // And every seed finishes. The tetrahedron ran out of its twelve seconds on
+    // five of these twenty-four; the long d4, which rests on a long face and
+    // falls off its ends, settles all of them in under two seconds on the
+    // Pixel 10a (decision 109).
     val stuck = report.filter { (_, outcome) -> outcome == null }
     assertTrue(
-      "a hundred d4s ran out of time on more seeds than they used to: " +
+      "a hundred d4s ran out of time: " +
         report.joinToString { (seed, o) -> "$seed:" + (o?.steps?.toString() ?: "gave up") },
-      stuck.size <= D4_PILE_UPS_ALLOWED,
+      stuck.isEmpty(),
     )
     // And nothing that *did* finish was finished for it. A forced settle is a
     // die read off a face it never landed on, and there is no longer any code
@@ -533,7 +531,7 @@ class JoltBridgeTest {
     )
   }
 
-  private fun d4(): Die = Die.standard("d4", DieShape.Tetrahedron)
+  private fun d4(): Die = Die.standard("d4", DieShape.ElongatedSquareBipyramid)
 
   private fun d20(): Die = Die.standard("d20", DieShape.Icosahedron)
 
@@ -582,17 +580,6 @@ class JoltBridgeTest {
 
     /** Higher above the floor than this, in die radii, and something should be under it. */
     const val AIRBORNE = 2.5
-
-    /**
-     * How many of twenty-four `100d4` seeds may run out of their twelve
-     * seconds.
-     *
-     * **Not a target — a record of where prevention has got to.** The target is
-     * zero (`docs/TODO.md`, Step 5.3). This is today's measured worst case, and
-     * it is written down so that the next change to the spawn or the ladder
-     * either improves it or is noticed.
-     */
-    const val D4_PILE_UPS_ALLOWED = 5
 
     val SEEDS = listOf(1L, 2L, 3L, 4L, 5L, 6L)
   }

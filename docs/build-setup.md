@@ -568,7 +568,7 @@ tools/harness.sh -n 200                  # a quick look
 
 dinfinity-phone                          # the reference device
 tools/harness.sh -n 10000                # the run Step 5.5 asks for
-tools/harness.sh -n 200 -c 100 -s d4     # the worst case there is
+tools/harness.sh -n 200 -c 100 -s d4     # a hundred long d4s at the capacity cap
 tools/harness.sh --soak 5m               # soak mode: roll for five minutes
 tools/harness.sh --frames -n 50          # what a frame's simulation costs
 tools/harness.sh --rendered              # what a drawn frame costs (Step 5.7)
@@ -1140,10 +1140,50 @@ workflow refuses more than it accepts:
 | --- | --- |
 | A release for the tag already exists | Releases are immutable — never move, delete or re-tag a published version, ship a new one (`.claude/CLAUDE.md`). The tag itself is protected by the repository's `releases` ruleset |
 | The tag disagrees with `version.txt` | The APK is named from `version.txt`, so `v1.2.0` around an APK called `dInfinityApp-1.1.0.apk` is a release nobody can reason about. Bump `version.txt` in the commit you tag |
+| The dice have not been shown fair | `verifyFairnessRecord`: `fairness/record.txt` has to be a passing run of 100,000 throws a shape, at the dice's own rounding, of exactly the physics being released ("Fairness before a release", below) |
 | The APK is not signed by the release key | Checked against the fingerprint in `keystore/release-certificate.sha256`. Without `keystore.properties` the build produces an *unsigned* APK rather than failing, and a release signed with the debug key — or a regenerated one — installs as a different app and can never update anyone |
 
 The signing key is rebuilt from the repository secrets for the length of the
 job and removed again whatever happens, including on failure.
+
+### Fairness before a release
+
+Whether the dice are fair is `FairnessTest` throwing every catalogue shape a
+hundred thousand times through the real physics and judging the counts — a
+χ² test at one in a thousand and a worst-face bound of 1 %
+(`docs/physics-and-rendering.md`, "Are the dice fair"). It needs a device, so
+CI cannot run it, and the ordinary device suite runs it at 200 throws a shape,
+which only catches a die that never shows a face. So a release asks for the
+real run, made before the tag:
+
+```mermaid
+flowchart LR
+  run["tools/fairness.sh<br/>on the Pixel 10a, ~15 min"] --> record["fairness/record.txt<br/>fingerprint, verdict, χ² per shape"]
+  record --> commit["committed with the release"]
+  commit --> tag["tag vX.Y.Z"]
+  tag --> gate["release.yml: verifyFairnessRecord"]
+  gate -->|"same physics, passed"| build["signed APK"]
+  gate -->|"anything else"| refused["refused"]
+```
+
+```sh
+dinfinity-phone
+tools/fairness.sh            # writes fairness/record.txt and says whether a release would take it
+git add fairness/record.txt  # commit it in the release PR
+```
+
+**What ties the record to the release is the physics' fingerprint**
+(`./gradlew physicsFingerprint`): a SHA-256 over every file that decides how a
+die lands — `simulation/api` and `simulation/jolt` with its native code, the
+shapes and materials in `core/model`, the bundled set's dice, the native
+toolchain in `gradle.properties`, and `FairnessTest` itself (`dinfinity.fairness`).
+Any edit to one of them, a comment included, makes the record stale and the
+release says so, with both fingerprints. That is strict on purpose: telling a
+harmless edit from a harmful one is the judgement the hundred thousand throws
+replace, and it costs one run per release. The record also names the commit,
+the device and the date, and keeps each shape's χ², limit and worst face, so
+the figures `docs/physics-and-rendering.md` quotes are in the repository with
+the release they belong to.
 
 One quirk worth knowing if you read the log: `apksigner verify` reports only the
 scheme it actually used, and for an APK whose `minSdk` is 36 that is v3 alone —

@@ -38,25 +38,6 @@ object LabelRoom {
   const val FACE_SHARE: Double = 0.78
 
   /**
-   * How tall a d4's numbers are, as a fraction of the cell.
-   *
-   * Of the cell rather than solved against the edges the way [FACE_SHARE] is,
-   * because these do not sit in the middle of the face: three of them share
-   * one triangle, each near its own corner, and what bounds them is each other
-   * rather than the edges.
-   */
-  const val CORNER_HEIGHT: Double = 0.20
-
-  /**
-   * How far out from the middle of the cell a corner-read number sits, as a
-   * fraction of the way to the corner it belongs to.
-   *
-   * Not all the way: a number printed *at* a corner runs off the edge of the
-   * triangle, and a real d4 prints them just inside it.
-   */
-  const val CORNER_REACH: Double = 0.62
-
-  /**
    * Where a label goes in the middle of a face with these [corners].
    *
    * Null when there is nothing to print or nowhere to print it — a face with
@@ -93,57 +74,6 @@ object LabelRoom {
       marked = marked,
     )
   }
-
-  /**
-   * Where a label goes at one [corner] of a face, each turned to face its own
-   * corner — what a d4 does, because its numbers belong to corners rather
-   * than to faces (`docs/dice-sets.md`, "The d4").
-   *
-   * [corner] is the corner itself, in the cell's coordinates; how far inside
-   * it the number sits is [CORNER_REACH] and is decided here, so that the
-   * guide under a designer's canvas and the number a stamp puts down land in
-   * the same place.
-   */
-  fun cornered(
-    corners: List<Pair<Double, Double>>,
-    corner: Pair<Double, Double>,
-    text: String,
-    face: Typeface = BuiltinFont.face,
-    marked: Boolean = false,
-  ): Placement? {
-    if (text.isEmpty()) return null
-    val (outX, outY) = inside(corner)
-    // Held to what the polygon has at that point. A number placed at a corner
-    // is nearer two edges than anything in the middle is, and a d4 whose
-    // numbers ran over its own edges would be the one die in the set that
-    // could not be read.
-    val height =
-      minOf(
-        CORNER_HEIGHT,
-        heightAt(corners, Typesetter.inkWidth(Typesetter.printed(text, marked), 1.0, face), outX, outY),
-      )
-    if (height <= 0) return null
-    return Placement(
-      centreX = outX,
-      centreY = outY,
-      height = height,
-      // Up, for this number, is the way its own corner lies. StrictMath
-      // rather than the platform's, which is `simulation/api`'s `Exact` for
-      // the same reason: the same answer on every phone.
-      turns = StrictMath.atan2(-(outX - HALF), -(outY - HALF)) / FULL_TURN,
-      marked = marked,
-    )
-  }
-
-  /**
-   * [corner] pulled in towards the middle of the cell by [CORNER_REACH].
-   *
-   * Where a corner-read number's middle sits, and where the designer's guide
-   * for it is drawn — one answer, so that tracing the guide and stamping the
-   * number cannot come out in two places.
-   */
-  fun inside(corner: Pair<Double, Double>): Pair<Double, Double> =
-    HALF + (corner.first - HALF) * CORNER_REACH to HALF + (corner.second - HALF) * CORNER_REACH
 
   /**
    * The biggest a label of this shape can be on this face, and where on it.
@@ -305,8 +235,6 @@ object LabelRoom {
   private const val TIE = 1e-9
 
   private const val HALF = 0.5
-
-  private const val FULL_TURN = 2 * Math.PI
 }
 
 /**

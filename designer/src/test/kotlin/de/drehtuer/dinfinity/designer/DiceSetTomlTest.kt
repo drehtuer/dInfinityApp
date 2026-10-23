@@ -5,7 +5,6 @@ import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.DieMaterial
 import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.core.model.Face
-import de.drehtuer.dinfinity.core.model.FaceRead
 import de.drehtuer.dinfinity.core.model.TableColorMode
 import de.drehtuer.dinfinity.core.model.TableLight
 import de.drehtuer.dinfinity.core.model.TableLook
@@ -91,23 +90,6 @@ class DiceSetTomlTest {
     val faces = back.dice.single().faces
 
     assertEquals("00", faces.first().label)
-  }
-
-  @Test
-  fun `a die read from a corner says so, because that is not what a coin does`() {
-    val faceUpTetrahedron =
-      Die(
-        id = "flat-d4",
-        shape = DieShape.Tetrahedron,
-        faces = List(4) { Face.labelled(index = it, value = it + 1) },
-        read = FaceRead.FaceUp,
-      )
-
-    // A tetrahedron is read vertex-up by nature, so a set that reads one
-    // face-up has to say so or the file means something else.
-    val back = read(DiceSet(id = "mine", name = "My dice", version = "1.0.0", dice = listOf(faceUpTetrahedron)))
-
-    assertEquals(FaceRead.FaceUp, back.dice.single().read)
   }
 
   @Test

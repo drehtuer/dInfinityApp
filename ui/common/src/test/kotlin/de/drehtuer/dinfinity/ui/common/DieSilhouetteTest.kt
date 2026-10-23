@@ -46,7 +46,7 @@ class DieSilhouetteTest {
 
   @Test
   fun `each die wears the outline it is recognised by`() {
-    assertEquals(3, outlineOf(Sides.Numeric(4))?.size)
+    assertEquals("a long d4 seen from above: a long face between two points", 6, outlineOf(Sides.Numeric(4))?.size)
     assertEquals(4, outlineOf(Sides.Numeric(6))?.size)
     assertEquals(4, outlineOf(Sides.Numeric(10))?.size)
     assertEquals(5, outlineOf(Sides.Numeric(12))?.size)

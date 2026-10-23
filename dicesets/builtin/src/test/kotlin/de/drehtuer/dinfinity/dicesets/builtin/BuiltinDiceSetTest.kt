@@ -49,7 +49,7 @@ class BuiltinDiceSetTest {
   @Test
   fun `each standard die is the solid its name means`() {
     assertEquals(DieShape.Coin, set.die("d2")?.shape)
-    assertEquals(DieShape.Tetrahedron, set.die("d4")?.shape)
+    assertEquals(DieShape.ElongatedSquareBipyramid, set.die("d4")?.shape)
     assertEquals(DieShape.Cube, set.die("d6")?.shape)
     assertEquals(DieShape.Octahedron, set.die("d8")?.shape)
     assertEquals(DieShape.PentagonalTrapezohedron, set.die("d10")?.shape)
@@ -68,8 +68,8 @@ class BuiltinDiceSetTest {
   }
 
   @Test
-  fun `a d4 is read from the vertex at the top`() {
-    assertEquals(FaceRead.VertexUp, set.die("d4")?.read)
+  fun `a d4 is read from the face on top, like every die`() {
+    assertEquals(FaceRead.FaceUp, set.die("d4")?.read)
   }
 
   @Test
@@ -105,7 +105,7 @@ class BuiltinDiceSetTest {
   }
 
   @Test
-  fun `a d4 keeps one to four at its corners, having no opposite faces to pair`() {
+  fun `a d4 is one across from four and two across from three`() {
     assertEquals(listOf(1, 2, 3, 4), requireNotNull(set.die("d4")).values())
   }
 
