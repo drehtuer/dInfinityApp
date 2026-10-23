@@ -1342,22 +1342,30 @@ stirring is a bug of its own, and has its own task (`docs/TODO.md`, Step 5.2).
 
 ### What it measured
 
-100,000 rolls of each shape on the Pixel 10a, 800,000 in about fifteen minutes:
+The release record (`fairness/record.txt`, 2026-10-23): 100,000 rolls of each
+shape on the Pixel 10a, 800,000 in about twenty-three minutes:
 
 | shape | χ² | limit | worst face off |
 | --- | --- | --- | --- |
-| coin | 0.80 | 10.83 | 0.141 % |
-| tetrahedron (retired, decision 109) | 0.34 | 16.27 | 0.062 % |
-| cube | 1.99 | 20.52 | 0.136 % |
-| octahedron | 12.83 | 24.32 | 0.286 % |
-| pentagonal trapezohedron (d10) | 5.29 | 27.88 | 0.135 % |
-| dodecahedron | 12.73 | 31.26 | 0.239 % |
-| **enneagonal trapezohedron (d18)** | **197.34** | **40.79** | 0.455 % |
-| icosahedron | 21.35 | 43.82 | 0.131 % |
+| coin | 1.00 | 10.83 | 0.158 % |
+| long d4 | 12.11 | 16.27 | 0.420 % |
+| cube | 2.86 | 20.52 | 0.158 % |
+| octahedron | 7.48 | 24.32 | 0.244 % |
+| pentagonal trapezohedron (d10) | 18.42 | 27.88 | 0.275 % |
+| dodecahedron | 12.69 | 31.26 | 0.221 % |
+| **enneagonal trapezohedron (d18)** | **267.30** | **40.79** | 0.609 % |
+| icosahedron | 9.53 | 43.82 | 0.093 % |
 
-The seven that pass sum to χ² 55.33 against 55 degrees of freedom, which is as
-close to "exactly as fair as chance predicts" as a number gets. That is also
-what makes the eighth worth believing.
+The seven that pass sum to χ² 64.09 against 55 degrees of freedom, less than
+one standard deviation out — as fair as chance predicts. That is also what
+makes the eighth worth believing. (The tetrahedron the long d4 replaced
+measured χ² 0.34 in the run before, decision 109.)
+
+The long d4 passes, but nearer its limit than any other shape, and the way its
+counts split is worth a second look: the two faces across one axis came up
+50,491 times and the two across the other 49,509, about three standard
+deviations apart for two pairs that are mirror images of each other
+(`docs/TODO.md`, Step 5.2).
 
 ### The d18 is not fair, and the shape is not why
 
