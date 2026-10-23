@@ -112,6 +112,11 @@ structure.
 - Pushing a tag of that form triggers the release build of the app and the
   documentation. **Releases are immutable**: never move, delete or re-tag a
   published version; ship a new one instead.
+- **Before a release, show the dice fair.** Run `tools/fairness.sh` on the
+  phone (100,000 throws a shape) and commit the `fairness/record.txt` it
+  writes in the release PR. The release workflow refuses a tag whose physics
+  has no passing record of its own (`docs/build-setup.md`, "Fairness before a
+  release").
 - Release builds are optimised (R8/ProGuard, shrinking, no debug symbols in
   the APK). Development and testing use **debug** builds.
 - APK names:

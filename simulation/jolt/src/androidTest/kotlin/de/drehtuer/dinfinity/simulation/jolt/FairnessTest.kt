@@ -1,5 +1,6 @@
 package de.drehtuer.dinfinity.simulation.jolt
 
+import android.util.Log
 import androidx.test.platform.app.InstrumentationRegistry
 import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.DieInstance
@@ -120,6 +121,9 @@ class FairnessTest {
     }
 
     println(report)
+    // One line a shape under a tag of its own, which is what `tools/fairness.sh`
+    // collects into the record a release is checked against.
+    report.lineSequence().filter { it.isNotBlank() }.forEach { Log.i(REPORT_TAG, it) }
     assertTrue("$report\nunfair: $unfair", unfair.isEmpty())
   }
 
@@ -226,6 +230,9 @@ class FairnessTest {
      * small enough that it does not turn every run into a coffee break.
      */
     const val QUICK_ROLLS = 200
+
+    /** The logcat tag the report goes out under (`tools/fairness.sh`). */
+    const val REPORT_TAG = "dinfinity.fairness"
 
     /** Below this the chi-squared test is not asked, because it would mean nothing. */
     const val ENOUGH_TO_JUDGE = 2_000

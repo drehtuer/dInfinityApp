@@ -3,6 +3,8 @@
 
 plugins {
   base
+  // The release's fairness gate: `physicsFingerprint` and `verifyFairnessRecord`.
+  id("dinfinity.fairness")
 }
 
 /**

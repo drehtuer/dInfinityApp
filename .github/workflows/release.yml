@@ -55,6 +55,14 @@ jobs:
 
       - uses: ./.github/actions/setup-android-build
 
+      # The dice have to have been shown fair, and CI has no device to throw
+      # them on. So the throwing is done on the reference device before the
+      # tag (tools/fairness.sh), and this refuses a tag whose physics has no
+      # passing hundred-thousand-roll run of its own in fairness/record.txt
+      # (docs/build-setup.md, "Fairness before a release").
+      - name: Check the dice were shown fair
+        run: ./gradlew --console=plain verifyFairnessRecord
+
       # The release key never reaches the repository — it is rebuilt here from
       # the secrets and removed again, whatever happens afterwards.
       - name: Restore the signing key

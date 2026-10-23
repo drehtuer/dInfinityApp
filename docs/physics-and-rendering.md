@@ -1224,6 +1224,14 @@ Headless, but the same simulation a watched roll steps: the only difference is
 who asks for the steps ("Power-saving mode"), so a fairness result here is a
 fairness result for the app.
 
+**Every release is shown fair, and the release checks it.** CI has no device,
+so the hundred-thousand-roll run is made on the Pixel 10a before the tag
+(`tools/fairness.sh`) and committed as `fairness/record.txt`, which carries the
+fingerprint of the physics it measured. The release workflow refuses a tag
+whose physics has no passing record of its own (`docs/build-setup.md`,
+"Fairness before a release"). The ordinary device suite's 200 throws a shape
+only catch a die that never shows a face.
+
 **A throw that gives up is a figure, not a crash.** A throw that is still
 moving at the twelve-second backstop has no face to count
 (`SettleRule.HARD_CAP_SECONDS`). Before the corner fillets, that was about one

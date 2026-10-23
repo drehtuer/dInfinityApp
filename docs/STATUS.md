@@ -37,6 +37,10 @@ This is a snapshot, not a changelog — git history is the changelog.
   and a set file naming it is refused — a breaking change to the set format,
   so the next release is **v1.0.0**. Built and tested on the JVM; the device
   suite, fairness, the goldens and `100d4` wait for the phone.
+- **In flight: a fairness gate on every release** (`feature/fairness-gate`):
+  `tools/fairness.sh` throws every shape 100,000 times on the phone and
+  writes `fairness/record.txt`, tied to the physics by a fingerprint; the
+  release workflow refuses a tag without a passing record of its own.
 - **Next:** glass and resin as the two materials they are, with lighter
   shadows (`docs/TODO.md` 5.9), and the lag the owner still sees on some
   throws (5.6).
