@@ -1299,11 +1299,18 @@ not a margin.
 **Settling**, 200 throws of 20 dice each (`tools/harness.sh -n 200 -c 20
 -s <shape> --rounding <share>`):
 
-| | d4 (the tetrahedron, before decision 109) | d6 | d20 |
+| | long d4 | d6 | d20 |
 | --- | --- | --- | --- |
-| re-thrown at 1.5 % / 3 % / 12 % | 2.43 / 2.35 / 0.00 % | 0.88 / 0.48 / 0.20 % | 1.10 / 1.28 / 1.20 % |
-| median settle at 1.5 % / 3 % / 12 % | 0.76 / 0.76 / 0.73 s | 0.85 / 0.85 / 0.85 s | 0.96 / 0.96 / 0.94 s |
-| turns after landing at 1.5 % / 3 % / 12 % | 1.97 / 2.03 / 2.27 | 2.44 / 2.52 / 2.86 | 2.64 / 2.69 / 2.78 |
+| re-thrown at 1.5 % / 3 % / 12 % | 3.88 / 3.68 / — % | 0.88 / 0.48 / 0.20 % | 1.10 / 1.28 / 1.20 % |
+| median settle at 1.5 % / 3 % / 12 % | 1.30 / 1.01 / — s | 0.85 / 0.85 / 0.85 s | 0.96 / 0.96 / 0.94 s |
+| turns after landing at 1.5 % / 3 % / 12 % | 2.65 / 2.70 / — | 2.44 / 2.52 / 2.86 | 2.64 / 2.69 / 2.78 |
+
+The long d4 was measured after decision 109 (Pixel 10a, 2026-10-23), when
+12 % was already past what a set may ask for. The tetrahedron it replaced was
+re-thrown less (2.43 / 2.35 %) and settled sooner (0.76 s); a long die is
+read off a long face like any other, but lying against a neighbour it tilts
+past the fifteen degrees that make it cocked more often than a squat one does
+(`docs/TODO.md`, Step 5.3).
 
 No throw gave up, none was forced to settle and no die came to rest on
 another at any of the nine; the overlap and re-throw bars fail at every
