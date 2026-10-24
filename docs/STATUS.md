@@ -40,8 +40,7 @@ This is a snapshot, not a changelog — git history is the changelog.
 - **Every release is shown fair**: `tools/fairness.sh` throws every shape
   100,000 times on the phone into `fairness/record.txt`, tied to the physics
   by a fingerprint, and the release workflow refuses a tag without a passing
-  record of its own. The long d4's axis split is a question for a second run
-  (`docs/TODO.md` 5.2).
+  record of its own. The current record passes (2026-10-24).
 - **Next:** glass and resin as the two materials they are, with lighter
   shadows (`docs/TODO.md` 5.9), and the lag the owner still sees on some
   throws (5.6).
