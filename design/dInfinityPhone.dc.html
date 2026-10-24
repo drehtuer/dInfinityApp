@@ -1237,7 +1237,7 @@ const POLY={4:[[247.8,6.4],[247.8,313.6],[72.2,313.6],[72.2,6.4]],6:[[28,28],[29
 const NUM={2:[160,160,190],4:[160,160,110],6:[160,160,180],8:[160,200,118],10:[160,112,125],12:[160,168,172],18:[160,76,95],20:[160,200,104],100:[160,200,104]};
 const PIPG=[96,160,224];
 const PIPS={1:[[1,1]],2:[[0,0],[2,2]],3:[[0,0],[1,1],[2,2]],4:[[0,0],[2,0],[0,2],[2,2]],5:[[0,0],[2,0],[1,1],[0,2],[2,2]],6:[[0,0],[2,0],[0,1],[2,1],[0,2],[2,2]]};
-const pipDots=(n,ink)=>(PIPS[n]||[]).map(p=>({cx:PIPG[p[0]],cy:PIPG[p[1]],ink:ink||'#201e1d'}));                                        // authored glyph size for d4 corner values
+const pipDots=(n,ink)=>(PIPS[n]||[]).map(p=>({cx:PIPG[p[0]],cy:PIPG[p[1]],ink:ink||'#201e1d'}));
 const _FV={};
 function faceVals(sides){if(_FV[sides])return _FV[sides];
   const N=solidGeom(sides).slice(0,sides).map(f=>f.n||[0,0,1]),out=new Array(N.length).fill(null);let v=1;   // a long d4's ends read nothing

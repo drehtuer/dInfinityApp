@@ -79,10 +79,13 @@ object DiePhysical {
   fun gramsOf(
     shape: DieShape,
     material: DieMaterial,
-  ): Double = material.density * DieVolume.cm3(shape, material.sizeMm)
+  ): Double = gramsOf(Die.standard(shape.id, shape, material))
 
-  /** What one [die] weighs, in grams. */
-  fun gramsOf(die: Die): Double = gramsOf(die.shape, die.material)
+  /** What one [die] weighs, in grams: at the size it is thrown at. */
+  fun gramsOf(die: Die): Double {
+    val material = die.physicalMaterial
+    return material.density * DieVolume.cm3(die.shape, material.sizeMm)
+  }
 
   /** [sizeMm] as a percentage of the average die. */
   fun sizePercentOf(sizeMm: Double): Double = PERCENT * sizeMm / AVERAGE_SIZE_MM

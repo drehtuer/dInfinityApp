@@ -140,7 +140,7 @@ sound = "felt"
 | `die.read` | no | `face-up`, the default and the only value: every die is read from the face on top. `vertex-up` went with the tetrahedron (decision 109) and is refused. |
 | `die.texture` | no | Path to a PNG/WebP atlas, relative, inside the set folder. |
 | `defaults.translucency`, `die.translucency` | no | Per cent, `0` solid to `100` glass, clamped. Above `0` the die is drawn as resin: the felt and the dice behind it show *through* it, bent and tinted by the die's own `color` — more of it the higher the value, and wholly at `100` (`docs/physics-and-rendering.md`, "A die you can see into"). How milky it is, how thick and how it tints what is behind it are worked out from this, `color`, `size_mm` and `roughness` — a low translucency is milky, a high one glassy, and a rough die is frosted — so there are no resin fields of their own. The numerals and any artwork stay fully opaque whatever it is, because a face you cannot read is not a die. |
-| `defaults.edge_rounding`, `die.edge_rounding` | no | How round the die's edges and corners are, as a share of `size_mm`: `0.03` (0.48 mm on a 16 mm die) when not given, clamped to `0.015`–`0.06` with a warning, refused when it is not a number. The top is measured, not chosen: past 6 % a coin's rim starts to roll like a wheel and throws stop settling (`docs/physics-and-rendering.md`, "How round a die may be"; decision 100). It is a physical property, not a look: it is the solver's *convex radius*, and the renderer draws the die with exactly the rounding the solver collides (`docs/physics-and-rendering.md`, "Dice bodies" and "Rounded edges"). The solver gives a sharp corner less than is asked — a d4 gets half, at every value — so a d4's points never go blunt. Rounder dice tumble a little longer and land a little differently; a fairness run can be asked about any value of it (`FairnessTest`'s `edgeRounding`) (`docs/architecture.md`, decision 94). |
+| `defaults.edge_rounding`, `die.edge_rounding` | no | How round the die's edges and corners are, as a share of `size_mm`: `0.03` (0.48 mm on a 16 mm die) when not given, clamped to `0.015`–`0.06` with a warning, refused when it is not a number. The top is measured, not chosen: past 6 % a coin's rim starts to roll like a wheel and throws stop settling (`docs/physics-and-rendering.md`, "How round a die may be"; decision 100). It is a physical property, not a look: it is the solver's *convex radius*, and the renderer draws the die with exactly the rounding the solver collides (`docs/physics-and-rendering.md`, "Dice bodies" and "Rounded edges"). Every catalogue solid gets the rounding it asks for, the long d4's points included (decision 109). Rounder dice tumble a little longer and land a little differently; a fairness run can be asked about any value of it (`FairnessTest`'s `edgeRounding`) (`docs/architecture.md`, decision 94). |
 | `die.color`, `number_color`, `roughness`, `metallic`, `size_mm`, `density`, `restitution`, `friction` | no | Per-die overrides of `defaults`. |
 | `table.*` | no | Table looks; fields and limits in `docs/tables.md`. |
 
@@ -288,9 +288,16 @@ flowchart LR
   end1["point"] --- body["four long faces, 1 to 4<br/>0.8 wide, 1.4 long"] --- end2["point"]
 ```
 
-- **Proportions.** In units of the bounding radius, half of `size_mm`: the
-  points are on the bounding sphere, so the die is `size_mm` long; it is 0.8
-  wide, the prism is 1.4 long and each end 0.3, which is 2.5 to 1 overall.
+- **Proportions.** In units of the bounding radius: the points are on the
+  bounding sphere, the die is 0.8 wide, the prism is 1.4 long and each end
+  0.3, which is 2.5 to 1 overall.
+- **A quarter longer than its set's `size_mm`.** Its bounding sphere is
+  1.25 × `size_mm` across, so a 16 mm set's d4 is 20 mm long and 8 mm wide.
+  At `size_mm` itself it was 6.4 mm wide beside a d6 edge of 9.2 mm and looked
+  too small. This is a rule of the shape, not something a file writes: every
+  set's d4 grows by it, and a d4's own `size_mm` means the same as any other
+  die's (`LongDieShape.SIZE`; decision 110). It stops at the format's 40 mm,
+  so a set of 32 mm or more has a d4 40 mm long.
 - **It cannot rest on an end.** A die rests on a face when its middle is over
   that face. An end's triangle is short enough that the point under the middle
   is past its base, a fifth beyond it, so a die on an end tips back onto a long
@@ -353,7 +360,8 @@ from (`docs/face-designer.md`).
 ### Size
 
 `size_mm` is **how wide the die is**: the diameter of the sphere its corners
-sit on, whatever solid it is. A 16 mm d6, a 16 mm d12 and a 16 mm d20 are all
+sit on, whatever solid it is, except the long d4, which is a quarter longer
+("The d4"). A 16 mm d6, a 16 mm d12 and a 16 mm d20 are all
 16 mm across at their widest. Half of it is the bounding radius the table's
 capacity rule sums (`docs/tables.md`).
 
@@ -364,11 +372,11 @@ dodecahedron's edge is 0.36 of its width to get one. Read as an edge length,
 `size_mm = 16` makes a d12 that is 45 mm across, and dice that size under
 ordinary gravity fall slowly enough to look weightless.
 
-One consequence worth knowing: a d4 and a d20 of the same `size_mm` have the
-same bounding sphere, so the long d4 — as long as the d20 is wide, and
-slender — is the smaller solid inside it. That is how a
-real set looks — the dice are sized to sit together in a hand, not to enclose
-the same volume.
+One consequence worth knowing: dice of one `size_mm` do not enclose the same
+volume. A d6 is the smaller solid inside the sphere a d20 fills, and the long
+d4, a quarter longer than the d20 is wide, is still the slenderest of them.
+That is how a real set looks — the dice are sized to sit together in a hand,
+not to weigh the same.
 
 ### Weight, translucency and size, as a person sets them
 

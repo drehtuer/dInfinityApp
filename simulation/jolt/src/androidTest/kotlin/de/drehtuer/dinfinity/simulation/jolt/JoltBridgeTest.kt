@@ -91,7 +91,7 @@ class JoltBridgeTest {
         dice.forEachIndexed { index, die ->
           world.addDie(
             hull = ShapeGeometry.hullOf(die),
-            material = die.material,
+            material = die.physicalMaterial,
             placement = layout.placementOf(index, dice.size),
           )
         }
@@ -115,7 +115,7 @@ class JoltBridgeTest {
 
     world.use {
       dice.forEachIndexed { index, die ->
-        world.addDie(ShapeGeometry.hullOf(die), die.material, layout.placementOf(index, dice.size))
+        world.addDie(ShapeGeometry.hullOf(die), die.physicalMaterial, layout.placementOf(index, dice.size))
       }
       world.finish()
 
@@ -265,7 +265,7 @@ class JoltBridgeTest {
         dice.forEachIndexed { index, die ->
           world.addDie(
             hull = ShapeGeometry.hullOf(die, scale),
-            material = die.material,
+            material = die.physicalMaterial,
             placement = layout.placementOf(index, dice.size),
           )
         }
@@ -328,7 +328,7 @@ class JoltBridgeTest {
         val outcome =
           world.use {
             dice.forEachIndexed { index, die ->
-              world.addDie(ShapeGeometry.hullOf(die, scale), die.material, layout.placementOf(index, dice.size))
+              world.addDie(ShapeGeometry.hullOf(die, scale), die.physicalMaterial, layout.placementOf(index, dice.size))
             }
             world.finish()
             // Null when the roll gave up, which says so instead of reading
@@ -390,7 +390,7 @@ class JoltBridgeTest {
         val landed =
           world.use {
             dice.forEachIndexed { index, die ->
-              world.addDie(ShapeGeometry.hullOf(die), die.material, layout.placementOf(index, dice.size))
+              world.addDie(ShapeGeometry.hullOf(die), die.physicalMaterial, layout.placementOf(index, dice.size))
             }
             world.finish()
             // A roll that gave up still left its dice somewhere, and where
@@ -459,7 +459,7 @@ class JoltBridgeTest {
         val states =
           world.use {
             dice.forEachIndexed { index, die ->
-              world.addDie(ShapeGeometry.hullOf(die), die.material, layout.placementOf(index, dice.size))
+              world.addDie(ShapeGeometry.hullOf(die), die.physicalMaterial, layout.placementOf(index, dice.size))
             }
             world.finish()
             RollLoop(spec, world, ShakeDriver(spec.shake)).runOrGiveUp()
@@ -537,7 +537,7 @@ class JoltBridgeTest {
 
   private fun d6(): Die = Die.standard("d6", DieShape.Cube)
 
-  private fun radiusOf(die: Die): Double = die.material.boundingRadiusMm
+  private fun radiusOf(die: Die): Double = die.boundingRadiusMm
 
   private fun spec(
     dice: List<Die>,

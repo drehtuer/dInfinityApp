@@ -179,12 +179,12 @@ class CornerCasesTest {
   ): Landed {
     val spec = specOf(dice, seed)
     val scale = spec.dieScale
-    val layout = SpawnLayout(geometry, dice.maxOf { it.material.boundingRadiusMm } * scale, spec.seed)
+    val layout = SpawnLayout(geometry, dice.maxOf { it.boundingRadiusMm } * scale, spec.seed)
     val world = requireNotNull(JoltWorld.open(geometry, table, maxDice = dice.size))
 
     return world.use {
       dice.forEachIndexed { index, die ->
-        world.addDie(ShapeGeometry.hullOf(die, scale), die.material, layout.placementOf(index, dice.size))
+        world.addDie(ShapeGeometry.hullOf(die, scale), die.physicalMaterial, layout.placementOf(index, dice.size))
       }
       world.finish()
       // A roll that gave up still left its dice somewhere, and where they are

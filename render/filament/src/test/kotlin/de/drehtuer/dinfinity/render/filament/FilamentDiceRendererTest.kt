@@ -50,7 +50,7 @@ class FilamentDiceRendererTest {
     renderer.begin(spec(scale), geometry, look)
 
     spec(scale).dice.forEachIndexed { index, instance ->
-      val reach = instance.die.material.boundingRadiusMm * scale
+      val reach = instance.die.boundingRadiusMm * scale
       val drawn =
         stage.added[TRAY_PARTS + index]
           .first.positions

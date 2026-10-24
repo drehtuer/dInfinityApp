@@ -1,13 +1,13 @@
 # Written by tools/fairness.sh on the reference device. Not edited by hand: the release checks it.
-fingerprint: 3198b19b7195592be5ae6752e16059177e572b291a9cb6d15ac0594cc08f6f1e
+fingerprint: 83a2572d727a0b3447b3daac79c81e6b2674b1b0e5ac99a72b90f731365fb733
 rolls: 100000
 verdict: pass
-commit: 42dec2b1f840e816228762cdc1114f61cf08b165
+commit: 2613604e9f8e43948b05e964d2e3bd6af8cd13f4
 device: Pixel 10a, API 37
-date: 2026-10-23
+date: 2026-10-24
 edge rounding: default
 shape: coin: n=100000 chi2=1,00 limit=10,83 worstFaceOff=0,158% counts=[50158, 49842] gaveUp=0/10 seeds=[]
-shape: elongated-square-bipyramid: n=100000 chi2=12,11 limit=16,27 worstFaceOff=0,420% counts=[25071, 25420, 24736, 24773] gaveUp=0/10 seeds=[]
+shape: elongated-square-bipyramid: n=100000 chi2=5,31 limit=16,27 worstFaceOff=0,306% counts=[24911, 25306, 24830, 24953] gaveUp=0/10 seeds=[]
 shape: cube: n=100000 chi2=2,86 limit=20,52 worstFaceOff=0,158% counts=[16779, 16509, 16663, 16739, 16703, 16607] gaveUp=0/10 seeds=[]
 shape: octahedron: n=100000 chi2=7,48 limit=24,32 worstFaceOff=0,244% counts=[12533, 12437, 12464, 12575, 12398, 12414, 12744, 12435] gaveUp=0/10 seeds=[]
 shape: pentagonal-trapezohedron: n=100000 chi2=18,42 limit=27,88 worstFaceOff=0,275% counts=[9905, 10105, 9948, 9881, 10275, 9910, 10051, 10085, 10063, 9777] gaveUp=0/10 seeds=[]

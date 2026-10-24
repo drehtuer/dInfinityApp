@@ -92,7 +92,7 @@ internal fun settleOn(
   bodies.forEachIndexed { die, body ->
     world.addDie(
       hull = ShapeGeometry.hullOf(body.die, body.dieScale),
-      material = body.die.material,
+      material = body.die.physicalMaterial,
       placement = atOnce[die] ?: if (inPlay[die]) body.placement else parked(die, spacing),
     )
   }

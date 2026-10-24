@@ -101,7 +101,10 @@ else               → all dice are spawned at `scale`
 is** — the diameter of the sphere its corners sit on — so its bounding radius
 is `size_mm / 2` whatever solid is inside it. A 16 mm d6, a 16 mm d12 and a
 16 mm d20 are all 16 mm across at their widest, which is how a set of dice
-looks in a hand.
+looks in a hand. The long d4 is the one exception: it is a quarter longer than
+its `size_mm`, so its radius is `1.25 × size_mm / 2`, and a 16 mm set's d4
+takes a disc 20 mm across (`Die.boundingRadiusMm`; `docs/dice-sets.md`,
+"The d4").
 
 `size_mm` used to be read as a dice maker's *nominal* size — the edge length
 for a polyhedron — and each shape had its own ratio from that to its bounding

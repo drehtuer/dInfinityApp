@@ -66,7 +66,7 @@ data class DieMesh(
       scale: Double,
     ): DieMesh {
       val facets = of(die.shape).faces.map { RoundedEdges.Facet(it, paint = null) }
-      return of(die.shape, RoundedEdges.radiusFor(facets, die.material, scale))
+      return of(die.shape, RoundedEdges.radiusFor(facets, die.physicalMaterial, scale))
     }
 
     // Every die added to a throw asks for its mesh, and a hundred d6 are one

@@ -57,7 +57,7 @@ class DieBodyTest {
 
     DieShape.entries.forEach { shape ->
       val body = bodyOf(shape)
-      val radius = Die.standard(shape.id, shape).material.boundingRadiusMm
+      val radius = Die.standard(shape.id, shape).boundingRadiusMm
       val moments = principalMoments(body.inertia)
 
       report.appendLine(
@@ -148,7 +148,7 @@ class DieBodyTest {
     return world.use {
       world.addDie(
         hull = ShapeGeometry.hullOf(die),
-        material = die.material,
+        material = die.physicalMaterial,
         placement =
           Placement(
             position = Vector3(0.0, 0.0, geometry.wallHeightMm),

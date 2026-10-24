@@ -72,15 +72,17 @@ class ShapeGeometryTest {
   }
 
   @Test
-  fun `a sixteen millimetre die is sixteen millimetres across, whatever shape it is`() {
+  fun `a sixteen millimetre die is sixteen millimetres across, but a long d4 is a quarter longer`() {
     // What `size_mm` means, asserted once for every shape in the catalogue.
     // It used to mean the edge length, which a dice maker quotes and nobody
     // else means: it made a 16 mm d12 45 mm across (`docs/dice-sets.md`).
+    // The long d4 alone is bigger than its set's size (`LongDieShape.SIZE`).
     StandardDice.all.forEach { die ->
       val sized = die.copy(material = die.material.copy(sizeMm = 16.0))
+      val across = if (die.shape == DieShape.ElongatedSquareBipyramid) 20.0 else 16.0
 
       assertEquals(
-        8.0,
+        across / 2,
         ShapeGeometry.hullOf(sized).maxOf { it.length },
         1e-9,
         "a 16 mm ${die.shape.id} is not 16 mm across",

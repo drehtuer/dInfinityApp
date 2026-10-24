@@ -111,14 +111,14 @@ class JoltDiceSimulator(
       spec.dice.forEachIndexed { index, instance ->
         world.addDie(
           hull = ShapeGeometry.hullOf(instance.die, spec.dieScale),
-          material = instance.die.material,
+          material = instance.die.physicalMaterial,
           placement = layout.placementOf(index, spec.dice.size),
         )
       }
       world.finish()
       val heard =
         if (listening) {
-          ImpactRecorder(spec.dice.map { it.die.material.sizeMm * spec.dieScale })
+          ImpactRecorder(spec.dice.map { it.die.physicalMaterial.sizeMm * spec.dieScale })
         } else {
           ImpactRecorder.deaf(spec.dice.size)
         }

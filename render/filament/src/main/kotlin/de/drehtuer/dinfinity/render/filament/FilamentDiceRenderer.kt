@@ -222,10 +222,10 @@ class FilamentDiceRenderer(
     val drawn = atlas?.let { stage.drawnCells(it, die.faces.size) }.orEmpty()
     return stage.add(
       // How far this shape reaches from its middle, at the throw's scale.
-      mesh = GpuMesh.of(mesh.surfaces, scale = die.material.boundingRadiusMm * scale),
+      mesh = GpuMesh.of(mesh.surfaces, scale = die.boundingRadiusMm * scale),
       parameters =
         DiceMaterial.dieOf(
-          material = die.material,
+          material = die.physicalMaterial,
           texturePath = atlas,
           numbers = printed.of(die, mesh, drawn),
           scale = scale,

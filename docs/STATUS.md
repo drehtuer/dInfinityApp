@@ -4,7 +4,7 @@ Current state of the project in a few lines. Update it when a milestone moves, a
 decision is taken or something is blocked; prune anything no longer current.
 This is a snapshot, not a changelog — git history is the changelog.
 
-**Last updated:** 2026-10-23
+**Last updated:** 2026-10-24
 
 ## Where we are
 
@@ -31,19 +31,16 @@ This is a snapshot, not a changelog — git history is the changelog.
 - **Light past white is bent, not cut** (decision 108): a tone pass of our
   own, the identity below 0.8, about 1 ms of GPU a frame; metal highlights
   are bright cream instead of flat white.
-- **In flight: the d4 is a long die** (decision 109, `feature/long-d4`): a
-  square prism with two short points, read from the face on top. The
-  tetrahedron, its corner reading and every rule that came with it are gone,
-  and a set file naming it is refused — a breaking change to the set format,
-  so the next release is **v1.0.0**. The device suite and the goldens pass on
-  the Pixel 10a; `100d4` no longer gives up, though long d4s are re-thrown
-  more often than tetrahedra were (`docs/TODO.md` 5.3).
-- **In flight: a fairness gate on every release** (`feature/fairness-gate`):
-  `tools/fairness.sh` throws every shape 100,000 times on the phone and
-  writes `fairness/record.txt`, tied to the physics by a fingerprint; the
-  release workflow refuses a tag without a passing record of its own. The
-  first record passes (2026-10-23); the long d4's axis split is a question
-  for a second run (`docs/TODO.md` 5.2).
+- **The d4 is a long die** (decisions 109 and 110): a square prism with two
+  short points, read from the face on top, a quarter longer than its set's
+  `size_mm`. A set file naming the tetrahedron is refused — a breaking change
+  to the set format, so the next release is **v1.0.0**. `100d4` no longer
+  gives up, though long d4s are re-thrown more often than tetrahedra were
+  (`docs/TODO.md` 5.3). In flight: the bigger d4 (`feature/bigger-d4`).
+- **Every release is shown fair**: `tools/fairness.sh` throws every shape
+  100,000 times on the phone into `fairness/record.txt`, tied to the physics
+  by a fingerprint, and the release workflow refuses a tag without a passing
+  record of its own. The current record passes (2026-10-24).
 - **Next:** glass and resin as the two materials they are, with lighter
   shadows (`docs/TODO.md` 5.9), and the lag the owner still sees on some
   throws (5.6).

@@ -1309,15 +1309,17 @@ not a margin.
 
 | | long d4 | d6 | d20 |
 | --- | --- | --- | --- |
-| re-thrown at 1.5 % / 3 % / 12 % | 3.88 / 3.68 / — % | 0.88 / 0.48 / 0.20 % | 1.10 / 1.28 / 1.20 % |
-| median settle at 1.5 % / 3 % / 12 % | 1.30 / 1.01 / — s | 0.85 / 0.85 / 0.85 s | 0.96 / 0.96 / 0.94 s |
-| turns after landing at 1.5 % / 3 % / 12 % | 2.65 / 2.70 / — | 2.44 / 2.52 / 2.86 | 2.64 / 2.69 / 2.78 |
+| re-thrown at 1.5 % / 3 % / 12 % | 5.70 / 5.55 / — % | 0.88 / 0.48 / 0.20 % | 1.10 / 1.28 / 1.20 % |
+| median settle at 1.5 % / 3 % / 12 % | 1.53 / 1.49 / — s | 0.85 / 0.85 / 0.85 s | 0.96 / 0.96 / 0.94 s |
+| turns after landing at 1.5 % / 3 % / 12 % | 2.46 / 2.42 / — | 2.44 / 2.52 / 2.86 | 2.64 / 2.69 / 2.78 |
 
-The long d4 was measured after decision 109 (Pixel 10a, 2026-10-23), when
-12 % was already past what a set may ask for. The tetrahedron it replaced was
-re-thrown less (2.43 / 2.35 %) and settled sooner (0.76 s); a long die is
-read off a long face like any other, but lying against a neighbour it tilts
-past the fifteen degrees that make it cocked more often than a squat one does
+The long d4 was measured at the 20 mm of decision 110 (Pixel 10a,
+2026-10-24), when 12 % was already past what a set may ask for. The
+tetrahedron it replaced was re-thrown less (2.43 / 2.35 %) and settled sooner
+(0.76 s), and so was the long d4 at its first 16 mm (3.88 / 3.68 %, 1.30 /
+1.01 s): twenty longer dice crowd the same tray more. A long die is read off
+a long face like any other, but lying against a neighbour it tilts past the
+fifteen degrees that make it cocked more often than a squat one does
 (`docs/TODO.md`, Step 5.3).
 
 No throw gave up, none was forced to settle and no die came to rest on
@@ -1342,13 +1344,13 @@ stirring is a bug of its own, and has its own task (`docs/TODO.md`, Step 5.2).
 
 ### What it measured
 
-The release record (`fairness/record.txt`, 2026-10-23): 100,000 rolls of each
+The release record (`fairness/record.txt`, 2026-10-24): 100,000 rolls of each
 shape on the Pixel 10a, 800,000 in about twenty-three minutes:
 
 | shape | χ² | limit | worst face off |
 | --- | --- | --- | --- |
 | coin | 1.00 | 10.83 | 0.158 % |
-| long d4 | 12.11 | 16.27 | 0.420 % |
+| long d4 | 5.31 | 16.27 | 0.306 % |
 | cube | 2.86 | 20.52 | 0.158 % |
 | octahedron | 7.48 | 24.32 | 0.244 % |
 | pentagonal trapezohedron (d10) | 18.42 | 27.88 | 0.275 % |
@@ -1356,16 +1358,18 @@ shape on the Pixel 10a, 800,000 in about twenty-three minutes:
 | **enneagonal trapezohedron (d18)** | **267.30** | **40.79** | 0.609 % |
 | icosahedron | 9.53 | 43.82 | 0.093 % |
 
-The seven that pass sum to χ² 64.09 against 55 degrees of freedom, less than
-one standard deviation out — as fair as chance predicts. That is also what
+The seven that pass sum to χ² 57.29 against 55 degrees of freedom, well
+inside one standard deviation — as fair as chance predicts. That is also what
 makes the eighth worth believing. (The tetrahedron the long d4 replaced
 measured χ² 0.34 in the run before, decision 109.)
 
-The long d4 passes, but nearer its limit than any other shape, and the way its
-counts split is worth a second look: the two faces across one axis came up
-50,491 times and the two across the other 49,509, about three standard
-deviations apart for two pairs that are mirror images of each other
-(`docs/TODO.md`, Step 5.2).
+The long d4's two pairs of faces are mirror images of each other, so how its
+counts split between them is the first thing a biased hull would show. At
+its first 16 mm (2026-10-23) they split 50,491 to 49,509, about three
+standard deviations, at χ² 12.11; at the 20 mm it ships at (decision 110)
+they split 50,217 to 49,783, 1.4 standard deviations, at χ² 5.31. Nothing
+in the second run points at the axis, and the die that split is not thrown
+any more.
 
 ### The d18 is not fair, and the shape is not why
 
@@ -2949,7 +2953,7 @@ same radius (decision 91):
 | Shape | Radius, 16 mm die | Corner inside the sharp hull | Triangles, sharp → rounded |
 | --- | --- | --- | --- |
 | coin | 0.48 mm | 0.20 mm | 92 → 1,052 |
-| d4 (long die) | 0.48 mm | 0.24 mm | 16 → 208 |
+| d4 (long die, 20 mm long) | 0.60 mm | 0.30 mm | 16 → 208 |
 | d6 | 0.48 mm | 0.35 mm | 12 → 204 |
 | d8 | 0.48 mm | 0.35 mm | 8 → 200 |
 | d10 | 0.48 mm | 0.24 mm | 20 → 260 |

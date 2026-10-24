@@ -180,7 +180,7 @@ class DieGlintDeviceTest {
   ): T =
     FilamentStage(SIZE, SIZE, shared = filament).use { stage ->
       val solid = SolidFaces.of(die.shape).first()
-      val radius = die.material.boundingRadiusMm
+      val radius = die.boundingRadiusMm
       val flat = Quaternion.carrying(fromOut = solid.normal, fromUp = solid.up, toOut = Vector3.Up, toUp = X)
       // Toward the light, seen from above: the axis that tilts a face's
       // normal along the ground toward where the lamp stands.
