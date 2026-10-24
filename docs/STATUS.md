@@ -4,7 +4,7 @@ Current state of the project in a few lines. Update it when a milestone moves, a
 decision is taken or something is blocked; prune anything no longer current.
 This is a snapshot, not a changelog — git history is the changelog.
 
-**Last updated:** 2026-10-23
+**Last updated:** 2026-10-24
 
 ## Where we are
 
@@ -42,8 +42,8 @@ This is a snapshot, not a changelog — git history is the changelog.
   `tools/fairness.sh` throws every shape 100,000 times on the phone and
   writes `fairness/record.txt`, tied to the physics by a fingerprint; the
   release workflow refuses a tag without a passing record of its own. The
-  first record passes (2026-10-23); the long d4's axis split is a question
-  for a second run (`docs/TODO.md` 5.2).
+  first record passes (2026-10-23), and two more d4 runs on other seeds put
+  its axis split down to chance.
 - **Next:** glass and resin as the two materials they are, with lighter
   shadows (`docs/TODO.md` 5.9), and the lag the owner still sees on some
   throws (5.6).

@@ -258,14 +258,6 @@ Fairness is done on the Pixel 10a (the d18 held to the worst-face bound), and
       be"), and the harness with coins (`-s d2`), which the sweep did not
       throw and which is what gave first
 
-- [ ] **Is the long d4's axis split chance?** The first release record
-      (2026-10-23) passes it at χ² 12.11 against 16.27, but its ±z faces came
-      up 50,491 times to the ±y faces' 49,509 — three standard deviations for
-      two pairs the solid's own symmetry makes identical, and `DieBodyTest`
-      finds the body symmetric. Roll it again on other seeds; if the split
-      holds, it is the d18's question on a second shape
-      (`docs/physics-and-rendering.md`, "What it measured")
-
 - [ ] Identical outcomes for identical seeds across JVM, emulator and device at
       ten thousand rolls and on a second phone. The golden suite already holds
       for its ten cases on both ABIs; any divergence is a release blocker.
