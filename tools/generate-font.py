@@ -34,25 +34,27 @@ TOLERANCE = 1.0 / 150.0
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description="Generate the built-in die font.")
     parser.add_argument("font", type=Path, help="Archivo variable font (.ttf)")
-    parser.add_argument("out", type=Path, help="repository root to write into")
     parser.add_argument("--weight", type=int, default=700, help="wght to instantiate at")
     return parser.parse_args(argv)
 
 
-def out_file(out, *parts):
-    """A path under `out`, with its directory made.
+# The repository this script lives in, which is the only tree it writes into.
+# It is worked out from the script's own path rather than taken from the
+# command line, so no argument can point a write anywhere else.
+ROOT = Path(__file__).resolve(strict=True).parent.parent
 
-    Both arguments come from the command line, so the destination is resolved
-    and checked to be inside `out` before anything is written. Nothing hostile
-    is expected — a developer runs this by hand, about once in the life of the
-    project — but a generator that can be talked into writing outside the tree
-    it was pointed at is worth a few lines to rule out. The same guard
-    `generate-logo.py` carries, for the same reason.
+
+def out_file(*parts):
+    """A path under ROOT, with its directory made.
+
+    The parts are this script's own constants, and the destination is still
+    resolved and checked to be inside ROOT before anything is written, so a
+    symbolic link in the tree cannot carry a write out of it either. The same
+    guard `generate-logo.py` carries, for the same reason.
     """
-    root = out.resolve(strict=True)
-    destination = root.joinpath(*parts).resolve()
-    if not destination.is_relative_to(root):
-        raise ValueError(f"refusing to write outside {root}: {destination}")
+    destination = ROOT.joinpath(*parts).resolve()
+    if not destination.is_relative_to(ROOT):
+        raise ValueError(f"refusing to write outside {ROOT}: {destination}")
     destination.parent.mkdir(parents=True, exist_ok=True)
     return destination
 
@@ -143,7 +145,7 @@ def main(argv=None):
         glyph_set[name].draw(pen)
         glyphs[character] = (hmtx[name][0] / upem, pen.contours)
 
-    destination = out_file(args.out, "core/glyphs/src/main/resources/glyphs/builtin-font.txt")
+    destination = out_file("core/glyphs/src/main/resources/glyphs/builtin-font.txt")
     destination.write_text(render(glyphs, args.weight), encoding="utf-8")
     print(f"wrote {destination} ({destination.stat().st_size} bytes)")
     for character, (advance, contours) in glyphs.items():
