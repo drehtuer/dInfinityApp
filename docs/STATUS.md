@@ -31,19 +31,19 @@ This is a snapshot, not a changelog — git history is the changelog.
 - **Light past white is bent, not cut** (decision 108): a tone pass of our
   own, the identity below 0.8, about 1 ms of GPU a frame; metal highlights
   are bright cream instead of flat white.
-- **In flight: the d4 is a long die** (decision 109, `feature/long-d4`): a
-  square prism with two short points, read from the face on top. The
-  tetrahedron, its corner reading and every rule that came with it are gone,
-  and a set file naming it is refused — a breaking change to the set format,
-  so the next release is **v1.0.0**. The device suite and the goldens pass on
-  the Pixel 10a; `100d4` no longer gives up, though long d4s are re-thrown
-  more often than tetrahedra were (`docs/TODO.md` 5.3).
-- **In flight: a fairness gate on every release** (`feature/fairness-gate`):
-  `tools/fairness.sh` throws every shape 100,000 times on the phone and
-  writes `fairness/record.txt`, tied to the physics by a fingerprint; the
-  release workflow refuses a tag without a passing record of its own. The
-  first record passes (2026-10-23), and two more d4 runs on other seeds put
-  its axis split down to chance.
+- **The d4 is a long die** (decision 109): a square prism with two short
+  points, read from the face on top. A set file naming the tetrahedron is
+  refused — a breaking change, so the next release is **v1.0.0**. `100d4` no
+  longer gives up, but 3.7 % of a `20d4`'s dice are re-thrown, mostly for
+  coming to rest on another d4 (`docs/TODO.md` 5.3). The d18 stays a
+  trapezohedron (decision 110).
+- **Every release is shown fair**: `tools/fairness.sh` throws every shape
+  100,000 times on the phone into `fairness/record.txt`, tied to the physics
+  by a fingerprint, and the release workflow refuses a tag without a passing
+  record. **The record needs re-making before v1.0.0**: the re-throw reasons
+  added a contact flag inside the fingerprinted bridge.
+- **In flight: why a die was re-thrown** (`feature/rethrow-reasons`): the
+  harness breaks the re-throws down by reason.
 - **Next:** glass and resin as the two materials they are, with lighter
   shadows (`docs/TODO.md` 5.9), and the lag the owner still sees on some
   throws (5.6).

@@ -1315,10 +1315,13 @@ not a margin.
 
 The long d4 was measured after decision 109 (Pixel 10a, 2026-10-23), when
 12 % was already past what a set may ask for. The tetrahedron it replaced was
-re-thrown less (2.43 / 2.35 %) and settled sooner (0.76 s); a long die is
-read off a long face like any other, but lying against a neighbour it tilts
-past the fifteen degrees that make it cocked more often than a squat one does
-(`docs/TODO.md`, Step 5.3).
+re-thrown less (2.43 / 2.35 %) and settled sooner (0.76 s). Why, from the
+harness's breakdown of `20d4` at the default ("Why a die was thrown again",
+below; 2026-10-24): of 3.675 %, 1.500 % came to rest on another d4, 1.225 %
+cocked against one and 0.950 % cocked against a wall — and none on the floor
+alone, so a long d4 never rests on an end. A `20d6` loses 0.125, 0.125 and
+0.225 % the same three ways. A long die stacks on another more than it leans
+on one (`docs/TODO.md`, Step 5.3).
 
 No throw gave up, none was forced to settle and no die came to rest on
 another at any of the nine; the overlap and re-throw bars fail at every

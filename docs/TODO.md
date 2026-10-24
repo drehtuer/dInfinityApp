@@ -284,9 +284,13 @@ while standing on another, p99 step at most 1.23 ms (60 dice) against 8.33.
       all twenty-four `100d4` seeds in `JoltBridgeTest` settle in under two
       seconds (five gave up with the tetrahedron), and no harness roll gave
       up. But 3.68 % of the dice in `20d4` and 5.28 % in `100d4` are re-thrown,
-      against 2.35 % and 3.07 % before. The harness does not say why a die
-      was re-thrown; make it, then find out why they end cocked — most likely
-      a long body leaning on a neighbour — and prevent it while they move
+      against 2.35 % and 3.07 % before. Why, from the harness's breakdown
+      (2026-10-24, `20d4`, 3.675 % in all): **1.500 % came to rest on another
+      d4**, 1.225 % cocked against one, 0.950 % cocked against a wall, and none
+      cocked on the floor alone — so a long d4 never rests on an end. A `20d6`
+      run is 0.125 / 0.125 / 0.225 %. Stacking is the largest share: prevent
+      long dice from coming to rest on each other while they move, then
+      leaning
 - [ ] **A hundred coins stack: 18–29 a seed are left on another coin by one
       throw** (Pixel 10a, 2026-10-04; four to ten under the old ladder, which
       re-threw them itself). None is read (decision 70), and
