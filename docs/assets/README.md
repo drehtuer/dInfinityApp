@@ -34,11 +34,13 @@ the project, so it is a one-off install rather than weight in every image.
 sudo apt-get install -y python3-fonttools
 curl -sSL --proto '=https' -o /tmp/Archivo.ttf \
   'https://github.com/google/fonts/raw/main/ofl/archivo/Archivo%5Bwdth,wght%5D.ttf'
-python3 tools/generate-logo.py /tmp/Archivo.ttf .
+python3 tools/generate-logo.py /tmp/Archivo.ttf
 ```
 
 The script instantiates the variable font at `wght=800`, so the outlines match
-the weight the design names rather than a faux-bolded 400.
+the weight the design names rather than a faux-bolded 400. It writes into the
+repository it lives in, wherever it is run from; the font is the only
+argument.
 
 ## The die font comes from the same place
 
@@ -49,7 +51,7 @@ are generated the same way — by
 same font file:
 
 ```sh
-python3 tools/generate-font.py /tmp/Archivo.ttf .
+python3 tools/generate-font.py /tmp/Archivo.ttf
 ```
 
 What it writes is the digits, three signs — `+`, the hyphen-minus `-` and the

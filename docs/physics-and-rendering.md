@@ -1361,11 +1361,21 @@ one standard deviation out — as fair as chance predicts. That is also what
 makes the eighth worth believing. (The tetrahedron the long d4 replaced
 measured χ² 0.34 in the run before, decision 109.)
 
-The long d4 passes, but nearer its limit than any other shape, and the way its
-counts split is worth a second look: the two faces across one axis came up
-50,491 times and the two across the other 49,509, about three standard
-deviations apart for two pairs that are mirror images of each other
-(`docs/TODO.md`, Step 5.2).
+The long d4 passes, but nearer its limit than any other shape, and its two
+pairs of faces, which are mirror images of each other, split 50,491 to 49,509:
+about three standard deviations. Two more runs of 100,000 on seeds of their
+own (2026-10-24, starting a million and two million rolls further on) put it
+down to chance:
+
+| run | χ² | ±z faces | ±y faces | split |
+| --- | --- | --- | --- | --- |
+| the release record | 12.11 | 50,491 | 49,509 | +3.1σ |
+| seeds from 1,000,000 | 2.54 | 49,849 | 50,151 | −1.0σ |
+| seeds from 2,000,000 | 3.46 | 50,122 | 49,878 | +0.8σ |
+| all 300,000 | 5.18 | 150,462 | 149,538 | +1.7σ |
+
+The second run splits the other way, and the three together are χ² 5.18 on
+three degrees of freedom, as fair as a die gets.
 
 ### The d18 is not fair, and the shape is not why
 

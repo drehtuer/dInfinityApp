@@ -15,23 +15,23 @@ from fontTools.pens.boundsPen import BoundsPen
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description="Generate the dInfinity mark.")
     parser.add_argument("font", type=Path, help="Archivo variable font (.ttf)")
-    parser.add_argument("out", type=Path, help="repository root to write into")
     return parser.parse_args(argv)
 
 
 args = parse_args()
 FONT_PATH = args.font.resolve(strict=True)
-OUT = args.out.resolve(strict=True)
+# The repository this script lives in, which is the only tree it writes into.
+# It is worked out from the script's own path rather than taken from the
+# command line, so no argument can point a write anywhere else.
+OUT = Path(__file__).resolve(strict=True).parent.parent
 
 
 def out_file(*parts):
     """A path under OUT, with its directory made.
 
-    Both arguments come from the command line, so the destination is resolved
-    and checked to be inside OUT before anything is written. Nothing hostile is
-    expected — a developer runs this by hand, about once in the life of the
-    project — but a generator that can be talked into writing outside the tree
-    it was pointed at is worth a few lines to rule out.
+    The parts are this script's own constants, and the destination is still
+    resolved and checked to be inside OUT before anything is written, so a
+    symbolic link in the tree cannot carry a write out of it either.
     """
     destination = OUT.joinpath(*parts).resolve()
     if not destination.is_relative_to(OUT):
