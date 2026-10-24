@@ -7,6 +7,38 @@ import kotlin.test.assertTrue
 
 class DieTest {
   @Test
+  fun `a long d4 is thrown a quarter longer than its set's size, and keeps the size it was given`() {
+    val d4 = Die.standard("d4", DieShape.ElongatedSquareBipyramid, DieMaterial(sizeMm = 16.0))
+
+    assertEquals(20.0, d4.physicalMaterial.sizeMm)
+    assertEquals(10.0, d4.boundingRadiusMm)
+    assertEquals(16.0, d4.material.sizeMm, "the file's size is what the designer edits and writes back")
+  }
+
+  @Test
+  fun `every other die is thrown at its set's size`() {
+    val d6 = Die.standard("d6", DieShape.Cube, DieMaterial(sizeMm = 16.0))
+
+    assertEquals(d6.material, d6.physicalMaterial)
+    assertEquals(8.0, d6.boundingRadiusMm)
+  }
+
+  @Test
+  fun `a long d4 stops growing at the largest size a set may ask for`() {
+    val largest = DieMaterial.SizeMmRange.endInclusive
+    val d4 = Die.standard("d4", DieShape.ElongatedSquareBipyramid, DieMaterial(sizeMm = 36.0))
+
+    assertEquals(largest, d4.physicalMaterial.sizeMm)
+  }
+
+  @Test
+  fun `a die thrown is a die within the format's limits`() {
+    val wild = Die.standard("d6", DieShape.Cube, DieMaterial(sizeMm = 400.0, friction = 9.0))
+
+    assertEquals(wild.material.clampedToLimits(), wild.physicalMaterial)
+  }
+
+  @Test
   fun `a standard die runs 1 up to its face count`() {
     val d20 = Die.standard("d20", DieShape.Icosahedron)
     assertEquals((1..20).toList(), d20.values())

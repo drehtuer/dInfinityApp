@@ -134,7 +134,7 @@ object ClearSpace {
   fun radiusOf(
     die: Die,
     dieScale: Double,
-  ): Double = die.material.boundingRadiusMm * dieScale
+  ): Double = die.boundingRadiusMm * dieScale
 
   /**
    * How much clear floor a die at ([x], [y]) would have around it, never more

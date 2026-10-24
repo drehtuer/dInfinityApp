@@ -63,14 +63,14 @@ class JoltDiceSimulatorTest {
 
   @Test
   fun `a mixed throw is laid out for its largest die`() {
-    // A d4 and a d20 of the same nominal size are very different solids: the
-    // long d4 is slender and the icosahedron fills its sphere. Cells sized for
-    // the slender one would have the d20 starting inside its neighbour.
+    // A d4 and a d20 of the same set are not the same size: a long d4 is a
+    // quarter longer than its set's `size_mm` (`LongDieShape.SIZE`). Cells
+    // sized for the d20 would have the d4 starting inside its neighbour.
     val small = FakeWorld(2) { _, _, _ -> FakeWorld.settled() }
-    JoltDiceSimulator { small }.run(spec(listOf(StandardDice.d4, StandardDice.d20)))
+    JoltDiceSimulator { small }.run(spec(listOf(StandardDice.d20, StandardDice.d4)))
 
     val large = FakeWorld(2) { _, _, _ -> FakeWorld.settled() }
-    JoltDiceSimulator { large }.run(spec(listOf(StandardDice.d20, StandardDice.d20)))
+    JoltDiceSimulator { large }.run(spec(listOf(StandardDice.d4, StandardDice.d4)))
 
     assertEquals(
       "the layout must not change when the smaller die is swapped for a second big one",

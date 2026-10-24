@@ -55,7 +55,7 @@ class RollLoop(
    * (`docs/physics-and-rendering.md`, "Impacts").
    */
   private val recorder: ImpactRecorder =
-    ImpactRecorder(spec.dice.map { it.die.material.sizeMm * spec.dieScale }),
+    ImpactRecorder(spec.dice.map { it.die.physicalMaterial.sizeMm * spec.dieScale }),
   /** Where this roll says how its hand let go, or null for nowhere ([TossLog]). */
   private val tossLog: ((String) -> Unit)? = TossLog.current(),
 ) {
@@ -89,7 +89,7 @@ class RollLoop(
    * recorder is built with — computed once here rather than per snapshot,
    * because it cannot change during a roll.
    */
-  private val dieWidthsMm = spec.dice.map { it.die.material.sizeMm * spec.dieScale }
+  private val dieWidthsMm = spec.dice.map { it.die.physicalMaterial.sizeMm * spec.dieScale }
 
   private var states: List<DieState> = if (diceCount == 0) emptyList() else world.readStates()
   private var result: SimulationOutcome? = null

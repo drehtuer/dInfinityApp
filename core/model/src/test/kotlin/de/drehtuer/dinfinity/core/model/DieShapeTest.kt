@@ -92,4 +92,12 @@ class DieShapeTest {
     assertEquals(DieShape.entries.size, DieShape.entries.distinctBy(DieShape::id).size)
     assertNotNull(DieShape.ofId("coin"))
   }
+
+  @Test
+  fun `only the long d4 is bigger than its set's size`() {
+    assertEquals(LongDieShape.SIZE, DieShape.ElongatedSquareBipyramid.sizeFactor)
+    DieShape.entries.filter { it != DieShape.ElongatedSquareBipyramid }.forEach { shape ->
+      assertEquals(1.0, shape.sizeFactor, "${shape.id} is not its set's size")
+    }
+  }
 }

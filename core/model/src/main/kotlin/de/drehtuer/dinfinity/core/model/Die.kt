@@ -35,6 +35,26 @@ data class Die(
     }
   }
 
+  /**
+   * [material] at the size the die is thrown and drawn at: its `size_mm`
+   * times its shape's [DieShape.sizeFactor], within [DieMaterial.SizeMmRange].
+   *
+   * **The one place that turns a set's size into a die's.** The hull, its
+   * rounding, the mass, the table's capacity and the mesh all take their size
+   * from here, so a long d4 cannot be collided at one size and drawn at
+   * another. [material] keeps the size the file says, which is what the
+   * designer edits and writes back.
+   */
+  val physicalMaterial: DieMaterial
+    get() {
+      val clamped = material.clampedToLimits()
+      val sizeMm = (clamped.sizeMm * shape.sizeFactor).coerceAtMost(DieMaterial.SizeMmRange.endInclusive)
+      return clamped.copy(sizeMm = sizeMm)
+    }
+
+  /** The radius of the sphere this die's corners sit on, in millimetres. */
+  val boundingRadiusMm: Double get() = physicalMaterial.boundingRadiusMm
+
   /** The largest value this die can show — what `!` explodes on. */
   val maxValue: Int get() = faces.maxOf(Face::value)
 

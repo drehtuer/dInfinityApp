@@ -54,7 +54,16 @@ class DiePhysicalTest {
     val d4 = DiePhysical.gramsOf(Die.standard("d4", DieShape.ElongatedSquareBipyramid))
     val d20 = DiePhysical.gramsOf(Die.standard("d20", DieShape.Icosahedron))
 
-    assertTrue(d4 < d20, "a d4 is the thinner solid inside the same sphere")
+    assertTrue(d4 < d20, "a long d4 is the thinner solid, even a quarter longer")
+  }
+
+  @Test
+  fun `a long d4 weighs what it is thrown at, a quarter longer than its set's size`() {
+    val material = DieMaterial(sizeMm = 16.0, density = 1.2)
+    val d4 = Die.standard("d4", DieShape.ElongatedSquareBipyramid, material)
+
+    assertEquals(1.2 * DieVolume.cm3(DieShape.ElongatedSquareBipyramid, 20.0), DiePhysical.gramsOf(d4), 1e-12)
+    assertEquals(DiePhysical.gramsOf(d4), DiePhysical.gramsOf(DieShape.ElongatedSquareBipyramid, material), 1e-12)
   }
 
   @Test

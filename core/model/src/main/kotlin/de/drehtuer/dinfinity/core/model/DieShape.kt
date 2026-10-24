@@ -55,6 +55,13 @@ enum class DieShape(
   Icosahedron("icosahedron", faceCount = 20, naturalRead = FaceRead.FaceUp),
   ;
 
+  /**
+   * How much bigger a die of this shape is than its set's `size_mm`: one for
+   * every shape but the long d4 ([LongDieShape.SIZE]).
+   */
+  val sizeFactor: Double
+    get() = if (this == ElongatedSquareBipyramid) LongDieShape.SIZE else 1.0
+
   companion object {
     /**
      * The shape a set file's `shape = "…"` names, or `null` when the name is

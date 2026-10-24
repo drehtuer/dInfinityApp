@@ -103,7 +103,7 @@ object ShapeGeometry {
     die: de.drehtuer.dinfinity.core.model.Die,
     scale: Double = 1.0,
   ): List<Vector3> {
-    val radius = die.material.boundingRadiusMm * scale
+    val radius = die.boundingRadiusMm * scale
     return verticesOf(die.shape).map { it * radius }
   }
 

@@ -2949,7 +2949,7 @@ same radius (decision 91):
 | Shape | Radius, 16 mm die | Corner inside the sharp hull | Triangles, sharp → rounded |
 | --- | --- | --- | --- |
 | coin | 0.48 mm | 0.20 mm | 92 → 1,052 |
-| d4 (long die) | 0.48 mm | 0.24 mm | 16 → 208 |
+| d4 (long die, 20 mm long) | 0.60 mm | 0.30 mm | 16 → 208 |
 | d6 | 0.48 mm | 0.35 mm | 12 → 204 |
 | d8 | 0.48 mm | 0.35 mm | 8 → 200 |
 | d10 | 0.48 mm | 0.24 mm | 20 → 260 |
