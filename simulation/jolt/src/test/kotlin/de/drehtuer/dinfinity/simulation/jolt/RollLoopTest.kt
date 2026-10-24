@@ -10,6 +10,7 @@ import de.drehtuer.dinfinity.simulation.api.SettleRule
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
+import de.drehtuer.dinfinity.simulation.api.UnreadReason
 import de.drehtuer.dinfinity.simulation.api.Vector3
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -121,6 +122,42 @@ class RollLoopTest {
     assertEquals("a loop counted a re-throw it never made", 0, outcome.rethrows)
     assertEquals("the die standing on another was not reported", 1, outcome.stackedAtRest)
     assertEquals("the roll ran on after its dice had stopped", SettleRule.REST_STEPS, outcome.steps)
+  }
+
+  @Test
+  fun `each die left unread says why, from what it came to rest against`() {
+    // What the harness takes the re-throws apart by (`UnreadReason`): a die
+    // standing on another, and three cocked ones leaning on a die, on a wall
+    // and on nothing at all.
+    val world =
+      FakeWorld(4) { _, index, _ ->
+        when (index) {
+          0 -> FakeWorld.settled(supportedByDie = true)
+          1 -> FakeWorld.settled(cocked).copy(touchingDie = true, touchingWall = true)
+          2 -> FakeWorld.settled(cocked).copy(touchingWall = true)
+          else -> FakeWorld.settled(cocked)
+        }
+      }
+
+    val outcome = loop(List(4) { StandardDice.d6 }, world).run()
+
+    assertEquals(
+      mapOf(
+        0 to UnreadReason.OnAnotherDie,
+        1 to UnreadReason.CockedOnADie,
+        2 to UnreadReason.CockedOnAWall,
+        3 to UnreadReason.CockedOnTheFloor,
+      ),
+      outcome.unreadReasons,
+    )
+    assertEquals(outcome.unread.toSet(), outcome.unreadReasons.keys)
+  }
+
+  @Test
+  fun `a die that is read has no reason to be unread`() {
+    val world = FakeWorld(1) { _, _, _ -> FakeWorld.settled() }
+
+    assertEquals(emptyMap<Int, UnreadReason>(), loop(listOf(StandardDice.d6), world).run().unreadReasons)
   }
 
   @Test

@@ -98,6 +98,7 @@ class JoltWorld private constructor(
           touchingFloor = flags and JoltNative.FLAG_FLOOR != 0,
           touchingWall = flags and JoltNative.FLAG_WALL != 0,
           supportedByDie = flags and JoltNative.FLAG_SUPPORTED != 0,
+          touchingDie = flags and JoltNative.FLAG_DIE != 0,
         )
     }
     return states

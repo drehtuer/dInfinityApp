@@ -344,6 +344,8 @@ struct World::Impl : public ContactListener {
       deepest_die_penetration = manifold.mPenetrationDepth;
     }
 
+    Flag(first_data, kTouchingDie);
+    Flag(second_data, kTouchingDie);
     if (up >= kVerticalNormal) {
       Flag(second_data, kSupportedByDie);
     } else if (up <= -kVerticalNormal) {

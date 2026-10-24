@@ -157,12 +157,17 @@ data class ShakeSample(
  * @param rethrows dice that came to rest cocked or stacked and were thrown
  *   again, visibly — by the player's next shake, never by the roll itself
  *   ([Passes]). A die thrown again twice counts twice.
+ * @param rethrowsBy [rethrows] taken apart by why each die could not be read
+ *   ([UnreadReason]). It adds up to [rethrows] for every throw [Passes] made;
+ *   an outcome built by hand may leave it empty.
  * @param unread the dice that came to rest where they cannot be read — cocked,
  *   or standing on another die — keyed like [faces] and never in it. **The
  *   throw stops here rather than throwing them again**: they stay exactly
  *   where they lie, nothing touches them, and the player's next shake throws
  *   those and only those ([Passes.next], `docs/physics-and-rendering.md`,
  *   "Avoiding stacked and cocked dice"). Empty for a throw that is finished.
+ * @param unreadReasons why each die of [unread] could not be read, keyed like
+ *   it. A reading for the harness, never an input to anything.
  * @param passes how many throws this outcome is the sum of: one, plus one for
  *   each time the dice nobody could read were thrown again.
  * @param forcedSettles dice the simulation had to finish for rather than
@@ -217,6 +222,8 @@ data class SimulationOutcome(
   val medianTurnsAfterLanding: Double = 0.0,
   val unread: List<Int> = emptyList(),
   val passes: Int = 1,
+  val unreadReasons: Map<Int, UnreadReason> = emptyMap(),
+  val rethrowsBy: Map<UnreadReason, Int> = emptyMap(),
 ) {
   /** How many dice were in the throw, read or not. */
   val diceCount: Int get() = faces.size + unread.size
@@ -233,6 +240,8 @@ data class SimulationOutcome(
       "a throw cannot run past the ${SettleRule.HARD_CAP_SECONDS}s cap"
     }
     require(unread.none { it in faces }) { "a die cannot be read and unread at once" }
+    require(unread.containsAll(unreadReasons.keys)) { "a die that was read has no reason to be unread" }
+    require(rethrowsBy.values.sum() <= rethrows) { "more re-throws have a reason than there were re-throws" }
     require(stackedAtRest <= diceCount) { "$stackedAtRest of $diceCount dice cannot be stacked" }
     require(deepestDiePenetrationMm >= 0.0) { "an overlap of $deepestDiePenetrationMm mm is not a depth" }
     require(medianTurnsAfterLanding >= 0.0) { "$medianTurnsAfterLanding turns is not an amount of turning" }

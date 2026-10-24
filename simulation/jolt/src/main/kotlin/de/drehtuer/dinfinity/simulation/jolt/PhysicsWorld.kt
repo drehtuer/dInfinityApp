@@ -4,6 +4,7 @@ import de.drehtuer.dinfinity.core.model.DieMaterial
 import de.drehtuer.dinfinity.simulation.api.DieMotion
 import de.drehtuer.dinfinity.simulation.api.Placement
 import de.drehtuer.dinfinity.simulation.api.Quaternion
+import de.drehtuer.dinfinity.simulation.api.UnreadReason
 import de.drehtuer.dinfinity.simulation.api.Vector3
 
 /**
@@ -106,6 +107,9 @@ interface PhysicsWorld : AutoCloseable {
  *   it.
  * @param supportedByDie standing on another die. One of the two questions rung
  *   2 actually acts on.
+ * @param touchingDie touching another die at all, whichever way. Nothing acts
+ *   on it: it says what a die that came to rest cocked was leaning on
+ *   ([UnreadReason]).
  */
 data class DieState(
   val position: Vector3,
@@ -114,4 +118,5 @@ data class DieState(
   val touchingFloor: Boolean,
   val touchingWall: Boolean,
   val supportedByDie: Boolean,
+  val touchingDie: Boolean = false,
 )

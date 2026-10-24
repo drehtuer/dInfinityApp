@@ -2,6 +2,7 @@ package de.drehtuer.dinfinity.simulation.harness
 
 import de.drehtuer.dinfinity.simulation.api.SettleRule
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
+import de.drehtuer.dinfinity.simulation.api.UnreadReason
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -28,10 +29,12 @@ class HarnessReportTest {
         postRestCorrections = 0,
         stackedAtRest = 1,
         deepestDiePenetrationMm = 0.07,
+        rethrowsBy = mapOf(UnreadReason.CockedOnAWall to 1),
       )
 
     val record = RollRecord.of(index = 4, seed = 99L, outcome = outcome, wallMillis = 120.0)
 
+    assertEquals(mapOf(UnreadReason.CockedOnAWall to 1), record.rethrowsBy)
     assertEquals(4, record.index)
     assertEquals(99L, record.seed)
     assertEquals(240, record.steps)
@@ -196,6 +199,67 @@ class HarnessReportTest {
       device = DeviceFacts(model = "Pixel 10a", abi = "arm64-v8a", androidApi = 37, emulator = false),
       startedAtEpochMs = 1_700_000_000_000L,
     )
+
+  @Test
+  fun `a run adds up its re-throws reason by reason`() {
+    val records =
+      listOf(
+        record(index = 0, rethrows = 3).copy(
+          rethrowsBy =
+            mapOf(
+              UnreadReason.CockedOnADie to 2,
+              UnreadReason.OnAnotherDie to 1,
+            ),
+        ),
+        record(index = 1, rethrows = 2).copy(rethrowsBy = mapOf(UnreadReason.CockedOnADie to 2)),
+        record(index = 2),
+      )
+
+    val summary = HarnessSummary.of(diceCount = 20, records = records)
+
+    assertEquals(mapOf(UnreadReason.CockedOnADie to 4L, UnreadReason.OnAnotherDie to 1L), summary.rethrowsBy)
+  }
+
+  @Test
+  fun `the breakdown puts the commonest reason first, each as a share of every die thrown`() {
+    val records =
+      listOf(
+        record(index = 0, rethrows = 3).copy(
+          rethrowsBy =
+            mapOf(
+              UnreadReason.OnAnotherDie to 1,
+              UnreadReason.CockedOnADie to 2,
+            ),
+        ),
+      )
+
+    val lines = HarnessSummary.of(diceCount = 100, records = records).rethrowBreakdown().lines()
+
+    assertEquals("dice re-thrown, by why: 3 of 100 (3.000 %)", lines[0])
+    assertTrue(lines[1].trim().startsWith("cocked against a die"), lines[1])
+    assertTrue(lines[1].trim().endsWith("2  2.000 %"), lines[1])
+    assertTrue(lines[2].trim().startsWith("on another die"), lines[2])
+    assertEquals(3, lines.size)
+  }
+
+  @Test
+  fun `re-throws with no reason are said to have none rather than left out`() {
+    val records = listOf(record(index = 0, rethrows = 3).copy(rethrowsBy = mapOf(UnreadReason.StillMoving to 1)))
+
+    val lines = HarnessSummary.of(diceCount = 10, records = records).rethrowBreakdown().lines()
+
+    assertTrue(
+      lines.any { it.trim().startsWith(HarnessSummary.NO_REASON) && it.contains("2  20.000 %") },
+      lines.toString(),
+    )
+  }
+
+  @Test
+  fun `a run with nothing re-thrown says so in one line`() {
+    val breakdown = HarnessSummary.of(diceCount = 20, records = listOf(record())).rethrowBreakdown()
+
+    assertEquals("dice re-thrown, by why: 0 of 20 (0.000 %)", breakdown)
+  }
 
   @Suppress("LongParameterList")
   private fun record(

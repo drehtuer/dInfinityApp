@@ -605,7 +605,13 @@ pulled into `build/harness`:
 - `harness-<label>.json` — every roll, one record each, plus the run's
   summary and its scorecard. This is what to open when a run fails.
 - `harness-<label>.txt` — the pass/fail table, rendered on the device by the
-  same Kotlin the unit tests hold, and printed by the script unchanged.
+  same Kotlin the unit tests hold, and printed by the script unchanged. Above
+  it, **why the dice were re-thrown**: each reason with its count and its
+  share of every die thrown, largest first (`docs/physics-and-rendering.md`,
+  "Why a die was thrown again"). It is a breakdown of the `dice re-thrown`
+  row, not rows of its own, so it has no bars and cannot fail a run; the
+  JSON carries the same counts as `rethrowsBy`, in each roll and in the
+  summary.
 
 **A run is printed and scored from the files it wrote itself.** The device's
 folder is cleared before the run and only what came back from it is read, so a

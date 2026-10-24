@@ -1,5 +1,6 @@
 package de.drehtuer.dinfinity.simulation.harness
 
+import de.drehtuer.dinfinity.simulation.api.UnreadReason
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -157,6 +158,7 @@ object HarnessJson {
       put("stackedAtRest", record.stackedAtRest)
       put("deepestDiePenetrationMm", record.deepestDiePenetrationMm)
       put("medianTurnsAfterLanding", record.medianTurnsAfterLanding)
+      put("rethrowsBy", reasons(record.rethrowsBy.mapValues { it.value.toLong() }))
     }
 
   private fun readRoll(json: JsonObject): RollRecord =
@@ -172,6 +174,7 @@ object HarnessJson {
       stackedAtRest = json.wholeNumber("stackedAtRest").toInt(),
       deepestDiePenetrationMm = json.number("deepestDiePenetrationMm"),
       medianTurnsAfterLanding = json.number("medianTurnsAfterLanding"),
+      rethrowsBy = readReasons(json).mapValues { it.value.toInt() },
     )
 
   private fun summary(summary: HarnessSummary): JsonObject =
@@ -189,6 +192,7 @@ object HarnessJson {
       put("capsReached", summary.capsReached)
       put("deepestDiePenetrationMm", summary.deepestDiePenetrationMm)
       put("turnsAfterLanding", distribution(summary.turnsAfterLanding))
+      put("rethrowsBy", reasons(summary.rethrowsBy))
       // Absent, not zero, for a run that measured no frames. A reader of the
       // file sees the same thing the scorecard says: nothing was measured.
       summary.frames?.let { put("frames", frames(it)) }
@@ -214,7 +218,27 @@ object HarnessJson {
       deepestDiePenetrationMm = json.number("deepestDiePenetrationMm"),
       turnsAfterLanding = readDistribution(json.obj("turnsAfterLanding")),
       frames = json["frames"]?.let { readFrames(json.obj("frames")) },
+      rethrowsBy = readReasons(json),
     )
+
+  /** Re-throws by reason, keyed by [UnreadReason.id] so the file says what each count is. */
+  private fun reasons(counts: Map<UnreadReason, Long>): JsonObject =
+    buildJsonObject {
+      counts.forEach { (reason, count) -> put(reason.id, count) }
+    }
+
+  /**
+   * [reasons] read back, or none from a report written before re-throws had
+   * them. A key naming no reason is refused rather than dropped: a count
+   * nobody can attribute is a file that no longer means what it says.
+   */
+  private fun readReasons(json: JsonObject): Map<UnreadReason, Long> {
+    val counts = json["rethrowsBy"]?.let { json.obj("rethrowsBy") } ?: return emptyMap()
+    return counts.keys.associate { id ->
+      val reason = requireNotNull(UnreadReason.ofId(id)) { "rethrowsBy names no reason: '$id'" }
+      reason to counts.wholeNumber(id)
+    }
+  }
 
   private fun frames(frames: FrameSummary): JsonObject =
     buildJsonObject {

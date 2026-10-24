@@ -34,6 +34,10 @@ enum ContactFlags : std::uint32_t {
   kTouchingWall = 1u << 1,
   /// Resting on another die — rung 2 of the correction ladder's first question.
   kSupportedByDie = 1u << 2,
+  /// Touching another die at all, whichever way the contact points. A reading
+  /// for the harness: it says what a cocked die leans on, and the solver never
+  /// sees it (`docs/physics-and-rendering.md`, "Why a die was thrown again").
+  kTouchingDie = 1u << 3,
 };
 
 /// The tray, in simulation units. Its mesh is fixed; only friction and

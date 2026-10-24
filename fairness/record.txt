@@ -1,10 +1,10 @@
 # Written by tools/fairness.sh on the reference device. Not edited by hand: the release checks it.
-fingerprint: 3198b19b7195592be5ae6752e16059177e572b291a9cb6d15ac0594cc08f6f1e
+fingerprint: 80b47d9bcbd2dc683794113e1aca4b628b0727ba5c3f508e85c565b5f94fde93
 rolls: 100000
 verdict: pass
-commit: 42dec2b1f840e816228762cdc1114f61cf08b165
+commit: 1436cac2a977963b669ed8ec3fe8c7e5cb373163 (uncommitted changes)
 device: Pixel 10a, API 37
-date: 2026-10-23
+date: 2026-10-24
 edge rounding: default
 shape: coin: n=100000 chi2=1,00 limit=10,83 worstFaceOff=0,158% counts=[50158, 49842] gaveUp=0/10 seeds=[]
 shape: elongated-square-bipyramid: n=100000 chi2=12,11 limit=16,27 worstFaceOff=0,420% counts=[25071, 25420, 24736, 24773] gaveUp=0/10 seeds=[]

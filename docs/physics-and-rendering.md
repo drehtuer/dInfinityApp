@@ -1315,10 +1315,13 @@ not a margin.
 
 The long d4 was measured after decision 109 (Pixel 10a, 2026-10-23), when
 12 % was already past what a set may ask for. The tetrahedron it replaced was
-re-thrown less (2.43 / 2.35 %) and settled sooner (0.76 s); a long die is
-read off a long face like any other, but lying against a neighbour it tilts
-past the fifteen degrees that make it cocked more often than a squat one does
-(`docs/TODO.md`, Step 5.3).
+re-thrown less (2.43 / 2.35 %) and settled sooner (0.76 s). Why, from the
+harness's breakdown of `20d4` at the default ("Why a die was thrown again",
+below; 2026-10-24): of 3.675 %, 1.500 % came to rest on another d4, 1.225 %
+cocked against one and 0.950 % cocked against a wall — and none on the floor
+alone, so a long d4 never rests on an end. A `20d6` loses 0.125, 0.125 and
+0.225 % the same three ways. A long die stacks on another more than it leans
+on one (`docs/TODO.md`, Step 5.3).
 
 No throw gave up, none was forced to settle and no die came to rest on
 another at any of the nine; the overlap and re-throw bars fail at every
@@ -1532,6 +1535,28 @@ front of somebody who came to roll dice, about a die that is fairer than the
 plastic one in their hand. It is written down here, where somebody choosing to
 trust the app can find it, and that is the right audience for it.
 
+**Nor is the shape changed to pass the test** (decision 110). The bias lives
+in how narrow a face's basin is, so the only cure is wider basins, and no
+eighteen-faced solid has them *and* the symmetry that makes a die fair by
+construction:
+
+| solid | every face alike | adjacent faces apart |
+| --- | --- | --- |
+| enneagonal trapezohedron (the d18) | yes | 28.4° |
+| enneagonal bipyramid | yes | about 35° around the middle, with its height |
+| rhombicuboctahedron's eighteen squares | no: six and twelve | 45° |
+
+The two isohedral ones are the only convex solids with eighteen faces that
+are all alike, and both have nine faces round one axis: the bipyramid would
+gain a few degrees and fail the same way. The rhombicuboctahedron's squares
+are 45° apart, wider than a d10's margin needs, but six of them sit on the
+axes and twelve on the diagonals with different neighbours, so nothing
+makes them come up equally often. It would be fair only once tuned, by how
+far out one ring sits, against this engine, and its eight triangles would
+need raising into points so that it could not rest on them. That trades the
+one guarantee every other die has for a fit that has to be re-made whenever
+the physics moves.
+
 ## Avoiding stacked and cocked dice
 
 On a real table dice practically never stay stacked on top of each other or
@@ -1730,6 +1755,36 @@ with no shake in it — exactly the passes and seeds the screen would make, minu
 the wait (`Passes.scripted`). So the harness still measures the share of dice
 that needed another throw, and a die that never comes good gives a headless run
 up after sixteen passes rather than holding it for ever.
+
+### Why a die was thrown again
+
+One share of dice re-thrown says how often and not why, and the cures differ:
+a long d4 leaning on its neighbour wants a throw that spreads the dice, a coin
+on its rim wants a rim that does not roll. So every die a pass leaves unread
+carries its reason (`UnreadReason`), decided once, when the pass is counted,
+from what the die was touching:
+
+```mermaid
+flowchart TD
+  unread["a die left unread"] --> onDie{"standing on<br/>another die?"}
+  onDie -- yes --> a["on another die"]
+  onDie -- no --> rest{"at rest?"}
+  rest -- no --> b["still moving"]
+  rest -- yes --> die{"touching<br/>another die?"}
+  die -- yes --> c["cocked against a die"]
+  die -- no --> wall{"touching<br/>a wall?"}
+  wall -- yes --> d["cocked against a wall"]
+  wall -- no --> e["cocked on the floor"]
+```
+
+The first that applies is the one a cure would have to address, so a die
+wedged between a die and a wall is the pile-up's. "Touching another die" is a
+contact flag of its own (`kTouchingDie`), raised for both dice of any
+die-to-die contact whichever way it points; the solver never sees it, so the
+physics is the same with it as without. `Passes` counts a reason when the die
+is actually thrown again, so the reasons add up to the re-throws; a pass that
+gave up throws its dice again as still moving. The harness prints the
+breakdown above its scorecard (`docs/build-setup.md`, "The physics harness").
 
 ## The dice waiting to be thrown
 

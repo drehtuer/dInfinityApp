@@ -1,7 +1,11 @@
 package de.drehtuer.dinfinity.simulation.harness
 
+import de.drehtuer.dinfinity.simulation.api.UnreadReason
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -112,6 +116,47 @@ class HarnessJsonTest {
 
     val failure = assertFailsWith<IllegalArgumentException> { HarnessJson.fromJson(broken) }
     assertTrue(failure.message.orEmpty().contains("forever"), failure.message.orEmpty())
+  }
+
+  @Test
+  fun `re-throws are written by reason, under the names the table uses`() {
+    val text = HarnessJson.encode(report())
+
+    assertTrue(text.contains("\"cocked against a die\": 2"), text)
+  }
+
+  @Test
+  fun `a report written before re-throws had reasons reads back with none`() {
+    val json = HarnessJson.toJson(report())
+    val summary = json.getValue("summary").jsonObject
+    val rolls = json.getValue("rolls").jsonArray
+    val old =
+      JsonObject(
+        json +
+          mapOf(
+            "summary" to JsonObject(summary - "rethrowsBy"),
+            "rolls" to JsonArray(rolls.map { JsonObject(it.jsonObject - "rethrowsBy") }),
+          ),
+      )
+
+    val read = HarnessJson.fromJson(old)
+
+    assertEquals(emptyMap<UnreadReason, Long>(), read.summary.rethrowsBy)
+    assertTrue(read.rolls.all { it.rethrowsBy.isEmpty() })
+    assertEquals(report().summary.rethrows, read.summary.rethrows, "the count itself is still there")
+  }
+
+  @Test
+  fun `a re-throw reason the document does not know is refused rather than dropped`() {
+    val json = HarnessJson.toJson(report())
+    val summary = json.getValue("summary").jsonObject
+    val broken =
+      JsonObject(
+        json + ("summary" to JsonObject(summary + ("rethrowsBy" to JsonObject(mapOf("bad luck" to JsonPrimitive(1)))))),
+      )
+
+    val failure = assertFailsWith<IllegalArgumentException> { HarnessJson.fromJson(broken) }
+    assertTrue(failure.message.orEmpty().contains("bad luck"), failure.message.orEmpty())
   }
 
   @Test
@@ -234,6 +279,7 @@ class HarnessJsonTest {
           forcedSettles = 2,
           stackedAtRest = 1,
           deepestDiePenetrationMm = 0.5,
+          rethrowsBy = mapOf(UnreadReason.CockedOnADie to 2, UnreadReason.OnAnotherDie to 1),
         ),
       ),
     )

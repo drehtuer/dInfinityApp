@@ -163,6 +163,104 @@ class PassesTest {
   }
 
   @Test
+  fun `a re-throw is counted by why its die could not be read, under the die it is`() {
+    val passes = Passes(spec(4))
+    passes.landed(
+      SimulationOutcome(
+        faces = mapOf(0 to 1),
+        unread = listOf(1, 2, 3),
+        unreadReasons =
+          mapOf(1 to UnreadReason.CockedOnADie, 2 to UnreadReason.OnAnotherDie, 3 to UnreadReason.CockedOnADie),
+      ),
+    )
+    passes.next()
+    // The second pass throws dice 1, 2 and 3 at its own positions 0, 1 and 2,
+    // and leaves die 3 cocked again, for a different reason.
+    passes.landed(
+      SimulationOutcome(
+        faces = mapOf(0 to 2, 1 to 3),
+        unread = listOf(2),
+        unreadReasons = mapOf(2 to UnreadReason.CockedOnAWall),
+      ),
+    )
+    passes.next()
+    passes.landed(SimulationOutcome(faces = mapOf(0 to 4)))
+
+    val outcome = passes.outcome()
+    assertEquals(4, outcome.rethrows)
+    assertEquals(
+      mapOf(UnreadReason.CockedOnADie to 2, UnreadReason.OnAnotherDie to 1, UnreadReason.CockedOnAWall to 1),
+      outcome.rethrowsBy,
+    )
+    assertEquals(outcome.rethrows, outcome.rethrowsBy.values.sum(), "every re-throw has its reason")
+  }
+
+  @Test
+  fun `dice a pass gave up on are thrown again as still moving`() {
+    val passes = Passes(spec(3))
+    passes.gaveUp(read = mapOf(0 to 1), unsettled = listOf(1, 2))
+    passes.next()
+    passes.landed(SimulationOutcome(faces = mapOf(0 to 2, 1 to 3)))
+
+    assertEquals(mapOf(UnreadReason.StillMoving to 2), passes.outcome().rethrowsBy)
+  }
+
+  @Test
+  fun `a re-throw no pass gave a reason for is counted but not explained`() {
+    val passes = Passes(spec(2))
+    passes.landed(SimulationOutcome(faces = mapOf(0 to 1), unread = listOf(1)))
+    passes.next()
+    passes.landed(SimulationOutcome(faces = mapOf(0 to 2)))
+
+    assertEquals(1, passes.outcome().rethrows)
+    assertEquals(emptyMap<UnreadReason, Int>(), passes.outcome().rethrowsBy)
+  }
+
+  @Test
+  fun `a reason for a die the pass never threw is not counted`() {
+    val passes = Passes(spec(1))
+    passes.landed(
+      SimulationOutcome(
+        faces = mapOf(0 to 1),
+        unread = listOf(4),
+        unreadReasons =
+          mapOf(
+            4 to UnreadReason.StillMoving,
+          ),
+      ),
+    )
+
+    assertEquals(emptyMap<UnreadReason, Int>(), passes.outcome().rethrowsBy)
+  }
+
+  @Test
+  fun `the reasons a finished outcome already carries are added in`() {
+    val passes = Passes(spec(1))
+    passes.landed(
+      SimulationOutcome(
+        faces = mapOf(0 to 1),
+        rethrows = 2,
+        rethrowsBy =
+          mapOf(
+            UnreadReason.CockedOnTheFloor to 2,
+          ),
+      ),
+    )
+
+    assertEquals(mapOf(UnreadReason.CockedOnTheFloor to 2), passes.outcome().rethrowsBy)
+  }
+
+  @Test
+  fun `an outcome cannot explain a die it read, or more re-throws than it had`() {
+    assertFailsWith<IllegalArgumentException> {
+      SimulationOutcome(faces = mapOf(0 to 1), unreadReasons = mapOf(0 to UnreadReason.StillMoving))
+    }
+    assertFailsWith<IllegalArgumentException> {
+      SimulationOutcome(faces = mapOf(0 to 1), rethrows = 1, rethrowsBy = mapOf(UnreadReason.StillMoving to 2))
+    }
+  }
+
+  @Test
   fun `a die a pass never threw is not filed anywhere`() {
     val passes = Passes(spec(1))
 
