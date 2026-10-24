@@ -621,7 +621,6 @@ None blocks code (design decision log of 2026-09-17).
 - [ ] Statistics is three axes on one screen — split, or keep the picker?
 - [ ] History grouped by day, by saved roll, or by session as the app does?
 - [ ] Make-default on the set list rows as well as the detail screen?
-- [ ] The d18 as a true enneagonal trapezohedron, or a rounded barrel?
 - [ ] An oversized stamp clips at the edge of a narrow face (a long d4's,
       a d18's) — keep, or shrink to fit?
 - [ ] **A filled button's label is 3.65:1 on its accent, wants 4.5:1.** Fill

@@ -1532,6 +1532,28 @@ front of somebody who came to roll dice, about a die that is fairer than the
 plastic one in their hand. It is written down here, where somebody choosing to
 trust the app can find it, and that is the right audience for it.
 
+**Nor is the shape changed to pass the test** (decision 110). The bias lives
+in how narrow a face's basin is, so the only cure is wider basins, and no
+eighteen-faced solid has them *and* the symmetry that makes a die fair by
+construction:
+
+| solid | every face alike | adjacent faces apart |
+| --- | --- | --- |
+| enneagonal trapezohedron (the d18) | yes | 28.4° |
+| enneagonal bipyramid | yes | about 35° around the middle, with its height |
+| rhombicuboctahedron's eighteen squares | no: six and twelve | 45° |
+
+The two isohedral ones are the only convex solids with eighteen faces that
+are all alike, and both have nine faces round one axis: the bipyramid would
+gain a few degrees and fail the same way. The rhombicuboctahedron's squares
+are 45° apart, wider than a d10's margin needs, but six of them sit on the
+axes and twelve on the diagonals with different neighbours, so nothing
+makes them come up equally often. It would be fair only once tuned, by how
+far out one ring sits, against this engine, and its eight triangles would
+need raising into points so that it could not rest on them. That trades the
+one guarantee every other die has for a fit that has to be re-made whenever
+the physics moves.
+
 ## Avoiding stacked and cocked dice
 
 On a real table dice practically never stay stacked on top of each other or
