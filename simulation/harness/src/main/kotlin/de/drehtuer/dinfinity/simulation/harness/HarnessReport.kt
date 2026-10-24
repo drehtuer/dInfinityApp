@@ -2,6 +2,8 @@ package de.drehtuer.dinfinity.simulation.harness
 
 import de.drehtuer.dinfinity.simulation.api.SettleRule
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
+import de.drehtuer.dinfinity.simulation.api.UnreadReason
+import java.util.Locale
 
 /**
  * What a run of the device harness came to (`docs/TODO.md`, Step 5.1).
@@ -163,6 +165,7 @@ data class DeviceFacts(
  * @param postRestCorrections dice touched after they had stopped. Always zero,
  *   and a single one is a bug rather than a statistic.
  * @param rethrows dice picked up and thrown again (rung 3).
+ * @param rethrowsBy [rethrows] by why each die could not be read.
  * @param forcedSettles dice the simulation had to finish for.
  * @param stackedAtRest dice that came to rest standing on another die.
  * @param deepestDiePenetrationMm the deepest die-into-die overlap the solver
@@ -184,6 +187,7 @@ data class RollRecord(
   val stackedAtRest: Int,
   val deepestDiePenetrationMm: Double,
   val medianTurnsAfterLanding: Double = 0.0,
+  val rethrowsBy: Map<UnreadReason, Int> = emptyMap(),
   /**
    * True when this roll gave up: it ran longer than a roll should and its dice
    * never stopped, so it has no faces to report.
@@ -251,6 +255,7 @@ data class RollRecord(
         corrections = outcome.corrections,
         postRestCorrections = outcome.postRestCorrections,
         rethrows = outcome.rethrows,
+        rethrowsBy = outcome.rethrowsBy,
         forcedSettles = outcome.forcedSettles,
         stackedAtRest = outcome.stackedAtRest,
         deepestDiePenetrationMm = outcome.deepestDiePenetrationMm,
@@ -275,6 +280,8 @@ data class RollRecord(
  * @param corrections dice nudged while still moving, over the whole run.
  * @param postRestCorrections dice touched after they had stopped. Zero.
  * @param rethrows dice thrown again.
+ * @param rethrowsBy [rethrows] by why each die could not be read, over the
+ *   whole run ([UnreadReason]).
  * @param forcedSettles dice the simulation finished for.
  * @param stackedAtRest dice left standing on another die.
  * @param capsReached rolls that gave up: they ran longer than a roll should
@@ -301,6 +308,7 @@ data class HarnessSummary(
   val deepestDiePenetrationMm: Double,
   val turnsAfterLanding: Distribution = Distribution.of(emptyList()),
   val frames: FrameSummary? = null,
+  val rethrowsBy: Map<UnreadReason, Long> = emptyMap(),
 ) {
   /** The share of dice that needed any correction at all. */
   val correctedShare: Double get() = share(corrections)
@@ -310,7 +318,40 @@ data class HarnessSummary(
 
   private fun share(count: Long): Double = if (dice == 0L) 0.0 else count.toDouble() / dice
 
+  /**
+   * Why the dice of [rethrows] were thrown again, as lines of plain text: one
+   * per reason with its count and its share of every die thrown, largest
+   * first, and a line for any re-throws no reason was recorded for.
+   *
+   * Not a scorecard row. Each reason is a cause of the one figure that is
+   * judged, `dice re-thrown`, and has no bar of its own; printed apart from
+   * the scorecard so it cannot be read as a target met or missed.
+   */
+  fun rethrowBreakdown(): String {
+    val heading = "dice re-thrown, by why: $rethrows of $dice (%s)".format(Locale.ROOT, percent(rethrownShare))
+    val known = rethrowsBy.filterValues { it > 0 }.entries.sortedByDescending { it.value }
+    val unexplained = rethrows - rethrowsBy.values.sum()
+    val lines =
+      known.map { (reason, count) -> line(reason.id, count) } +
+        listOfNotNull(line(NO_REASON, unexplained).takeIf { unexplained > 0 })
+    val width = lines.maxOfOrNull { it.first.length } ?: 0
+    return (listOf(heading) + lines.map { (name, figures) -> "  %-${width}s  %s".format(Locale.ROOT, name, figures) })
+      .joinToString("\n")
+  }
+
+  private fun line(
+    name: String,
+    count: Long,
+  ): Pair<String, String> = name to "%6d  %s".format(Locale.ROOT, count, percent(share(count)))
+
+  private fun percent(share: Double): String = "%.3f %%".format(Locale.ROOT, share * PERCENT)
+
   companion object {
+    private const val PERCENT = 100.0
+
+    /** What the breakdown calls re-throws no reason was recorded for. */
+    const val NO_REASON: String = "no reason recorded"
+
     /**
      * [records] added up, for a run that threw [diceCount] dice each time,
      * with whatever [frames] the run measured.
@@ -335,6 +376,11 @@ data class HarnessSummary(
         deepestDiePenetrationMm = records.maxOfOrNull { it.deepestDiePenetrationMm } ?: 0.0,
         turnsAfterLanding = Distribution.of(records.map(RollRecord::medianTurnsAfterLanding)),
         frames = frames.summary(),
+        rethrowsBy =
+          records
+            .flatMap { it.rethrowsBy.entries }
+            .groupBy({ it.key }, { it.value.toLong() })
+            .mapValues { (_, counts) -> counts.sum() },
       )
   }
 }

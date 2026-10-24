@@ -90,7 +90,9 @@ class HarnessTest {
     val frames = Frames()
     val records = run(request, plan, frames)
     val report = HarnessReport.of(facts(request, plan, records.size), records, frames.measured(request))
-    val table = report.scorecard.table()
+    // Why the dice were thrown again above the scorecard, whose verdict has to
+    // stay the last line: `tools/harness.sh` takes its exit code from it.
+    val table = report.summary.rethrowBreakdown() + "\n\n" + report.scorecard.table()
 
     write(request.label, HarnessJson.encode(report), table)
     // Into logcat under System.out, so a run watched live says something

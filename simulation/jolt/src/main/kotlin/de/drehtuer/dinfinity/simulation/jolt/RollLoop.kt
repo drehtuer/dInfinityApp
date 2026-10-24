@@ -16,6 +16,7 @@ import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Tumble
+import de.drehtuer.dinfinity.simulation.api.UnreadReason
 import de.drehtuer.dinfinity.simulation.api.Vector3
 import kotlin.math.roundToInt
 
@@ -436,13 +437,16 @@ class RollLoop(
       "roll over at step ${tracker.stepsTaken}, tossed $tossed times; " +
         "${shake.samplesAfterLetGo} moments came after the toss, the last at step ${shake.lastStepAfterLetGo}",
     )
-    val unread = count(states)
+    val reasons = count(states)
+    val unread = reasons.keys.toList()
     val again = unread.isNotEmpty()
 
     result =
       SimulationOutcome(
         faces = countedFace.indices.filter { counted[it] }.associateWith { countedFace[it] },
         unread = unread,
+        // Why, for the harness: what a re-throw is a re-throw of.
+        unreadReasons = reasons,
         // Where they stopped, for the throw an explosion or a reroll adds
         // next: it is aimed at the floor this one left clear and drawn among
         // the dice standing on the rest of it, and neither is something the
@@ -506,8 +510,8 @@ class RollLoop(
    * this world and in the picture, and the dice that were read leave only when
    * a shake throws the others, into a world they are not in.
    */
-  private fun count(states: List<DieState>): List<Int> {
-    val unread = mutableListOf<Int>()
+  private fun count(states: List<DieState>): Map<Int, UnreadReason> {
+    val unread = linkedMapOf<Int, UnreadReason>()
     states.forEachIndexed { index, state ->
       if (counted[index]) return@forEachIndexed
       val face = readableFace(spec.dice[index].die, state)
@@ -525,7 +529,13 @@ class RollLoop(
         tumble.settled(index)
         return@forEachIndexed
       }
-      unread += index
+      unread[index] =
+        UnreadReason.of(
+          onAnotherDie = state.supportedByDie,
+          atRest = tracker.isAtRest(index),
+          touchingDie = state.touchingDie,
+          touchingWall = state.touchingWall,
+        )
     }
     return unread
   }

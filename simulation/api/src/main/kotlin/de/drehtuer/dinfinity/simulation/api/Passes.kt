@@ -40,6 +40,12 @@ class Passes(
   /** The dice the last pass could not read, waiting for a hand. */
   private var unread: List<Int> = emptyList()
 
+  /** Why each of [unread] could not be read, by index in [spec], where the pass said. */
+  private var reasons: Map<Int, UnreadReason> = emptyMap()
+
+  /** The dice thrown again so far, by why they had to be ([SimulationOutcome.rethrowsBy]). */
+  private val rethrowsBy = sortedMapOf<UnreadReason, Int>()
+
   /** Where the dice of the last pass stopped, once it was the last. */
   private var resting: Map<Int, RestingPlace> = emptyMap()
 
@@ -109,6 +115,7 @@ class Passes(
     // it was reported at, and nothing is filed under it.
     val ours = inTheAir.indices
     file(outcome.faces.filterKeys { it in ours }, outcome.unread.filter { it in ours })
+    reasons = outcome.unreadReasons.filterKeys { it in ours }.mapKeys { (at, _) -> inTheAir[at] }
     // Only the last pass leaves dice on the table. Every earlier one is
     // followed by a throw, and that throw lifts what it read
     // ([SimulationOutcome.restingAt]).
@@ -121,6 +128,7 @@ class Passes(
     landedPasses++
     steps += outcome.steps
     rethrows += outcome.rethrows
+    outcome.rethrowsBy.forEach { (reason, count) -> rethrowsBy.merge(reason, count, Int::plus) }
     corrections += outcome.corrections
     forcedSettles += outcome.forcedSettles
     postRestCorrections += outcome.postRestCorrections
@@ -148,6 +156,8 @@ class Passes(
   ) {
     check(airborne) { "a pass gave up with nothing in the air" }
     file(read.filterKeys { it in inTheAir.indices }, unsettled.filter { it in inTheAir.indices })
+    // A pass that gave up gave up on dice that never stopped.
+    reasons = unread.associateWith { UnreadReason.StillMoving }
     resting = emptyMap()
   }
 
@@ -172,6 +182,9 @@ class Passes(
     airborne = true
     thrownAgain++
     rethrows += inTheAir.size
+    // Counted as they are thrown, so the reasons add up to the re-throws.
+    inTheAir.forEach { index -> reasons[index]?.let { rethrowsBy.merge(it, 1, Int::plus) } }
+    reasons = emptyMap()
     return ThrowSpec(
       dice = inTheAir.mapIndexed { at, index -> spec.dice[index].copy(index = at) },
       geometry = spec.geometry,
@@ -194,6 +207,7 @@ class Passes(
       steps = steps,
       corrections = corrections,
       rethrows = rethrows,
+      rethrowsBy = rethrowsBy.toMap(),
       forcedSettles = forcedSettles,
       postRestCorrections = postRestCorrections,
       stackedAtRest = stackedAtRest,

@@ -85,6 +85,9 @@ internal object JoltNative {
   /** Standing on another die. */
   const val FLAG_SUPPORTED: Int = 4
 
+  /** Touching another die, whichever way: what a cocked die leans on. */
+  const val FLAG_DIE: Int = 8
+
   /**
    * True when `libdinfinity_jolt.so` is loaded and the bridge can be used.
    *

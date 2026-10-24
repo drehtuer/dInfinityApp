@@ -1753,6 +1753,36 @@ the wait (`Passes.scripted`). So the harness still measures the share of dice
 that needed another throw, and a die that never comes good gives a headless run
 up after sixteen passes rather than holding it for ever.
 
+### Why a die was thrown again
+
+One share of dice re-thrown says how often and not why, and the cures differ:
+a long d4 leaning on its neighbour wants a throw that spreads the dice, a coin
+on its rim wants a rim that does not roll. So every die a pass leaves unread
+carries its reason (`UnreadReason`), decided once, when the pass is counted,
+from what the die was touching:
+
+```mermaid
+flowchart TD
+  unread["a die left unread"] --> onDie{"standing on<br/>another die?"}
+  onDie -- yes --> a["on another die"]
+  onDie -- no --> rest{"at rest?"}
+  rest -- no --> b["still moving"]
+  rest -- yes --> die{"touching<br/>another die?"}
+  die -- yes --> c["cocked against a die"]
+  die -- no --> wall{"touching<br/>a wall?"}
+  wall -- yes --> d["cocked against a wall"]
+  wall -- no --> e["cocked on the floor"]
+```
+
+The first that applies is the one a cure would have to address, so a die
+wedged between a die and a wall is the pile-up's. "Touching another die" is a
+contact flag of its own (`kTouchingDie`), raised for both dice of any
+die-to-die contact whichever way it points; the solver never sees it, so the
+physics is the same with it as without. `Passes` counts a reason when the die
+is actually thrown again, so the reasons add up to the re-throws; a pass that
+gave up throws its dice again as still moving. The harness prints the
+breakdown above its scorecard (`docs/build-setup.md`, "The physics harness").
+
 ## The dice waiting to be thrown
 
 Tapping a saved roll, or a die in the picker, puts dice **on** the table rather
