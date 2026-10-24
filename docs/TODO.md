@@ -287,14 +287,15 @@ while standing on another, p99 step at most 1.23 ms (60 dice) against 8.33.
 | deepest overlap (mm) | 0 | 3.6 | 5.6 | 4.4 | 6.4 | 5.3 | 6.0 | 6.4 | 4.8 |
 | turns after landing | 2.73 | 2.90 | 2.96 | 2.90 | 2.54 | 2.02 | 2.03 | 1.94 | 1.82 |
 
-- [ ] **Long d4s are re-thrown more than the tetrahedron was** (decision
-      109; Pixel 10a, 2026-10-23, 200 throws each). The pile-ups are gone:
-      all twenty-four `100d4` seeds in `JoltBridgeTest` settle in under two
-      seconds (five gave up with the tetrahedron), and no harness roll gave
-      up. But 3.68 % of the dice in `20d4` and 5.28 % in `100d4` are re-thrown,
-      against 2.35 % and 3.07 % before. Find out why they end cocked — most
-      likely a long body leaning on a neighbour — and prevent it while they
-      move
+- [ ] **Long d4s are re-thrown more than the tetrahedron was** (decisions
+      109 and 110; Pixel 10a, 2026-10-24, 200 throws each). The pile-ups are
+      gone: all twenty-four `100d4` seeds in `JoltBridgeTest` settle in under
+      two seconds (five gave up with the tetrahedron), and no harness roll gave
+      up. But 5.55 % of the dice in `20d4` and 5.01 % in `100d4` are
+      re-thrown, against 2.35 % and 3.07 % for the tetrahedron and 3.68 % in
+      `20d4` before the d4 grew to 20 mm. The harness does not say why a die
+      was re-thrown; make it, then find out why they end cocked — most likely
+      a long body leaning on a neighbour — and prevent it while they move
 - [ ] **A hundred coins stack: 18–29 a seed are left on another coin by one
       throw** (Pixel 10a, 2026-10-04; four to ten under the old ladder, which
       re-threw them itself). None is read (decision 70), and

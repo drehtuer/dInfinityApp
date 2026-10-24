@@ -1309,15 +1309,17 @@ not a margin.
 
 | | long d4 | d6 | d20 |
 | --- | --- | --- | --- |
-| re-thrown at 1.5 % / 3 % / 12 % | 3.88 / 3.68 / — % | 0.88 / 0.48 / 0.20 % | 1.10 / 1.28 / 1.20 % |
-| median settle at 1.5 % / 3 % / 12 % | 1.30 / 1.01 / — s | 0.85 / 0.85 / 0.85 s | 0.96 / 0.96 / 0.94 s |
-| turns after landing at 1.5 % / 3 % / 12 % | 2.65 / 2.70 / — | 2.44 / 2.52 / 2.86 | 2.64 / 2.69 / 2.78 |
+| re-thrown at 1.5 % / 3 % / 12 % | 5.70 / 5.55 / — % | 0.88 / 0.48 / 0.20 % | 1.10 / 1.28 / 1.20 % |
+| median settle at 1.5 % / 3 % / 12 % | 1.53 / 1.49 / — s | 0.85 / 0.85 / 0.85 s | 0.96 / 0.96 / 0.94 s |
+| turns after landing at 1.5 % / 3 % / 12 % | 2.46 / 2.42 / — | 2.44 / 2.52 / 2.86 | 2.64 / 2.69 / 2.78 |
 
-The long d4 was measured after decision 109 (Pixel 10a, 2026-10-23), when
-12 % was already past what a set may ask for. The tetrahedron it replaced was
-re-thrown less (2.43 / 2.35 %) and settled sooner (0.76 s); a long die is
-read off a long face like any other, but lying against a neighbour it tilts
-past the fifteen degrees that make it cocked more often than a squat one does
+The long d4 was measured at the 20 mm of decision 110 (Pixel 10a,
+2026-10-24), when 12 % was already past what a set may ask for. The
+tetrahedron it replaced was re-thrown less (2.43 / 2.35 %) and settled sooner
+(0.76 s), and so was the long d4 at its first 16 mm (3.88 / 3.68 %, 1.30 /
+1.01 s): twenty longer dice crowd the same tray more. A long die is read off
+a long face like any other, but lying against a neighbour it tilts past the
+fifteen degrees that make it cocked more often than a squat one does
 (`docs/TODO.md`, Step 5.3).
 
 No throw gave up, none was forced to settle and no die came to rest on
