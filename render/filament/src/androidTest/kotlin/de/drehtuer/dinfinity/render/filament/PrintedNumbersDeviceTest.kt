@@ -155,7 +155,7 @@ class PrintedNumbersDeviceTest {
     val up = Vector3(1.0, 0.0, 0.0)
     val right = Vector3(0.0, -1.0, 0.0)
     val target = Vector3(0.0, 0.0, HEIGHT_MM)
-    val offset = StandardDice.d6.material.boundingRadiusMm * 2
+    val offset = StandardDice.d6.boundingRadiusMm * 2
     val frame =
       FilamentStage(SIZE, SIZE, postProcessing = false, shared = filament).use { stage ->
         val renderer = FilamentDiceRenderer(stage)
@@ -355,7 +355,7 @@ class PrintedNumbersDeviceTest {
     face: Int,
   ): Pair<BodyTransform, CameraShot> {
     val solid = SolidFaces.of(die.shape).first { it.index == face }
-    val radius = die.material.boundingRadiusMm
+    val radius = die.boundingRadiusMm
     val up = Vector3(1.0, 0.0, 0.0)
     val turn = Quaternion.carrying(fromOut = solid.normal, fromUp = solid.up, toOut = Vector3.Up, toUp = up)
     val position = Vector3(0.0, 0.0, HEIGHT_MM)
@@ -416,8 +416,8 @@ class PrintedNumbersDeviceTest {
       )
       val entity =
         stage.add(
-          GpuMesh.of(DieMesh.of(die, scale = 1.0).surfaces, scale = die.material.boundingRadiusMm),
-          DiceMaterial.dieOf(die.material, texturePath = null, numbers = numbers),
+          GpuMesh.of(DieMesh.of(die, scale = 1.0).surfaces, scale = die.boundingRadiusMm),
+          DiceMaterial.dieOf(die.physicalMaterial, texturePath = null, numbers = numbers),
         )
       stage.place(entity, Transform.of(body.position, body.orientation))
       stage.aim(shot)

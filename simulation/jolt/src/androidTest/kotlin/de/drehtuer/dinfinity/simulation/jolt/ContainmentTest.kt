@@ -139,7 +139,7 @@ class ContainmentTest {
       world.use {
         world.addDie(
           ShapeGeometry.hullOf(die, 1.0),
-          die.material,
+          die.physicalMaterial,
           Placement(corner, Quaternion.Identity, Vector3.Zero, Vector3.Zero),
         )
         world.finish()
@@ -168,7 +168,7 @@ class ContainmentTest {
 
     world.use {
       dice.forEachIndexed { index, die ->
-        world.addDie(ShapeGeometry.hullOf(die, scale), die.material, layout.placementOf(index, dice.size))
+        world.addDie(ShapeGeometry.hullOf(die, scale), die.physicalMaterial, layout.placementOf(index, dice.size))
       }
       world.finish()
       repeat(SettleRule.HARD_CAP_STEPS) {
@@ -225,7 +225,7 @@ class ContainmentTest {
 
     return world.use {
       dice.forEachIndexed { index, die ->
-        world.addDie(ShapeGeometry.hullOf(die, scale), die.material, layout.placementOf(index, dice.size))
+        world.addDie(ShapeGeometry.hullOf(die, scale), die.physicalMaterial, layout.placementOf(index, dice.size))
       }
       world.finish()
       repeat(steps) { step ->
@@ -240,7 +240,7 @@ class ContainmentTest {
 
   private fun d6(): Die = Die.standard("d6", DieShape.Cube)
 
-  private fun radiusOf(die: Die): Double = die.material.boundingRadiusMm
+  private fun radiusOf(die: Die): Double = die.boundingRadiusMm
 
   /** The throw, shrunk by the capacity rule exactly as a real one would be. */
   private fun specOf(

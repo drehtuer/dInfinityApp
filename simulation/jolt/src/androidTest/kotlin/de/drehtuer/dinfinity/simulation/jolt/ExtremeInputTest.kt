@@ -169,11 +169,15 @@ class ExtremeInputTest {
     assertEquals("the same extreme shake gave two different rolls", outcome?.faces, again?.faces)
 
     val world = requireNotNull(JoltWorld.open(geometry, table, maxDice = dice.size))
-    val layout = SpawnLayout(geometry, dice.first().material.boundingRadiusMm * spec.dieScale, spec.seed)
+    val layout = SpawnLayout(geometry, dice.first().boundingRadiusMm * spec.dieScale, spec.seed)
     val states =
       world.use {
         dice.forEachIndexed { index, die ->
-          world.addDie(ShapeGeometry.hullOf(die, spec.dieScale), die.material, layout.placementOf(index, dice.size))
+          world.addDie(
+            ShapeGeometry.hullOf(die, spec.dieScale),
+            die.physicalMaterial,
+            layout.placementOf(index, dice.size),
+          )
         }
         world.finish()
         RollLoop(spec, world, ShakeDriver(shake)).runOrGiveUp()
