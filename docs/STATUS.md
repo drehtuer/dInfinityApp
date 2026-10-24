@@ -33,15 +33,14 @@ This is a snapshot, not a changelog — git history is the changelog.
   are bright cream instead of flat white.
 - **The d4 is a long die** (decision 109): a square prism with two short
   points, read from the face on top. A set file naming the tetrahedron is
-  refused — a breaking change, so the next release is **v1.0.0**. `100d4` no
+  refused — a breaking change, in the next release, **v0.5.0**. `100d4` no
   longer gives up, but 3.7 % of a `20d4`'s dice are re-thrown, mostly for
   coming to rest on another d4 (`docs/TODO.md` 5.3). The d18 stays a
   trapezohedron (decision 110).
 - **Every release is shown fair**: `tools/fairness.sh` throws every shape
   100,000 times on the phone into `fairness/record.txt`, tied to the physics
   by a fingerprint, and the release workflow refuses a tag without a passing
-  record. **The record needs re-making before v1.0.0**: the re-throw reasons
-  added a contact flag inside the fingerprinted bridge.
+  record. Re-made on 2026-10-24 for the re-throw reasons' contact flag.
 - **In flight: why a die was re-thrown** (`feature/rethrow-reasons`): the
   harness breaks the re-throws down by reason.
 - **Next:** glass and resin as the two materials they are, with lighter
