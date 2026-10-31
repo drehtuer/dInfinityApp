@@ -174,7 +174,7 @@ shared between them too, and the build stops with *"AST file was compiled for
 the target x86_64 but the current translation unit is being compiled for
 aarch64"*. A second download is cheaper than that sentence.
 
-Three settings in that file are load-bearing.
+Five settings in that file are load-bearing.
 
 `CROSS_PLATFORM_DETERMINISTIC=ON` is the whole reason this engine was chosen
 (`docs/architecture.md`, decision 37). Without it the golden determinism suite
@@ -200,6 +200,27 @@ Both flags are doing the same job — keeping the compiler from reassociating
 floating-point arithmetic — so silencing the overlap changes nothing about the
 determinism they exist for.
 
+The GPU compute backends Jolt 5.6 brought — `JPH_USE_VK`, `JPH_USE_DX12`,
+`JPH_USE_MTL` and their CPU fallback `JPH_USE_CPU_COMPUTE` — are switched off.
+Nothing here runs a shader: every roll is decided on the CPU, because GPU
+floating point is not the same on every driver (`docs/architecture.md`,
+decision 112). Off, the build needs no Vulkan headers and no shader compiler,
+and the library carries none of it.
+
+`DOWNLOAD_EXTRACT_TIMESTAMP FALSE` stamps Jolt's files with the time they
+were extracted rather than with the archive's own dates. With the archive's,
+a new pin's headers are *older* than the bridge's object files, Ninja sees
+nothing to recompile, and the bridge links against a Jolt it was not built
+for. Jolt checks for exactly that when a world is made, and aborts:
+
+```text
+Version mismatch, make sure you compile the client code with the same Jolt version and compiler definitions!
+Client reported version 5.3.0, library version is 5.6.0.
+```
+
+That is what the move to 5.6 hit on a build tree that had built 5.3. A tree
+that already has the mismatch is fixed by deleting `simulation/jolt/.cxx`.
+
 ### Building Jolt by hand
 
 Rarely needed, but the container has `cmake` and `ninja` on `PATH` and this is
@@ -213,7 +234,8 @@ cmake -S <jolt>/Build -B <build> -G Ninja \
   -DCROSS_PLATFORM_DETERMINISTIC=ON \
   -DCMAKE_CXX_FLAGS="-Wno-overriding-option" \
   -DTARGET_UNIT_TESTS=OFF -DTARGET_HELLO_WORLD=OFF -DTARGET_PERFORMANCE_TEST=OFF \
-  -DTARGET_SAMPLES=OFF -DTARGET_VIEWER=OFF
+  -DTARGET_SAMPLES=OFF -DTARGET_VIEWER=OFF \
+  -DJPH_USE_VK=OFF -DJPH_USE_DX12=OFF -DJPH_USE_MTL=OFF -DJPH_USE_CPU_COMPUTE=OFF
 ```
 
 ### The simulation's units are centimetres, not metres

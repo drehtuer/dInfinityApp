@@ -39,8 +39,8 @@ set(CMAKE_EXE_LINKER_FLAGS_DISTRIBUTION "${CMAKE_EXE_LINKER_FLAGS_RELEASE}")
 # build fails with "AST file was compiled for the target x86_64 but the current
 # translation unit is being compiled for aarch64". A second download is cheaper
 # than that sentence.
-set(JOLT_VERSION "5.3.0")
-set(JOLT_SHA256 "e7f9621e480646c434150e1fbe3a9410f4ec4b04ffe54791e0678326b741b918")
+set(JOLT_VERSION "5.6.0")
+set(JOLT_SHA256 "6e069ee0172478cc78182047aac87e5310ba14a67a53348ae14cc37801fd3f8e")
 
 # CROSS_PLATFORM_DETERMINISTIC is the reason this engine was chosen at all
 # (`docs/architecture.md`, decision 37). Without it the golden determinism
@@ -52,6 +52,16 @@ set(TARGET_HELLO_WORLD OFF CACHE BOOL "" FORCE)
 set(TARGET_PERFORMANCE_TEST OFF CACHE BOOL "" FORCE)
 set(TARGET_SAMPLES OFF CACHE BOOL "" FORCE)
 set(TARGET_VIEWER OFF CACHE BOOL "" FORCE)
+
+# Jolt 5.6 can run compute shaders on the GPU. Nothing here does: every roll
+# is decided on the CPU, because GPU floating point is not the same on every
+# driver and decision 37's determinism would not survive it
+# (`docs/architecture.md`, decision 112). Off, so the build pulls in no
+# Vulkan headers or shader compiler, and the library carries none of it.
+set(JPH_USE_DX12 OFF CACHE BOOL "" FORCE)
+set(JPH_USE_VK OFF CACHE BOOL "" FORCE)
+set(JPH_USE_MTL OFF CACHE BOOL "" FORCE)
+set(JPH_USE_CPU_COMPUTE OFF CACHE BOOL "" FORCE)
 
 # A workaround for a build that otherwise does not happen. Jolt's deterministic
 # build passes both `-ffp-model=precise` and `-ffp-contract=off`, Clang 21 (NDK
@@ -66,7 +76,13 @@ FetchContent_Declare(
   URL "https://github.com/jrouwe/JoltPhysics/archive/refs/tags/v${JOLT_VERSION}.tar.gz"
   URL_HASH "SHA256=${JOLT_SHA256}"
   SOURCE_SUBDIR Build
-  DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+  # Stamped when extracted, not with the archive's own dates. With the
+  # archive's, a new pin's headers are older than the bridge's object files
+  # and nothing is recompiled: the 5.6 upgrade linked a bridge built against
+  # 5.3's headers, and Jolt aborted on its version check the first time a
+  # world was made. It is only extracted when the URL or digest changes, so
+  # this costs a rebuild exactly when one is owed.
+  DOWNLOAD_EXTRACT_TIMESTAMP FALSE
 )
 FetchContent_MakeAvailable(JoltPhysics)
 

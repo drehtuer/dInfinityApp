@@ -1,16 +1,16 @@
 # Written by tools/fairness.sh on the reference device. Not edited by hand: the release checks it.
-fingerprint: 80b47d9bcbd2dc683794113e1aca4b628b0727ba5c3f508e85c565b5f94fde93
+fingerprint: 5b430abb9041e6f75daad670d41b5b56e0037f106bddb48500d3dc756ccdc262
 rolls: 100000
 verdict: pass
-commit: 1436cac2a977963b669ed8ec3fe8c7e5cb373163 (uncommitted changes)
+commit: c27f97634c19ec67baef8cf1ed9ec4d50aff2fc8
 device: Pixel 10a, API 37
-date: 2026-10-24
+date: 2026-10-31
 edge rounding: default
-shape: coin: n=100000 chi2=1,00 limit=10,83 worstFaceOff=0,158% counts=[50158, 49842] gaveUp=0/10 seeds=[]
-shape: elongated-square-bipyramid: n=100000 chi2=12,11 limit=16,27 worstFaceOff=0,420% counts=[25071, 25420, 24736, 24773] gaveUp=0/10 seeds=[]
-shape: cube: n=100000 chi2=2,86 limit=20,52 worstFaceOff=0,158% counts=[16779, 16509, 16663, 16739, 16703, 16607] gaveUp=0/10 seeds=[]
-shape: octahedron: n=100000 chi2=7,48 limit=24,32 worstFaceOff=0,244% counts=[12533, 12437, 12464, 12575, 12398, 12414, 12744, 12435] gaveUp=0/10 seeds=[]
-shape: pentagonal-trapezohedron: n=100000 chi2=18,42 limit=27,88 worstFaceOff=0,275% counts=[9905, 10105, 9948, 9881, 10275, 9910, 10051, 10085, 10063, 9777] gaveUp=0/10 seeds=[]
-shape: dodecahedron: n=100000 chi2=12,69 limit=31,26 worstFaceOff=0,221% counts=[8432, 8302, 8335, 8231, 8186, 8374, 8328, 8347, 8280, 8249, 8554, 8382] gaveUp=0/10 seeds=[]
-shape: enneagonal-trapezohedron: n=100000 chi2=267,30 limit=40,79 (not judged on it) worstFaceOff=0,609% counts=[5302, 5795, 5583, 5391, 5858, 5238, 6165, 5567, 5268, 5123, 5517, 5762, 5862, 5144, 5323, 5559, 5925, 5618] gaveUp=0/10 seeds=[]
-shape: icosahedron: n=100000 chi2=9,53 limit=43,82 worstFaceOff=0,093% counts=[4932, 4964, 5046, 4977, 4987, 5035, 5061, 5093, 5002, 4938, 5062, 4989, 4908, 4968, 4979, 4986, 5039, 5071, 4973, 4990] gaveUp=0/10 seeds=[]
+shape: coin: n=100000 chi2=3,27 limit=10,83 worstFaceOff=0,286% counts=[50286, 49714] gaveUp=0/10 seeds=[]
+shape: elongated-square-bipyramid: n=100000 chi2=1,26 limit=16,27 worstFaceOff=0,141% counts=[25005, 25034, 25102, 24859] gaveUp=0/10 seeds=[]
+shape: cube: n=100000 chi2=1,81 limit=20,52 worstFaceOff=0,113% counts=[16706, 16738, 16702, 16554, 16717, 16583] gaveUp=0/10 seeds=[]
+shape: octahedron: n=100000 chi2=6,54 limit=24,32 worstFaceOff=0,167% counts=[12608, 12406, 12579, 12417, 12499, 12333, 12517, 12641] gaveUp=0/10 seeds=[]
+shape: pentagonal-trapezohedron: n=100000 chi2=4,66 limit=27,88 worstFaceOff=0,125% counts=[9949, 9886, 10019, 9944, 10096, 10029, 9975, 10010, 10125, 9967] gaveUp=0/10 seeds=[]
+shape: dodecahedron: n=100000 chi2=12,88 limit=31,26 worstFaceOff=0,206% counts=[8289, 8443, 8373, 8326, 8539, 8351, 8217, 8191, 8290, 8317, 8413, 8251] gaveUp=0/10 seeds=[]
+shape: enneagonal-trapezohedron: n=100000 chi2=329,57 limit=40,79 (not judged on it) worstFaceOff=0,574% counts=[5293, 5754, 5627, 5305, 5882, 5137, 6125, 5499, 5345, 5059, 5476, 5770, 5830, 5123, 5387, 5441, 6130, 5817] gaveUp=0/10 seeds=[]
+shape: icosahedron: n=100000 chi2=29,35 limit=43,82 worstFaceOff=0,160% counts=[4840, 5146, 5133, 5072, 4947, 5091, 5082, 5015, 4955, 4997, 5061, 5028, 4901, 4895, 4977, 4934, 4952, 5045, 5064, 4865] gaveUp=0/10 seeds=[]
