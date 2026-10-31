@@ -4,7 +4,7 @@ Current state of the project in a few lines. Update it when a milestone moves, a
 decision is taken or something is blocked; prune anything no longer current.
 This is a snapshot, not a changelog — git history is the changelog.
 
-**Last updated:** 2026-10-24
+**Last updated:** 2026-10-31
 
 ## Where we are
 
@@ -41,8 +41,11 @@ This is a snapshot, not a changelog — git history is the changelog.
   100,000 times on the phone into `fairness/record.txt`, tied to the physics
   by a fingerprint, and the release workflow refuses a tag without a passing
   record. Re-made on 2026-10-24 for the re-throw reasons' contact flag.
-- **In flight: why a die was re-thrown** (`feature/rethrow-reasons`): the
-  harness breaks the re-throws down by reason.
+- **In flight: dice that glow, and a Halloween set** (`feature/glowing-dice`,
+  `feature/halloween-dice`): a set file's `glow` and `glow_color` (decision
+  111), and a fifth sample set that comes installed — glowing frosted resin
+  with a `pumpkin` die counted by value. Waits on the owner's eye on the phone
+  (`docs/TODO.md` 4.4).
 - **Next:** glass and resin as the two materials they are, with lighter
   shadows (`docs/TODO.md` 5.9), and the lag the owner still sees on some
   throws (5.6).

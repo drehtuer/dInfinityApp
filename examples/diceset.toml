@@ -97,6 +97,15 @@ density = 1.2               # g/cm³, 0.5 .. 8.0. 1.2 is about acrylic
 # size and density roll exactly alike.
 translucency = 0            # %, 0 .. 100
 
+# Light the body gives off of its own, as a per cent: 0 for a die that only
+# reflects, 100 for glow-in-the-dark at full charge. It shows on the side in
+# the die's own shadow as much as on the lit one. Numbers and artwork do not
+# glow. `glow_color` is the colour it glows in, and is `color` when left out:
+# a real glow-in-the-dark die is pale by day and green in the dark, and
+# usually somewhat translucent too. A look only — the physics never reads it.
+glow = 0                    # %, 0 .. 100
+# glow_color = "#7cffb0"
+
 restitution = 0.55          # bounce, 0.0 .. 0.8
 friction = 0.5              # 0.1 .. 1.0
 

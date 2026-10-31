@@ -99,7 +99,20 @@ class FilamentStage(
    * without it draws straight to the screen, as before.
    */
   private val tone: TonePass? =
-    if (postProcessing) TonePass(engine, parts.toneMaterial, width, height) else null
+    if (postProcessing) TonePass(engine, parts.toneMaterial, width, height, parts.blank) else null
+
+  /**
+   * The halo round a glowing die ([GlowPass]): made the first time one is
+   * added to a stage whose post pass is on, and kept until the stage closes.
+   */
+  private var glow: GlowPass? = null
+
+  /**
+   * Every surface of this throw as the glow mask would need it, so that the
+   * pass made for the first glowing die can hide it behind the surfaces that
+   * were there before it ([GlowPass]).
+   */
+  private val surfaces = mutableListOf<GlowPass.Surface>()
 
   /** The white pixel every surface with no atlas samples. Shared, like the material. */
   private val blank: Texture get() = parts.blank
@@ -249,6 +262,7 @@ class FilamentStage(
   override fun take(entity: Int) {
     if (entity == Stage.NOTHING) return
     scene.removeEntity(entity)
+    glow?.take(entity)
   }
 
   override fun drawnCells(
@@ -259,6 +273,7 @@ class FilamentStage(
   override fun put(entity: Int) {
     if (entity == Stage.NOTHING || scene.hasEntity(entity)) return
     scene.addEntity(entity)
+    glow?.put(entity)
   }
 
   override fun add(
@@ -272,15 +287,13 @@ class FilamentStage(
     val vertices = verticesOf(mesh)
     val triangles = indicesOf(mesh)
     val maps = parameters.maps
+    val atlas = parameters.texturePath?.let(atlases)?.texture
+    val glyphs = if (maps == null) parameters.numbers?.let(::glyphsOf) else null
     val instance =
       if (maps != null) {
         tableInstanceOf(parameters, maps)
       } else {
-        instanceOf(
-          parameters,
-          parameters.texturePath?.let(atlases)?.texture,
-          parameters.numbers?.let(::glyphsOf),
-        )
+        instanceOf(parameters, atlas, glyphs)
       }
     val entity = EntityManager.get().create()
 
@@ -301,6 +314,14 @@ class FilamentStage(
     buffers += vertices
     indices += triangles
     instances += instance
+    intoMask(
+      GlowPass.Surface(
+        entity,
+        GlowPass.Shape(vertices, triangles, boundsOf(mesh)),
+        parameters,
+        GlowPass.Textures(atlas, glyphs, blank, sampler, glyphSampler),
+      ),
+    )
     return entity
   }
 
@@ -332,6 +353,7 @@ class FilamentStage(
   fun draw(capture: ByteBuffer?): Boolean {
     if (!frames.beginFrame(swapChain, 0)) return false
     frames.render(view)
+    glow?.render(frames)
     tone?.render(frames)
     capture?.let {
       frames.readPixels(0, 0, width, height, Texture.PixelBufferDescriptor(it, Texture.Format.RGBA, Texture.Type.UBYTE))
@@ -418,6 +440,12 @@ class FilamentStage(
    * one.
    */
   override fun clear() {
+    // The twins first: each is parented to a die about to be destroyed.
+    glow?.let { pass ->
+      pass.clear()
+      tone?.haloFrom(pass, on = false)
+    }
+    surfaces.clear()
     entities.forEach {
       scene.removeEntity(it)
       engine.destroyEntity(it)
@@ -443,6 +471,7 @@ class FilamentStage(
    */
   override fun close() {
     clear()
+    glow?.close()
     tone?.close()
     engine.destroyView(view)
     engine.destroyScene(scene)
@@ -452,6 +481,29 @@ class FilamentStage(
     EntityManager.get().destroy(cameraEntity)
     engine.destroySwapChain(swapChain)
     own?.close()
+  }
+
+  /**
+   * Draws [surface] into the glow mask as well, when there is one, or makes
+   * the mask for it when it is the first glowing die — with every surface the
+   * stage already holds, black, in front of or behind it. A stage drawn
+   * without a tone pass has nowhere to lay a halo and has no mask ([GlowPass]).
+   */
+  private fun intoMask(surface: GlowPass.Surface) {
+    val pass = tone ?: return
+    surfaces += surface
+    val existing = glow
+    val halo =
+      when {
+        existing != null -> existing.also { it.add(surface) }
+        Glow.glows(surface.parameters) ->
+          GlowPass(engine, parts.glowMaterial, camera, width, height).also { made ->
+            glow = made
+            surfaces.forEach(made::add)
+          }
+        else -> return
+      }
+    if (halo.active) pass.haloFrom(halo, on = true)
   }
 
   private fun addKeyLight() {
@@ -500,6 +552,12 @@ class FilamentStage(
       setParameter("glyphs", glyphs ?: blank, glyphSampler)
       setParameter("clearCoat", parameters.clearCoat.toFloat())
       setParameter("clearCoatRoughness", parameters.clearCoatRoughness.toFloat())
+      setParameter(
+        "glow",
+        parameters.glow.red.toFloat(),
+        parameters.glow.green.toFloat(),
+        parameters.glow.blue.toFloat(),
+      )
       // Only the resin material has these, and Filament refuses a parameter
       // a material does not declare (`DiceMaterial.RESIN_SOURCE`).
       parameters.resin?.let { resin ->

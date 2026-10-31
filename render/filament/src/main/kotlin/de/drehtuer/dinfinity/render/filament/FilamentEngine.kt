@@ -139,13 +139,24 @@ class FilamentEngine(
    */
   val toneMaterial: Material by tone
 
-  /** Which of the three surface materials [parameters] is to be drawn with. */
+  private val glow =
+    lazy(LazyThreadSafetyMode.NONE) { loadMaterial(engine, materials, DiceMaterial.Variant.GLOW, compiling) }
+
+  /**
+   * And what a glowing die is drawn with into the glow mask its halo is
+   * blurred from ([GlowPass]). Made the first time a glowing die is thrown;
+   * a phone that never throws one never compiles it.
+   */
+  val glowMaterial: Material by glow
+
+  /** Which of the surface materials [parameters] is to be drawn with. */
   fun materialFor(parameters: DiceMaterial.Parameters): Material =
     when (DiceMaterial.variantOf(parameters)) {
       DiceMaterial.Variant.OPAQUE -> material
       DiceMaterial.Variant.RESIN -> resinMaterial
       DiceMaterial.Variant.TABLE -> tableMaterial
       DiceMaterial.Variant.TONE -> toneMaterial
+      DiceMaterial.Variant.GLOW -> glowMaterial
     }
 
   /**
@@ -534,10 +545,10 @@ class FilamentEngine(
       MaterialBuilder.init()
       try {
         val packet =
-          if (variant == DiceMaterial.Variant.TONE) {
-            MaterialBuilder().toneMaterial().targetApi(target).build()
-          } else {
-            surfaceMaterial(target, variant)
+          when (variant) {
+            DiceMaterial.Variant.TONE -> MaterialBuilder().toneMaterial().targetApi(target).build()
+            DiceMaterial.Variant.GLOW -> MaterialBuilder().glowMaskMaterial().targetApi(target).build()
+            else -> surfaceMaterial(target, variant)
           }
         check(packet.isValid) { "the ${variant.key} material did not compile on this device" }
         return packet.buffer
@@ -558,6 +569,7 @@ class FilamentEngine(
             DiceMaterial.Variant.RESIN -> "dinfinity-resin"
             DiceMaterial.Variant.TABLE -> "dinfinity-table"
             DiceMaterial.Variant.TONE -> error("the tone pass is not a surface")
+            DiceMaterial.Variant.GLOW -> error("the glow mask is not a surface")
           },
         ).material(variant.source)
         // `LIT` for resin too, not `SUBSURFACE`. Filament's subsurface

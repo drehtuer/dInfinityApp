@@ -20,9 +20,9 @@ object SampleSets {
   /**
    * Every archive, by file name. A list rather than a scan of the resources,
    * which a class loader cannot do; `SampleSetsTest` holds it to the zips in
-   * `sample-sets/`, so a fifth set cannot be committed and left out.
+   * `sample-sets/`, so a sixth set cannot be committed and left out.
    */
-  val ARCHIVES: List<String> = listOf("green-resin.zip", "marble.zip", "red-glass.zip", "steel.zip")
+  val ARCHIVES: List<String> = listOf("green-resin.zip", "halloween.zip", "marble.zip", "red-glass.zip", "steel.zip")
 
   /** The bytes of the archive called [name], or null when the app does not carry it. */
   fun read(name: String): ByteArray? =

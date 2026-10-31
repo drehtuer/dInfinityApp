@@ -33,12 +33,15 @@ import com.google.android.filament.Renderer as FilamentFrameRenderer
  * the screen, about the work Filament's own grading pass does.
  *
  * @param material [FilamentEngine.toneMaterial].
+ * @param blank what it reads in place of a glow mask until there is one
+ *   ([haloFrom]); read at a strength of nought, so its colour never shows.
  */
 internal class TonePass(
   private val engine: Engine,
   material: Material,
   private val width: Int,
   private val height: Int,
+  blank: Texture,
 ) : AutoCloseable {
   private val frame: Texture =
     Texture
@@ -61,6 +64,13 @@ internal class TonePass(
       setParameter(
         "frame",
         frame,
+        com.google.android.filament
+          .TextureSampler(),
+      )
+      setParameter("halo", 0.0f)
+      setParameter(
+        "glow",
+        blank,
         com.google.android.filament
           .TextureSampler(),
       )
@@ -114,6 +124,19 @@ internal class TonePass(
   fun takeOver(tray: View) {
     tray.renderTarget = target
     tray.dithering = View.Dithering.NONE
+  }
+
+  /**
+   * Lays [glow]'s blurred mask over the frame from now on, at
+   * [Glow.HALO_STRENGTH] while [on], and not at all while not
+   * (`docs/physics-and-rendering.md`, "A die that glows").
+   */
+  fun haloFrom(
+    glow: GlowPass,
+    on: Boolean,
+  ) {
+    instance.setParameter("glow", glow.mask, glow.sampler)
+    instance.setParameter("halo", if (on) Glow.HALO_STRENGTH.toFloat() else 0.0f)
   }
 
   /** Draws the screen's picture from the frame the tray's view has just drawn. */

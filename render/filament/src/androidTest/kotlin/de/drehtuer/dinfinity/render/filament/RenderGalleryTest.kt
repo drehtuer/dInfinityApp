@@ -67,7 +67,8 @@ class RenderGalleryTest {
    * the oak, the glass and plain, so a picture-drawn floor can be put beside a
    * flat one — and the same throw again on felt in metal and see-through at
    * three strengths — milky, the default and glassy — which are the
-   * materials a rendering change is likeliest to move.
+   * materials a rendering change is likeliest to move; and glowing, on felt
+   * and on black felt.
    */
   private fun scenes(): List<Scene> {
     val set = BuiltinDiceSet.set
@@ -82,11 +83,30 @@ class RenderGalleryTest {
       }
     val milky = clear.map { it.copy(material = it.material.copy(translucency = MILKY)) }
     val glassy = clear.map { it.copy(material = it.material.copy(translucency = 1.0, roughness = GLASSY_ROUGHNESS)) }
+    // The Halloween set's glow-in-the-dark resin (`sample-sets/halloween`),
+    // on felt and on the darkest table, where a glow shows most.
+    val glowing =
+      shapes.map {
+        it.copy(
+          material =
+            it.material.copy(
+              colorArgb = GLOW_BODY,
+              numberColorArgb = GLOW_INK,
+              roughness = GLOW_ROUGHNESS,
+              translucency = GLOW_TRANSLUCENCY,
+              glow = GLOW,
+              glowColorArgb = GLOW_COLOUR,
+            ),
+        )
+      }
+    val dark = tables.firstOrNull { it.id == "felt-black" } ?: felt
     return onTables +
       Scene("${felt.id}-metal", throwOf(metal + metal, felt)) +
       Scene("${felt.id}-translucent", throwOf(clear + clear, felt)) +
       Scene("${felt.id}-milky", throwOf(milky + milky, felt)) +
-      Scene("${felt.id}-glassy", throwOf(glassy + glassy, felt))
+      Scene("${felt.id}-glassy", throwOf(glassy + glassy, felt)) +
+      Scene("${felt.id}-glowing", throwOf(glowing + glowing, felt)) +
+      Scene("${dark.id}-glowing", throwOf(glowing + glowing, dark))
   }
 
   private fun throwOf(
@@ -145,6 +165,14 @@ class RenderGalleryTest {
     const val GLASSY_ROUGHNESS = 0.05
     const val AMBER = 0xFFD9822B.toInt()
     const val WHITE = 0xFFFFFFFF.toInt()
+
+    /** `sample-sets/halloween`'s material, kept in step with its `[defaults]` by hand. */
+    const val GLOW_BODY = 0xFFDFE9D6.toInt()
+    const val GLOW_INK = 0xFF141414.toInt()
+    const val GLOW_COLOUR = 0xFF74F0C0.toInt()
+    const val GLOW_ROUGHNESS = 0.5
+    const val GLOW_TRANSLUCENCY = 0.3
+    const val GLOW = 0.7
 
     val SHAPES = listOf("d4", "d6", "d8", "d10", "d12", "d20")
     val TABLES = listOf("felt-green", "felt-black", "oak", "dark-glass", "plain")

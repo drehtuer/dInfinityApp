@@ -96,11 +96,13 @@ a tumble; everything else is real.
   `d%` is an alias for `d100`), and Fudge dice (`dF`), whose total carries its
   sign.
 - **Extensible dice sets** — dice are defined in plain text files with
-  optional face textures; install sets from GitHub, GitLab, Codeberg or any
-  `https` link to an archive. [examples/](examples/) is a working set to copy:
+  optional face textures, and may be see-through or glow in the dark;
+  install sets from GitHub, GitLab, Codeberg or any `https` link to an
+  archive. [examples/](examples/) is a working set to copy:
   every shape, every field commented, blank atlases to draw on.
-  Four finished ones come installed — marble, steel, green resin and red
-  glass, from [sample-sets/](sample-sets/) — so resin, glass and metal dice
+  Five finished ones come installed — marble, steel, green resin, red
+  glass and a glow-in-the-dark Halloween set with a pumpkin die, from
+  [sample-sets/](sample-sets/) — so resin, glass, metal and glowing dice
   roll on every shape from the first launch, and stay removed if you remove
   them.
 - **Exchangeable tables** — swap the look of the dice tray (green or black
@@ -168,7 +170,7 @@ is the visual one. Each document below links to the screens that realise it.
 | [docs/design-handover.md](docs/design-handover.md) | Where the app and the prototype still differ, and the questions each side is waiting on |
 | [design/README.md](design/README.md) | The prototype: what each file is, how to serve it locally, how to keep it in step with `docs/` |
 | [examples/README.md](examples/README.md) | The worked dice set: a commented `diceset.toml` using every catalogue shape, and blank atlases to draw on |
-| [sample-sets/README.md](sample-sets/README.md) | Four finished sets to install from a file or a link — marble, steel, green resin, red glass — and how their artwork and archives are made and checked |
+| [sample-sets/README.md](sample-sets/README.md) | Five finished sets to install from a file or a link — marble, steel, green resin, red glass, Halloween — and how their artwork and archives are made and checked |
 
 ## Status
 

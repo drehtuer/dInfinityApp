@@ -261,8 +261,8 @@ is left in the script, unreferenced, rather than unpicked by hand.
 
 ## Screens whose shape still differs
 
-None of these was changed by either side, save the first. They are structure,
-and structure is the design's.
+None of these was changed by either side, save the first two. They are
+structure, and structure is the design's.
 
 **The designer's Material step has an Opacity slider** the prototype does not
 draw: between the Colour row and the Edges slider, glass to solid in steps of
@@ -271,6 +271,15 @@ five per cent, with "75 % opaque: 25 % of the light goes through" under it
 owner asked for it. It wants drawing in `dzSteps` in the Edges slider's idiom,
 and whether the Material menu's names belong as ticks on it is the design's
 call.
+
+**The installed sets (`1s`) show four sample sets, and none of them glows.**
+The app now comes with five: a Halloween set of glow-in-the-dark resin, pale
+by day and green in the dark, with a `pumpkin` die whose jack-o'-lantern faces
+sit opposite blank ones (`docs/dice-sets.md`, "Sets that come installed";
+decision 111 for the glow). The list wants its fifth row. The prototype fakes
+its physics and its light, so drawing a die that glows is optional; whether a
+set row or a set's dice grid should say "glows" in words, or show it, is the
+design's call.
 
 **Statistics** (`screen="stats"`) is one screen in the prototype: a set
 segmented control, a die segmented control, a grid of four figures, a vertical

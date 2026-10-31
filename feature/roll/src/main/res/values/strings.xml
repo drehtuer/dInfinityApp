@@ -291,6 +291,7 @@
   <string name="roll_preparing_dice">Preparing the dice</string>
   <string name="roll_preparing_resin">Preparing the translucent dice</string>
   <string name="roll_preparing_table">Preparing the table</string>
+  <string name="roll_preparing_glow">Preparing the glowing dice</string>
   <string name="roll_preparing_why">Compiling the shaders for this phone. This happens once after an install or update.</string>
   <!-- The title and the sentence as one notice, for a screen reader. -->
   <string name="roll_preparing_spoken">%1$s. %2$s</string>

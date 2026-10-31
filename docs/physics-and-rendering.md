@@ -2853,6 +2853,83 @@ impact sounds rather than a crash in the middle of a roll.
   not used: it wraps direct light round the back of a thin object, cannot
   refract, and has no clear coat.
 
+- **A die that glows gives off light of its own** (`docs/dice-sets.md`,
+  `glow` and `glow_color`; `docs/architecture.md`, decision 111). It is
+  Filament's *emissive* colour, set in the surface code both die materials
+  share, so a solid die and a resin one glow the same way and no third
+  material is compiled. The emission is added after the lamps and the room,
+  which is what makes a glow read as one on a tray that is always lit: the
+  face turned from the key and the side in the die's own shadow come out the
+  glow colour instead of dark, and a lit face is pushed past the tone curve's
+  knee towards the glow colour's own white.
+
+  | Filament input | From | Value |
+  | --- | --- | --- |
+  | `emissive.rgb` | `glow`, `glow_color` (or `color`) | the glow colour, linear, × `glow` × 0.6 (`Glow.FULL`), × `1 − printed` |
+  | `emissive.w` | — | 0: the screen's units, one being white, not the camera's |
+
+  **In the screen's units, not the camera's.** Filament can take an emissive
+  colour in physical units, scaled by the exposure like every lamp, or as a
+  share of white on the screen. The tray's exposure is worked out from an
+  80,000-lux key and a photographed room (`TrayLighting`), and a glow given
+  in physical units would have to be re-tuned with every change to either; on
+  the screen's scale a glow is a glow whatever the lamps do. At full glow it
+  adds 0.6 of white before its colour — enough that a shaded side is the glow
+  colour, not so much that a pale die under the lamp is one flat patch.
+
+  **Ink does not glow.** The emission is multiplied by the share of the pixel
+  that is body rather than print, the same `printed` that holds a numeral
+  opaque on a resin die, so the black faces of the Halloween set's pumpkin
+  stay black on a green body, as they do on the real dice.
+
+  **A halo, from the glow alone** (`GlowPass`). The glow is drawn a second
+  time, on its own, into a *mask* half the screen's size each way: every
+  glowing die in nothing but its glow (`Glow.MASK_SOURCE`, its ink dark), and
+  every other surface — the tray, the dice that do not glow — black, so a wall
+  or a die in front of a glowing one hides it there as it does on the screen.
+  The mask's smaller levels are made on the GPU, and the tone pass reads five
+  of them, each filtered, adds them by `Glow.HALO_WEIGHTS` — most of it near
+  the die, a little far out — and lays that over the light before the tone
+  curve bends it, at `Glow.HALO_STRENGTH`.
+
+  ```mermaid
+  flowchart LR
+    tray["Tray view<br/>the frame"] --> tone["Tone pass<br/>frame + halo, bent"]
+    mask["Glow view<br/>glow only, half size"] --> mips["Mip chain<br/>the blur"]
+    mips --> tone
+    tone --> screen["Screen"]
+  ```
+
+  *Why not Filament's bloom.* It was tried first. Bloom blurs whatever in
+  the frame is bright, and the frame does not know which light is a glow:
+  with its threshold at white too little of a lit glowing face is past it to
+  show anything, and without the threshold the felt went grey, the rim
+  glowed and every highlight bloomed with the dice. The mask is what the
+  owner suggested — the glow as a screen-space pass of its own — and nothing
+  but the glow spreads: on the phone, round one die on dark felt, 3,878
+  pixels of felt are lit and 97.5 % of the felt is untouched.
+
+  *What it costs.* On a tray with a glowing die: one more draw of the scene,
+  unlit and at a quarter of the pixels, a mip generation and five texture
+  reads a pixel in the tone pass. On a tray without one, nothing: the mask is
+  made the first time a glowing die is thrown, compiled lazily like the resin
+  (`Variant.GLOW`), and the tone pass skips the reads at a strength of nought.
+
+  **What it does not do.** It lights nothing: the felt next to a glowing die
+  is lit by the lamps alone, and what looks like light on it is the halo,
+  laid over the picture rather than shining on the floor — so it does not
+  pick out the far side of a neighbouring die. A real light per
+  die would be up to a hundred moving lights in Filament's froxel grid on
+  every frame, and is left until somebody misses it (`docs/TODO.md`).
+
+  `FilamentStageTest.aGlowingDieIsItsGlowColourAllOver` holds it on the
+  device: a grey d20 glowing green has to come out greener than the same die
+  not glowing on at least 60 % of its body pixels, lit side and shaded side
+  alike. `aGlowingDieThrowsAHaloOntoTheFeltAroundIt` holds the halo: drawn
+  with the post pass, on a dark floor, open felt round a glowing die has to
+  come out greener than round the same die not glowing, and at least 80 % of
+  the felt has to be as it was — a halo, not a haze.
+
 - **Every image in this app counts its rows from the top, and the shader is
   told so.** A die's printed numbers, a package's artwork atlas and a table's
   floor are all built top-down, and `setImage` uploads them as they stand, so

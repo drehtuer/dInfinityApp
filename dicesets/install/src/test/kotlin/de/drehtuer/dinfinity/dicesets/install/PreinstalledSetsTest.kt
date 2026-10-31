@@ -34,7 +34,7 @@ class PreinstalledSetsTest {
 
     assertEquals(NAMES, outcomes.map { it.name })
     assertTrue(outcomes.all { it is PreinstalledSets.Outcome.Installed })
-    assertEquals(setOf("green-resin", "marble", "red-glass", "steel"), onDisk().keys)
+    assertEquals(setOf("green-resin", "halloween", "marble", "red-glass", "steel"), onDisk().keys)
     // Recorded as installed from the app, not from a file somebody picked.
     val meta = File(root, "steel/${PackageMeta.FILE_NAME}")
     assertTrue("no install note beside steel", meta.isFile)
@@ -147,7 +147,7 @@ class PreinstalledSetsTest {
   }
 
   private companion object {
-    val NAMES = listOf("green-resin.zip", "marble.zip", "red-glass.zip", "steel.zip")
+    val NAMES = listOf("green-resin.zip", "halloween.zip", "marble.zip", "red-glass.zip", "steel.zip")
 
     fun repositoryRoot(): File =
       generateSequence(File("").absoluteFile) { it.parentFile }

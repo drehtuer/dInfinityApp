@@ -30,6 +30,8 @@ internal class MaterialReader(
       "restitution",
       "friction",
       "edge_rounding",
+      "glow",
+      "glow_color",
     )
 
   /** [table]'s material keys, with anything it does not set taken from [inherited]. */
@@ -52,14 +54,18 @@ internal class MaterialReader(
       // keeps its look; it is the solver's convex radius, clamped and warned
       // about like every other physics value (`docs/dice-sets.md`).
       edgeRounding = bounded(table, "edge_rounding", where, DieMaterial.EdgeRoundingRange) ?: inherited.edgeRounding,
+      // A per cent like `translucency`, and a look like it: nothing the
+      // solver reads (`docs/dice-sets.md`, `glow`).
+      glow = percentage(table, "glow", where) ?: inherited.glow,
+      glowColorArgb = colour(table, "glow_color", where) ?: inherited.glowColorArgb,
     )
 
   /**
    * A per cent as a fraction, or `null` when the file did not set one.
    *
-   * `translucency` is the one material key an author writes in per cent rather
-   * than in the unit the renderer wants, because "18 % translucent" is how
-   * anybody describes a die and "0.18" is how nobody does
+   * `translucency` and `glow` are the material keys an author writes in per
+   * cent rather than in the unit the renderer wants, because "18 % translucent"
+   * is how anybody describes a die and "0.18" is how nobody does
    * (`docs/dice-sets.md`). The clamping, the warning and the refusal of a
    * value that is not a number are [bounded]'s, so the two cannot disagree
    * about what a bad number means.

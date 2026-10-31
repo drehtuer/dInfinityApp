@@ -32,7 +32,7 @@ class SampleArchivesTest {
   }
 
   @Test
-  fun `there are the four sample sets, each with its archive`() {
+  fun `there are the five sample sets, each with its archive`() {
     assertEquals(SETS, folders().map(File::getName))
     folders().forEach { assertTrue("${it.name}.zip is missing", File(samples, "${it.name}.zip").isFile) }
   }
@@ -68,7 +68,7 @@ class SampleArchivesTest {
       val installed = result as PackageInstaller.Result.Installed
       assertEquals(id, installed.set.id)
       assertEquals("$id installed with warnings", emptyList<Any>(), installed.warnings)
-      assertEquals(STANDARD_DICE, installed.set.dice.map { it.id })
+      assertEquals(STANDARD_DICE + EXTRA_DICE[id].orEmpty(), installed.set.dice.map { it.id })
     }
   }
 
@@ -91,6 +91,13 @@ class SampleArchivesTest {
     val glass = sets.getValue("red-glass")
     assertTrue("red glass is clear", glass.dice.all { it.material.translucency == 1.0 })
     assertTrue("red glass is red", glass.dice.all { isRed(it.material.colorArgb) })
+
+    val halloween = sets.getValue("halloween")
+    assertTrue("halloween glows, every die", halloween.dice.all { it.material.isGlowing })
+    assertTrue("and is partly see-through", halloween.dice.all { it.material.translucency in SOMEWHAT_LESS })
+    assertTrue("in a glow colour of its own", halloween.dice.all { it.material.glowColorArgb != null })
+    val pumpkin = requireNotNull(halloween.die("pumpkin"))
+    assertEquals("a pumpkin counts one and a blank nothing", listOf(1, 0, 1, 0, 1, 0), pumpkin.faces.map { it.value })
   }
 
   private fun install(id: String): DiceSet =
@@ -106,9 +113,11 @@ class SampleArchivesTest {
   }
 
   private companion object {
-    val SETS = listOf("green-resin", "marble", "red-glass", "steel")
+    val SETS = listOf("green-resin", "halloween", "marble", "red-glass", "steel")
+    val EXTRA_DICE = mapOf("halloween" to listOf("pumpkin"))
     val STANDARD_DICE = listOf("d2", "d4", "d6", "d8", "d10", "d10-tens", "d12", "d18", "d20", "df")
     val SOMEWHAT = 0.25..0.6
+    val SOMEWHAT_LESS = 0.1..0.6
     const val STONE_DENSITY = 2.0
     const val RED_SHIFT = 16
     const val GREEN_SHIFT = 8

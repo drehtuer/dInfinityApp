@@ -140,10 +140,16 @@ and read here, and a seed gives the same result with the renderer on and off.
 
 ### 4.4 Dice sets — `feature/sets`
 
-- [ ] *Judge on the phone:* install the four `sample-sets/` from a file (the
+- [ ] *Judge on the phone:* install the five `sample-sets/` from a file (the
       zips) and from a link (their GitHub folders). Does marble read as stone
       with its numbers cut in, steel as metal, green resin as half see-through
       and red glass as clear? Does each refusal or note say something useful?
+- [ ] *Judge the Halloween set on the phone:* roll `{halloween:d20}` and
+      `6{halloween:pumpkin}` on a dark table (black felt, dark glass) and on
+      green felt. Does it read as glow-in-the-dark resin rather than a lit
+      green plastic, with the black numbers standing out? Do the three
+      pumpkin faces read as jack-o'-lanterns at arm's length? Is `glow = 70`
+      right, or too bright to see the frosting?
 - [ ] **Decide the built-in set's `size_mm`.** It is the width across the
       corners, so the built-in 16 mm d6 is a 9.2 mm cube weighing **0.9 g**
       against the design's 4.2 g. Something near `size_mm = 28` changes every
@@ -154,6 +160,12 @@ and read here, and a seed gives the same result with the renderer on and off.
 - [ ] *Judge on the phone:* does a 44 × 64 dp thumbnail read as a table?
 
 ### 4.6 Face designer — `feature/designer`
+
+- [ ] **A Glow control on the Material step** (decision 111). A set file can
+      make a die glow and the designer cannot: a die copied from a glowing
+      set comes over without its glow (`docs/face-designer.md`). Needs the
+      control drawn in `design/` first, `glow` and `glow_color` in
+      `DieFinish`, the draft file and `DiceSetToml`
 
 - [ ] *Judge on the phone:* the d10's and the d18's own kites (decision 86).
       Open a d18 in the designer: does the long, narrow canvas still leave room
@@ -530,6 +542,10 @@ Pixel 10a.
 - [ ] More catalogue solids, `rhombic-triacontahedron` (d30) first
 - [ ] Author-supplied convex meshes, with the fairness preview they need
       (`docs/dice-sets.md`, "Shapes after v1")
+- [ ] **A glow that lights the felt** (decision 111): a faint light per
+      glowing die, so the halo falls on the floor rather than over the
+      picture. Left out on purpose — up to a hundred moving lights — until
+      somebody misses it
 - [ ] Author-supplied materials — needs a decision on what a stranger's shader
       may do, a compile-time limit and an instruction cap (decision 46)
 
