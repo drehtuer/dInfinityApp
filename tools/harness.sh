@@ -55,6 +55,8 @@ label=""
 table=""
 rounding=""
 release=""
+friction=""
+restitution=""
 out="${root}/build/harness"
 device="${ANDROID_SERIAL:-}"
 build=1
@@ -102,6 +104,8 @@ tools/harness.sh — run the physics harness on a device and score it.
       --rounding <share>  round every die's edges by this share of its size,
                          as a set file's edge_rounding would: 0.015 to 0.12
                          (default: the built-in 0.03)
+      --friction <n>     the dice's friction: 0.1 to 1.0 (default 0.5)
+      --restitution <n>  the dice's bounce: 0.0 to 0.8 (default 0.55)
   -l, --label <name>     what to call the run and its files (default 20d20)
   -o, --out <dir>        where to leave the pulled files
                          (default build/harness)
@@ -153,6 +157,8 @@ while [ "$#" -gt 0 ]; do
     --table) table="${2:?--table needs a table look id, such as dark-glass}"; shift 2 ;;
     --release) release="${2:?--release needs a speed in mm/s, such as 1200}"; shift 2 ;;
     --rounding) rounding="${2:?--rounding needs a share of the size of a die, such as 0.12}"; shift 2 ;;
+    --friction) friction="${2:?--friction needs a number, such as 0.6}"; shift 2 ;;
+    --restitution) restitution="${2:?--restitution needs a number, such as 0.6}"; shift 2 ;;
     -o | --out) out="${2:?--out needs a directory}"; shift 2 ;;
     --no-build) build=0; shift ;;
     *) usage; fail "unknown argument: $1" ;;
@@ -257,6 +263,8 @@ fi
 [ -n "${table}" ] && echo "Table:   ${table}"
 [ -n "${rounding}" ] && echo "Edges:   ${rounding} of the size"
 [ -n "${release}" ] && echo "Release: from a hand at ${release} mm/s"
+[ -n "${friction}" ] && echo "Grip:    friction ${friction}"
+[ -n "${restitution}" ] && echo "Bounce:  restitution ${restitution}"
 [ "${frames}" -eq 1 ] && echo "Frames:  each roll stepped at 60 fps and timed; this runs in real time"
 [ "${rendered}" -eq 1 ] &&
   echo "Frames:  each roll drawn on a screen-sized surface at the watched pace and timed; this runs in real time"
@@ -300,6 +308,8 @@ arguments=(
 [ -n "${table}" ] && arguments+=(-e harness.table "${table}")
 [ -n "${rounding}" ] && arguments+=(-e harness.edgeRounding "${rounding}")
 [ -n "${release}" ] && arguments+=(-e harness.release "${release}")
+[ -n "${friction}" ] && arguments+=(-e harness.friction "${friction}")
+[ -n "${restitution}" ] && arguments+=(-e harness.restitution "${restitution}")
 
 echo "Rolling…"
 # Anything an earlier run left on the device goes first. The run is scored from

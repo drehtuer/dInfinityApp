@@ -590,6 +590,7 @@ emulator attached it refuses to guess — name one with `--device` or
 | `--frames` | step each roll at a frame's cadence and report what the frames cost. A paced run takes as long as the dice really take |
 | `--rendered` | draw each roll onto a screen-sized surface through the tray and Filament, and score the frame rows only ([below](#drawn-frames-the-rendered-harness)). Default 20 rolls |
 | `--table` | with `--rendered` only: throw onto this built-in table look (`felt-green`, `felt-black`, `oak`, `dark-glass`, `plain`) instead of the plain physics-only one — the look decides what a frame costs to draw, and one drawn from pictures has a material of its own ([`docs/tables.md`](tables.md#textures)) |
+| `--friction`, `--restitution` | throw dice with this friction (0.1–1.0) or bounce (0.0–0.8) instead of the default 0.5 and 0.55: what asks whether a setting tuned on one engine is still the best on another. Outside what a set file may say is refused |
 | `--capture` | record the screen for this many seconds instead of scoring a run |
 | `-c`, `--dice` | dice per throw (default 20, which is where Step 5.5 states its settle targets) |
 | `-s`, `--shape` | `d20`, `icosahedron` or `20` — all three are accepted (default `d20`) |

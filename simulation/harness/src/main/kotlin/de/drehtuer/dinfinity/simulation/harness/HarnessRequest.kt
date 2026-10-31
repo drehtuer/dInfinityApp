@@ -50,6 +50,11 @@ import de.drehtuer.dinfinity.simulation.api.ThrowSpec
  *   file's `edge_rounding` would give, or null for the default every die has
  *   when nothing says otherwise (`docs/architecture.md`, decision 94). What
  *   lets a run measure a rounder die than the built-in set has.
+ * @param friction the dice's friction, or null for the default. What lets a
+ *   run measure the dice at a grip other than the one they ship with — the
+ *   way to ask whether a setting tuned on one engine is still the best on
+ *   another.
+ * @param restitution and their bounce, the same way.
  * @param releaseMmPerSecond how fast a hand tosses the dice, for a run of
  *   throws shaken and then tossed (decision 105), or null for the grid throw
  *   the harness has always made. Each roll is shaken by [HandStroke] — four
@@ -66,6 +71,8 @@ data class HarnessRequest(
   val table: String? = null,
   val edgeRounding: Double? = null,
   val releaseMmPerSecond: Double? = null,
+  val friction: Double? = null,
+  val restitution: Double? = null,
 ) {
   init {
     require(diceCount in 1..TableCapacity.MAX_DICE) {
@@ -86,7 +93,7 @@ data class HarnessRequest(
     geometry: TableGeometry = TableGeometry.referenceDevice(),
     table: TableLook = PLAIN,
   ): HarnessPlan {
-    val die = Die.standard(shape.id, shape, materialOf(edgeRounding))
+    val die = Die.standard(shape.id, shape, materialOf(edgeRounding, friction, restitution))
     val dice = List(diceCount) { die }
     val scale =
       when (val verdict = TableCapacity.check(dice, geometry)) {
@@ -144,6 +151,12 @@ data class HarnessRequest(
     /** How round the dice are, as `edge_rounding` would say it ([edgeRounding]). */
     const val EDGE_ROUNDING: String = "harness.edgeRounding"
 
+    /** The dice's friction ([friction]). */
+    const val FRICTION: String = "harness.friction"
+
+    /** The dice's bounce ([restitution]). */
+    const val RESTITUTION: String = "harness.restitution"
+
     /** How fast a hand lets the dice go, in mm/s ([releaseMmPerSecond]). */
     const val RELEASE: String = "harness.release"
 
@@ -170,10 +183,12 @@ data class HarnessRequest(
       val table = arguments(TABLE)?.trim()?.takeIf(String::isNotEmpty)
       val edgeRounding = edgeRoundingOf(arguments(EDGE_ROUNDING))
       val release = releaseOf(arguments(RELEASE))
+      val friction = boundedOf(arguments(FRICTION), "friction", DieMaterial.FrictionRange)
+      val restitution = boundedOf(arguments(RESTITUTION), "restitution", DieMaterial.RestitutionRange)
       return HarnessRequest(
         label =
           arguments(LABEL)?.trim()?.takeIf(String::isNotEmpty)
-            ?: labelOf(diceCount, shape, length, table, edgeRounding, release),
+            ?: labelOf(diceCount, shape, length, table, edgeRounding, release, friction, restitution),
         shape = shape,
         diceCount = diceCount,
         length = length,
@@ -182,7 +197,27 @@ data class HarnessRequest(
         table = table,
         edgeRounding = edgeRounding,
         releaseMmPerSecond = release,
+        friction = friction,
+        restitution = restitution,
       )
+    }
+
+    /**
+     * The [name]d value [value] asks for, or null when it asks for none.
+     * Refused outside [range] — what a set file may say — for the reason
+     * [edgeRoundingOf] gives.
+     */
+    fun boundedOf(
+      value: String?,
+      name: String,
+      range: ClosedFloatingPointRange<Double>,
+    ): Double? {
+      val text = value?.trim()?.takeIf(String::isNotEmpty) ?: return null
+      val number = text.toDoubleOrNull()
+      require(number != null && number in range) {
+        "a $name of \"$text\" is not a number between ${range.start} and ${range.endInclusive}"
+      }
+      return number
     }
 
     /**
@@ -224,9 +259,23 @@ data class HarnessRequest(
       return share
     }
 
-    /** The material a die rounded by [edgeRounding] is made of: the default, but for that. */
-    fun materialOf(edgeRounding: Double?): DieMaterial =
-      if (edgeRounding == null) DieMaterial() else DieMaterial(edgeRounding = edgeRounding)
+    /**
+     * The material a die rounded by [edgeRounding], with [friction] and
+     * [restitution], is made of: the default, but for whichever of them is
+     * given.
+     */
+    fun materialOf(
+      edgeRounding: Double?,
+      friction: Double? = null,
+      restitution: Double? = null,
+    ): DieMaterial {
+      val standard = DieMaterial()
+      return standard.copy(
+        edgeRounding = edgeRounding ?: standard.edgeRounding,
+        friction = friction ?: standard.friction,
+        restitution = restitution ?: standard.restitution,
+      )
+    }
 
     /**
      * What a run calls itself when nobody named it.
@@ -246,6 +295,8 @@ data class HarnessRequest(
       table: String? = null,
       edgeRounding: Double? = null,
       releaseMmPerSecond: Double? = null,
+      friction: Double? = null,
+      restitution: Double? = null,
     ): String =
       buildString {
         append(diceCount)
@@ -254,6 +305,8 @@ data class HarnessRequest(
         if (table != null) append('-').append(table)
         if (edgeRounding != null) append("-round").append(edgeRounding)
         if (releaseMmPerSecond != null) append("-release").append(releaseMmPerSecond.toInt())
+        if (friction != null) append("-friction").append(friction)
+        if (restitution != null) append("-bounce").append(restitution)
         if (length is RunLength.Soak) append("-soak")
       }
 
