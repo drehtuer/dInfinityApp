@@ -512,9 +512,9 @@ Pixel 10a.
       proportion. Today a translucent die refracts (`FilamentStageTest`
       passes) but reads as solid: its shadow is a solid die's, and Filament's
       screen-space refraction sees only the opaque scene, never the die's own
-      back. Candidates: Filament's transparent shadows for the lighter
-      shadow; the die's back faces drawn into what glass refracts; a
-      stronger scatter and a glow from within for resin
+      back. The lighter shadow is 5.10's. Candidates for the rest: the
+      die's back faces drawn into what glass refracts; a stronger scatter
+      and a glow from within for resin
 - [ ] Other screen-space effects, now that there is a pass of our own.
       Ambient occlusion on the dice alone, for contact shading where a die
       meets the felt: Filament's occlusion is a property of the view and
@@ -523,6 +523,72 @@ Pixel 10a.
       pass of our own could mask it to the dice. Each effect is judged in the
       gallery and paid for against the frame budget, as the rest of the
       renderer is
+
+### 5.10 Native rendering — `feature/native-rendering`
+
+The owner wants effects Filament cannot give: shadows that let light through,
+caustics, materials compiled before they are needed, and compute shaders.
+The glow (decision 111) was done *inside* Filament with passes of our own;
+these are the ones that stop there. `.claude/CLAUDE.md` prefers a
+well-tested library for rendering, so the first box is a decision, written
+down before code.
+
+- [ ] **Decide how native, and write it down** (`docs/architecture.md`, a
+      decision). Three ways, cheapest first: Filament's C++ API through JNI,
+      for what its Java API hides; a pass of our own inside Filament's frame
+      (as the tone and glow passes are) for the shadows and caustics; or a
+      renderer of our own on OpenGL ES or Vulkan. A renderer of our own
+      replaces the lit, lacquered surface, the photographed room, PCF
+      shadows, screen-space refraction, multisampling, the tone and glow
+      passes, the atlas and number fields, thumbnails and read-back. **Done
+      when** the choice, what it costs and what it gives up are in the
+      decision log, and `docs/architecture.md`'s module map says where the
+      code lives
+- [ ] **Parity before anything new**, if the renderer is replaced: every
+      `render/filament` device test and the render gallery give the same
+      answers on the Pixel 10a, and the frame targets hold (60 fps at 20d20,
+      57 at 100 dice, `docs/physics-and-rendering.md`, "Performance"). Filament
+      stays the renderer until then
+- [ ] **Light-coloured shadows for see-through dice** — necessary, not a
+      nicety (owner, 2026-10-31). A glass or resin die lets light through, so
+      its shadow is lighter in proportion to its transmission and tinted by
+      its colour; what is printed on it still shades fully. Today every die
+      casts a solid shadow (`docs/physics-and-rendering.md`, "A die you can
+      see into": Filament has no partial coverage for an opaque material).
+      This is the shadow half of 5.9's glass-and-resin box. *Test:* a device
+      test that a clear die's shadow on a white floor is lighter than a solid
+      die's and takes the die's hue
+- [ ] **Caustics for glass and see-through dice**: the light a clear die
+      focuses into a bright patch inside its own shadow. An approximation is
+      enough at 16 mm seen from above — the die's footprint from the lamp,
+      drawn into a small map, light pulled towards its middle and brightened
+      where the faces converge, tinted by the die, projected onto the floor.
+      After the light-coloured shadows, which it sits inside. A tray with no
+      see-through die pays nothing
+- [ ] **Materials compiled at build time, and cached for imported sets.**
+      The app's own materials compiled by `matc` in the build, for each
+      backend it ships, so the first launch after an install compiles
+      nothing and "Preparing the dice" (decision 95) has nothing to wait for.
+      An imported set's dice, which need a variant the build did not make,
+      compiled **when the set is installed**, not at the first throw, and
+      cached by set, version, driver and source, so a throw never waits for a
+      compiler. Sets still supply no shader code ("After v1", author-supplied
+      materials). *Measure:* cold start and first throw on the Pixel 10a
+      before and after
+- [ ] **Compute shaders in the simulation: dice as particles.** The owner's
+      idea: the many-dice parts of a throw — finding which dice are near
+      each other, the spread of a handful as it leaves the hand, a hundred
+      dice settling — run as particles on the GPU. Three rules bind it, and
+      the design has to say how it keeps each: **the physics result is the
+      roll** (no second, cheaper simulation that decides a value);
+      **determinism** — the same seed gives the same roll with the renderer
+      on and off, and power-saving mode has no GPU to lean on (decision 2);
+      and **fairness** — `tools/fairness.sh` re-proves every shape before a
+      release, tied to the physics by its fingerprint. GPU floating point is
+      not bit-identical across drivers, so the likely shape is compute for
+      what does not decide a value (the broad phase, the harness's batches,
+      effects) and Jolt for what does. **Done when** a design note says which
+      parts move, how determinism is kept, and what the harness measures
 
 ## Step 6 — v1 release
 

@@ -41,11 +41,15 @@ This is a snapshot, not a changelog — git history is the changelog.
   100,000 times on the phone into `fairness/record.txt`, tied to the physics
   by a fingerprint, and the release workflow refuses a tag without a passing
   record. Re-made on 2026-10-24 for the re-throw reasons' contact flag.
-- **In flight: dice that glow, and a Halloween set** (`feature/glowing-dice`,
-  `feature/halloween-dice`): a set file's `glow` and `glow_color` (decision
-  111), and a fifth sample set that comes installed — glowing frosted resin
-  with a `pumpkin` die counted by value. Waits on the owner's eye on the phone
-  (`docs/TODO.md` 4.4).
+- **Dice glow** (decision 111, #431, #432): `glow` and `glow_color` in a set
+  file, a halo from a screen-space glow pass of our own, and a fifth sample
+  set — glowing Halloween resin with a `pumpkin` die — that comes installed.
+  Waits on the owner's eye on the phone (`docs/TODO.md` 4.4).
+- **Planned: native rendering** (`feature/native-rendering`,
+  `docs/TODO.md` 5.10): light-coloured shadows for see-through dice (needed),
+  caustics, materials compiled at build time and at install, and compute
+  shaders for the many-dice parts of a throw. Waits on a decision about how
+  native to go.
 - **Next:** glass and resin as the two materials they are, with lighter
   shadows (`docs/TODO.md` 5.9), and the lag the owner still sees on some
   throws (5.6).
