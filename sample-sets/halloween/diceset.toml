@@ -1,0 +1,101 @@
+# Halloween — a sample package for trying the app's import with
+# (sample-sets/README.md). The format is explained field by field in
+# ../../examples/diceset.toml; this file only says what is particular to
+# Halloween.
+#
+# Glow-in-the-dark resin, after a set of real pumpkin dice: pale and frosted
+# by day, green in the dark. The glow is `glow` and `glow_color`, and the
+# body is somewhat see-through as well — two fields, because a die can be
+# either without the other. Black ink does not glow, on these or on the
+# real ones.
+
+format = 1
+
+[set]
+id = "halloween"
+name = "Halloween"
+version = "1.0.0"
+author = "dInfinity"
+license = "CC0-1.0"
+description = "Glow-in-the-dark frosted resin with black numbers, and a pumpkin d6: three jack-o'-lantern faces, three blank. Roll 6{halloween:pumpkin} and count the pumpkins."
+homepage = "https://github.com/drehtuer/dInfinityApp/tree/main/sample-sets/halloween"
+
+[defaults]
+color = "#dfe9d6"           # pale, faintly green, as the dice look in daylight
+number_color = "#141414"
+roughness = 0.5             # frosted
+metallic = 0.0
+size_mm = 16
+density = 1.2               # resin with the pigment in it
+translucency = 30           # partly see-through
+glow = 70
+glow_color = "#74f0c0"      # the green they glow in the dark
+restitution = 0.55
+friction = 0.5
+
+[[die]]
+id = "d2"
+shape = "coin"
+faces = [1, 2]
+
+[[die]]
+id = "d4"
+shape = "elongated-square-bipyramid"
+faces = [1, 2, 3, 4]
+
+[[die]]
+id = "d6"
+shape = "cube"
+faces = [1, 2, 3, 4, 5, 6]
+
+[[die]]
+id = "d8"
+shape = "octahedron"
+faces = [1, 2, 3, 4, 5, 6, 7, 8]
+
+[[die]]
+id = "d10"
+shape = "pentagonal-trapezohedron"
+faces = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+labels = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]
+
+[[die]]
+id = "d10-tens"
+shape = "pentagonal-trapezohedron"
+faces = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]
+labels = ["00", "10", "20", "30", "40", "50", "60", "70", "80", "90"]
+
+[[die]]
+id = "d12"
+shape = "dodecahedron"
+faces = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+
+[[die]]
+id = "d18"
+shape = "enneagonal-trapezohedron"
+faces = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
+
+[[die]]
+id = "d20"
+shape = "icosahedron"
+faces = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+
+[[die]]
+id = "df"
+shape = "cube"
+faces = [-1, -1, 0, 0, 1, 1]
+labels = ["−", "−", "", "", "+", "+"]
+
+# The pumpkin: a jack-o'-lantern on three faces that meet at one corner, each
+# opposite a blank face. A pumpkin counts one and a blank nothing, so a roll
+# of six counts the pumpkins that came up. The faces are artwork
+# (textures/pumpkin.png, drawn by HalloweenArtwork in render/filament's
+# tests); the blanks are left clear and print nothing, so the glow is all
+# they show. The labels are what a pumpkin face would print if the picture
+# were missing.
+[[die]]
+id = "pumpkin"
+shape = "cube"
+faces = [1, 0, 1, 0, 1, 0]
+labels = ["1", "", "1", "", "1", ""]
+texture = "textures/pumpkin.png"

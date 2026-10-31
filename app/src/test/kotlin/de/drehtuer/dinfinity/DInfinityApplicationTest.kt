@@ -81,7 +81,7 @@ class DInfinityApplicationTest {
 
     assertTrue("nothing was written down about the sample sets", record.isFile)
     assertEquals(
-      setOf("green-resin", "marble", "red-glass", "steel"),
+      setOf("green-resin", "halloween", "marble", "red-glass", "steel"),
       folder
         .listFiles()
         .orEmpty()
