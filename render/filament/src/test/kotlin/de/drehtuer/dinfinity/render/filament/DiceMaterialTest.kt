@@ -417,6 +417,53 @@ class DiceMaterialTest {
   }
 
   @Test
+  fun `a glowing die asks for the halo, and a plain die or the tray does not`() {
+    assertTrue(Glow.glows(DiceMaterial.dieOf(DieMaterial(glow = 0.7), texturePath = null)))
+    assertFalse(Glow.glows(DiceMaterial.dieOf(DieMaterial(), texturePath = null)))
+    assertFalse(Glow.glows(DiceMaterial.floorOf(PLAIN)))
+    assertFalse(Glow.glows(DiceMaterial.wallOf(PLAIN)))
+  }
+
+  @Test
+  fun `the halo's blurs add up to the glow, so its strength alone says how bright it is`() {
+    assertEquals(1.0, Glow.HALO_WEIGHTS.sum(), TOLERANCE)
+    assertTrue(Glow.HALO_WEIGHTS.all { it > 0.0 })
+    assertTrue(Glow.HALO_STRENGTH > 0.0)
+  }
+
+  @Test
+  fun `the glow mask writes a surface's glow and nothing else, and nothing printed glows`() {
+    val mask = Glow.MASK_SOURCE
+    assertTrue(mask.contains("material.baseColor = vec4(materialParams.glow * (1.0 - printed), 1.0);"))
+    listOf("glyphs", "atlas").forEach { assertTrue(it, mask.contains("materialParams_$it")) }
+    listOf("numbered", "textured").forEach { assertTrue(it, mask.contains("materialParams.$it")) }
+    // No lighting, no lacquer: a mask, not a surface.
+    assertFalse(mask.contains("clearCoat"))
+    assertFalse(mask.contains("emissive"))
+    assertEquals(Glow.MASK_SOURCE, DiceMaterial.Variant.GLOW.source)
+  }
+
+  @Test
+  fun `the tone pass lays every blur of the mask over the light, before it is bent`() {
+    val tone = ToneCurve.SOURCE
+    Glow.HALO_WEIGHTS.forEachIndexed { level, weight ->
+      assertTrue(
+        "level ${level + 1}",
+        tone.contains("textureLod(materialParams_glow, uv, ${level + 1}.0).rgb * $weight"),
+      )
+    }
+    assertFalse("the full-size mask is the die, not its halo", tone.contains("materialParams_glow, uv, 0.0"))
+    assertTrue(tone.indexOf("* materialParams.halo") < tone.indexOf("toneShown(light)"))
+  }
+
+  @Test
+  fun `the glow mask has a level for every blur, and no more than halving makes`() {
+    assertEquals(Glow.HALO_WEIGHTS.size + 1, GlowPass.levelsFor(540, 1212))
+    assertEquals(1, GlowPass.levelsFor(1, 1))
+    assertEquals(3, GlowPass.levelsFor(4, 2))
+  }
+
+  @Test
   fun `a glow does not choose the material, so a solid glowing die stays opaque`() {
     val solid = DiceMaterial.dieOf(DieMaterial(glow = 1.0), texturePath = null)
     assertEquals(DiceMaterial.Variant.OPAQUE, DiceMaterial.variantOf(solid))

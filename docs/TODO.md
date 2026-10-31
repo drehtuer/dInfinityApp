@@ -536,10 +536,10 @@ Pixel 10a.
 - [ ] More catalogue solids, `rhombic-triacontahedron` (d30) first
 - [ ] Author-supplied convex meshes, with the fairness preview they need
       (`docs/dice-sets.md`, "Shapes after v1")
-- [ ] **A glow that reaches past the die** (decision 111): a faint light per
-      glowing die on the felt, and a bloom halo. Both left out on purpose —
-      a hundred moving lights, and a pass that blooms metal highlights too —
-      until somebody misses them
+- [ ] **A glow that lights the felt** (decision 111): a faint light per
+      glowing die, so the halo falls on the floor rather than over the
+      picture. Left out on purpose — up to a hundred moving lights — until
+      somebody misses it
 - [ ] Author-supplied materials — needs a decision on what a stranger's shader
       may do, a compile-time limit and an instruction cap (decision 46)
 

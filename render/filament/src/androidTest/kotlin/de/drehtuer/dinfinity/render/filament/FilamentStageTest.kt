@@ -18,6 +18,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
+import kotlin.math.abs
 
 /**
  * The renderer on a real GPU (`docs/TODO.md`, Step 3).
@@ -232,6 +233,56 @@ class FilamentStageTest {
     assertTrue("only $greener of ${body.size} pixels of a glowing die glow", share >= LEAST_GLOWING_SHARE)
   }
 
+  @Test
+  fun aGlowingDieThrowsAHaloOntoTheFeltAroundIt() {
+    // The halo is laid over the frame by the tone pass, so it is only there
+    // after the post pass: these frames are drawn with it, which reads back on the phone and not on
+    // the emulator (`aDrawnFrameIsNotBlank`). A pale die glowing green on a
+    // dark floor; the felt that neither the die nor its shadow covers has to
+    // pick up green light from it that the same die not glowing does not give.
+    // Within a step or two of a channel, because the tone pass dithers.
+    val dark = look.copy(floorColorArgb = DARK_FLOOR)
+    val empty = drawnWith(translucency = 0.0, table = dark, position = OUT_OF_SIGHT, postProcessing = true)
+    val plain = drawnWith(translucency = 0.0, table = dark, colour = GLOW_BODY, postProcessing = true)
+    val glowing =
+      drawnWith(
+        translucency = 0.0,
+        table = dark,
+        colour = GLOW_BODY,
+        glow = HALLOWEEN_GLOW,
+        glowColour = GLOW_GREEN,
+        postProcessing = true,
+      )
+
+    val felt = (0 until plain.size / FilamentStage.PIXEL_BYTES).filter { nearPixel(plain, empty, it) }
+    val haloed =
+      felt.count { pixel ->
+        val from = pixel * FilamentStage.PIXEL_BYTES
+        val red = (glowing[from].toInt() and BYTE) - (plain[from].toInt() and BYTE)
+        val green = (glowing[from + 1].toInt() and BYTE) - (plain[from + 1].toInt() and BYTE)
+        green >= HALO_MARGIN && green > red
+      }
+    // And only round it: the halo is the glow blurred on its own, not the
+    // frame, so most of the felt is exactly as it was.
+    val untouched = felt.count { nearPixel(glowing, plain, it) }
+    Log.i(TAG, "halo: $haloed of ${felt.size} pixels of open felt lit green by a glowing die, $untouched untouched")
+    assertTrue("only $haloed pixels of felt round a glowing die are lit by it", haloed >= LEAST_HALO)
+    assertTrue(
+      "a glowing die changed ${felt.size - untouched} of ${felt.size} pixels of felt: a haze, not a halo",
+      untouched >= felt.size * MOSTLY_UNTOUCHED,
+    )
+  }
+
+  /** Whether [pixel] is the same in [a] and [b] within [DITHER] a channel. */
+  private fun nearPixel(
+    a: ByteArray,
+    b: ByteArray,
+    pixel: Int,
+  ): Boolean {
+    val from = pixel * FilamentStage.PIXEL_BYTES
+    return (from until from + RGB_BYTES).all { abs((a[it].toInt() and BYTE) - (b[it].toInt() and BYTE)) <= DITHER }
+  }
+
   /** Whether [pixel] of [frame] is clearly redder than it is blue, or the other way. */
   private fun leans(
     frame: ByteArray,
@@ -268,9 +319,11 @@ class FilamentStageTest {
     position: Vector3 = Vector3(0.0, 0.0, 10.0),
     glow: Double = 0.0,
     glowColour: Int? = null,
+    postProcessing: Boolean = false,
   ): ByteArray {
-    // Post-processing off, for the reason `aDrawnFrameIsNotBlank` gives.
-    FilamentStage(WIDTH, HEIGHT, postProcessing = false).use { stage ->
+    // Post-processing off unless a test asks for it, for the reason
+    // `aDrawnFrameIsNotBlank` gives.
+    FilamentStage(WIDTH, HEIGHT, postProcessing = postProcessing).use { stage ->
       val material =
         StandardDice.d20.material.copy(
           translucency = translucency,
@@ -511,6 +564,27 @@ class FilamentStageTest {
 
     /** Glow-in-the-dark green, the Halloween set's. */
     const val GLOW_GREEN = 0xFF7CFFB0.toInt()
+
+    /** The Halloween set's pale body and its glow. */
+    const val GLOW_BODY = 0xFFDFE9D6.toInt()
+    const val HALLOWEEN_GLOW = 0.7
+
+    /** A floor a halo shows on, the way black felt does. */
+    const val DARK_FLOOR = 0xFF202020.toInt()
+
+    /** How far apart two frames' pixels may be and still be one pixel: the tone pass's dither. */
+    const val DITHER = 2
+
+    /** How much greener a pixel of felt has to come out to count as lit by the halo. */
+    const val HALO_MARGIN = 4
+
+    /** Pixels of open felt that have to be lit: a ring a few pixels wide round a die about 40 across. */
+    const val LEAST_HALO = 150
+
+    const val RGB_BYTES = 3
+
+    /** How much of the open felt a glowing die must leave as it was: all but a halo's width round it. */
+    const val MOSTLY_UNTOUCHED = 0.8
 
     /**
      * How much of a glowing die's body has to come out greener than the same

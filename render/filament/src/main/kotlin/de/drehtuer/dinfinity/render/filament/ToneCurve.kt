@@ -88,6 +88,17 @@ object ToneCurve {
   }
 
   /**
+   * The halo round a glowing die, in the tone pass's language: the glow mask's
+   * blurs from the first halving down, filtered, each by its weight
+   * ([Glow.HALO_WEIGHTS], [GlowPass]). Added to the light before it is bent,
+   * so a halo over a bright face rolls off with the face.
+   */
+  private val HALO: String =
+    Glow.HALO_WEIGHTS
+      .mapIndexed { level, weight -> "textureLod(materialParams_glow, uv, ${level + 1}.0).rgb * $weight" }
+      .joinToString(" + ")
+
+  /**
    * The full-screen pass, in Filament's material language: the half-float
    * frame Filament graded [HEADROOM] times darker, read pixel for pixel,
    * brought back to its light, bent by [shown]'s curve, encoded for the
@@ -128,6 +139,10 @@ object ToneCurve {
             prepareMaterial(material);
             vec3 stored = texelFetch(materialParams_frame, ivec2(gl_FragCoord.xy), 0).rgb;
             vec3 light = toneDecoded(stored) * $HEADROOM;
+            if (materialParams.halo > 0.0) {
+                vec2 uv = gl_FragCoord.xy / vec2(textureSize(materialParams_frame, 0));
+                light += ($HALO) * materialParams.halo;
+            }
             vec3 shown = toneEncoded(toneShown(light));
             float noise = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
             shown += (noise - 0.5) * ${DITHER_STEPS / BYTE};

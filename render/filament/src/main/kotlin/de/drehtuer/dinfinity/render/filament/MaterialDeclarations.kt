@@ -72,7 +72,9 @@ internal fun MaterialBuilder.tableParameters(): MaterialBuilder =
  * writes the colour it works out and nothing else; drawn as a triangle given
  * in device coordinates that covers the screen, with no depth to test or
  * write and no face to cull; and reading one frame, at full precision,
- * because it holds light up to four times white ([ToneCurve.HEADROOM]).
+ * because it holds light up to four times white ([ToneCurve.HEADROOM]), and
+ * the glow mask its halo is blurred from, with how strong the halo is
+ * ([GlowPass]).
  */
 internal fun MaterialBuilder.toneMaterial(): MaterialBuilder =
   name("dinfinity-tone")
@@ -87,7 +89,9 @@ internal fun MaterialBuilder.toneMaterial(): MaterialBuilder =
       MaterialBuilder.SamplerFormat.FLOAT,
       MaterialBuilder.ParameterPrecision.HIGH,
       "frame",
-    ).platform(MaterialBuilder.Platform.MOBILE)
+    ).uniformParameter(MaterialBuilder.UniformType.FLOAT, "halo")
+    .sampler("glow")
+    .platform(MaterialBuilder.Platform.MOBILE)
     .optimization(MaterialBuilder.Optimization.PERFORMANCE)
 
 /** A two-dimensional texture the material samples, named [name] in its source. */
@@ -98,3 +102,22 @@ internal fun MaterialBuilder.sampler(name: String): MaterialBuilder =
     MaterialBuilder.ParameterPrecision.DEFAULT,
     name,
   )
+
+/**
+ * The glow mask ([DiceMaterial.Variant.GLOW]): unlit, because it writes a
+ * surface's glow and no light at all, and reading the die's own number field
+ * and artwork, so that what is printed gives off nothing.
+ */
+internal fun MaterialBuilder.glowMaskMaterial(): MaterialBuilder =
+  name("dinfinity-glow")
+    .material(Glow.MASK_SOURCE)
+    .shading(MaterialBuilder.Shading.UNLIT)
+    .flipUV(false)
+    .require(MaterialBuilder.VertexAttribute.UV0)
+    .uniformParameter(MaterialBuilder.UniformType.FLOAT3, "glow")
+    .uniformParameter(MaterialBuilder.UniformType.FLOAT, "numbered")
+    .uniformParameter(MaterialBuilder.UniformType.FLOAT, "textured")
+    .sampler("glyphs")
+    .sampler("atlas")
+    .platform(MaterialBuilder.Platform.MOBILE)
+    .optimization(MaterialBuilder.Optimization.PERFORMANCE)

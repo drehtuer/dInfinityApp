@@ -245,6 +245,13 @@ object DiceMaterial {
      * hands it to a surface.
      */
     TONE(ToneCurve.SOURCE, "tone", specularAntiAliasing = false),
+
+    /**
+     * Not a surface either: what a glowing die is drawn with a second time,
+     * into the glow mask the halo is blurred from ([GlowPass],
+     * [Glow.MASK_SOURCE]). Compiled the first time a glowing die is thrown.
+     */
+    GLOW(Glow.MASK_SOURCE, "glow", specularAntiAliasing = false),
     ;
 
     /**
@@ -287,7 +294,7 @@ object DiceMaterial {
   /** The most [SPECULAR_AA_VARIANCE] may add to a roughness squared, Filament's default. */
   const val SPECULAR_AA_THRESHOLD: Float = 0.2f
 
-  /** Which of the surface [Variant]s [parameters] are drawn with: never [Variant.TONE]. */
+  /** Which of the surface [Variant]s [parameters] are drawn with: never [Variant.TONE] or [Variant.GLOW]. */
   fun variantOf(parameters: Parameters): Variant =
     when {
       parameters.resin != null -> Variant.RESIN
@@ -605,9 +612,54 @@ object Glow {
    * its colour. Enough that the side of a die in its own shadow comes out its
    * glow colour rather than dark, and a face the lamp lights goes past the
    * tone curve's knee towards the glow colour's own white, not so much that a
-   * pale die under the lamp is one flat patch of it.
+   * pale die under the lamp is one flat patch of it. The halo round the die
+   * is [GlowPass]'s and has its own strength ([HALO_STRENGTH]).
    */
   const val FULL: Double = 0.6
+
+  /**
+   * How much of the blurred glow is laid round a glowing die, as a share of
+   * the glow itself ([GlowPass]). The halo is the glow and nothing else, so
+   * this is the whole of how bright it is.
+   */
+  const val HALO_STRENGTH: Double = 1.0
+
+  /**
+   * How the halo is made of the glow mask's blurs: one weight per mip level,
+   * from the first halving, each level twice as wide and as soft as the one
+   * before. Most of it close to the die and a little far out, which is the
+   * shape a glow has. They add up to one, so [HALO_STRENGTH] alone says how
+   * bright it is.
+   */
+  val HALO_WEIGHTS: List<Double> = listOf(0.3, 0.3, 0.2, 0.12, 0.08)
+
+  /** The glow mask is drawn at one over this of the screen's size, each way: the blur is far wider than a pixel. */
+  const val MASK_SCALE: Int = 2
+
+  /**
+   * The glow mask, in Filament's material language: unlit, a surface's glow
+   * and nothing else, so that what [GlowPass] blurs is the light the dice give
+   * off and not every bright thing on the tray. What is printed is worked out
+   * as [DiceMaterial.SOURCE] works it out and gives off nothing.
+   */
+  const val MASK_SOURCE: String = """
+        void material(inout MaterialInputs material) {
+            prepareMaterial(material);
+            float printed = 0.0;
+            if (materialParams.numbered > 0.5) {
+                float ink = texture(materialParams_glyphs, getUV0()).r;
+                float soft = max(fwidth(ink), 0.0001);
+                printed = smoothstep(0.5 - soft, 0.5 + soft, ink);
+            }
+            if (materialParams.textured > 0.5) {
+                printed = max(printed, texture(materialParams_atlas, getUV0()).a);
+            }
+            material.baseColor = vec4(materialParams.glow * (1.0 - printed), 1.0);
+        }
+    """
+
+  /** Whether a surface drawn with [parameters] glows, and so is drawn into the glow mask as well. */
+  fun glows(parameters: DiceMaterial.Parameters): Boolean = parameters.glow != NONE
 
   /** No light of its own: every surface that does not glow. */
   val NONE: Colour = Colour(red = 0.0, green = 0.0, blue = 0.0, alpha = 1.0)
