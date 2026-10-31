@@ -206,11 +206,19 @@ class FilamentStageTest {
     // and the side in the die's own shadow alike — and in the glow's colour,
     // not the body's. A grey die so that nothing lit is at white already and
     // the glow has room to show; green so the hue says which light it is.
-    val empty = drawnWith(translucency = 0.0, position = OUT_OF_SIGHT, colour = MID_GREY)
-    val plain = drawnWith(translucency = 0.0, colour = MID_GREY)
-    val glowing = drawnWith(translucency = 0.0, colour = MID_GREY, glow = 1.0, glowColour = GLOW_GREEN)
+    //
+    // The body is found as the glass test finds it, not as every pixel the die
+    // changes: that takes in the die's shadow on the felt too, and a shadow
+    // does not glow. A pixel of the body is the same over a red floor and a
+    // blue one; a pixel of shadow is not.
+    val red = look.copy(floorColorArgb = RED_FLOOR)
+    val blue = look.copy(floorColorArgb = BLUE_FLOOR)
+    val empty = drawnWith(translucency = 0.0, table = red, position = OUT_OF_SIGHT, colour = MID_GREY)
+    val plain = drawnWith(translucency = 0.0, table = red, colour = MID_GREY)
+    val plainBlue = drawnWith(translucency = 0.0, table = blue, colour = MID_GREY)
+    val glowing = drawnWith(translucency = 0.0, table = red, colour = MID_GREY, glow = 1.0, glowColour = GLOW_GREEN)
 
-    val body = (0 until plain.size / FilamentStage.PIXEL_BYTES).filter { !samePixel(plain, empty, it) }
+    val body = pixelsAgreeing(plain, plainBlue).filter { !samePixel(plain, empty, it) }
     val greener =
       body.count { pixel ->
         val from = pixel * FilamentStage.PIXEL_BYTES
