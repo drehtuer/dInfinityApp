@@ -140,10 +140,16 @@ and read here, and a seed gives the same result with the renderer on and off.
 
 ### 4.4 Dice sets — `feature/sets`
 
-- [ ] *Judge on the phone:* install the four `sample-sets/` from a file (the
+- [ ] *Judge on the phone:* install the five `sample-sets/` from a file (the
       zips) and from a link (their GitHub folders). Does marble read as stone
       with its numbers cut in, steel as metal, green resin as half see-through
       and red glass as clear? Does each refusal or note say something useful?
+- [ ] *Judge the Halloween set on the phone:* roll `{halloween:d20}` and
+      `6{halloween:pumpkin}` on a dark table (black felt, dark glass) and on
+      green felt. Does it read as glow-in-the-dark resin rather than a lit
+      green plastic, with the black numbers standing out? Do the three
+      pumpkin faces read as jack-o'-lanterns at arm's length? Is `glow = 70`
+      right, or too bright to see the frosting?
 - [ ] **Decide the built-in set's `size_mm`.** It is the width across the
       corners, so the built-in 16 mm d6 is a 9.2 mm cube weighing **0.9 g**
       against the design's 4.2 g. Something near `size_mm = 28` changes every

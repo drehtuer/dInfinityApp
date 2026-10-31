@@ -42,8 +42,9 @@ A worked example of exactly this layout is in the repository at
 [`examples/`](../examples/) — one die on every catalogue shape, a `diceset.toml`
 whose comments say what each field is for and what it is limited to, and a
 blank atlas per shape cut to the grid below. It is the place to start, and
-[Authoring tips](#authoring-tips) says why. Four finished sets to install and look at —
-marble with artwork on every face, steel, green resin and red glass — are in
+[Authoring tips](#authoring-tips) says why. Five finished sets to install and look at —
+marble with artwork on every face, steel, green resin, red glass, and
+Halloween, which glows and has a pumpkin die with artwork on half its faces — are in
 [`sample-sets/`](../sample-sets/), each as a folder and as a zip.
 
 ## `diceset.toml`
@@ -824,11 +825,15 @@ somebody.
 
 ## Sets that come installed
 
-Four finished sets come with the app and are installed on its first launch:
-marble, steel, green resin and red glass, the archives in
+Five finished sets come with the app and are installed on its first launch:
+marble, steel, green resin, red glass and Halloween, the archives in
 [sample-sets/](../sample-sets/) (decision 107). Each defines the ten standard
-dice, so they show resin, glass and metal on every shape from the first roll:
-`steel:3d6`, `{red-glass:d20}`.
+dice, so they show resin, glass, metal and glow on every shape from the first
+roll: `steel:3d6`, `{red-glass:d20}`. Halloween also shows what a set's own
+die can be: `pumpkin` is a cube with artwork on three faces and the three
+opposite left blank, worth one and nought, so `6{halloween:pumpkin}` counts
+pumpkins rather than adding pips. Its blank cells are clear on purpose, so it
+is the set that shows `AtlasCellsEmpty` meant.
 
 They are installed, not bundled. The app carries their zips and installs each
 one through the same installer and validator as a file you pick (design `1s`
