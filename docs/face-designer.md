@@ -842,6 +842,12 @@ body to be clear. **Custom** is shown when the die is made of none of them — a
 die copied from somebody else's set — and it stays as it was until a name is
 chosen; choosing one keeps the die's rounding.
 
+**There is no glowing material.** A set file can make a die glow (`glow`
+and `glow_color`, `docs/dice-sets.md`), and the designer cannot yet: a die
+copied from a glowing set, the Halloween one say, comes over as Custom
+with its colour and translucency and **without its glow**, and is saved
+that way. Giving the Material step a Glow control is in `docs/TODO.md`.
+
 **Colour** is the die's body colour: the twelve colours the pen offers and,
 past them, the same picker the pen's colour opens (`4c`) — this screen has one
 way of choosing a colour. It is what every face is drawn *on*, on the canvas,

@@ -199,6 +199,31 @@ class FilamentStageTest {
     )
   }
 
+  @Test
+  fun aGlowingDieIsItsGlowColourAllOver() {
+    // A glow is light the die gives off of its own, added after the lamps, so
+    // it has to show on every part of the body — the face the lamp lights
+    // and the side in the die's own shadow alike — and in the glow's colour,
+    // not the body's. A grey die so that nothing lit is at white already and
+    // the glow has room to show; green so the hue says which light it is.
+    val empty = drawnWith(translucency = 0.0, position = OUT_OF_SIGHT, colour = MID_GREY)
+    val plain = drawnWith(translucency = 0.0, colour = MID_GREY)
+    val glowing = drawnWith(translucency = 0.0, colour = MID_GREY, glow = 1.0, glowColour = GLOW_GREEN)
+
+    val body = (0 until plain.size / FilamentStage.PIXEL_BYTES).filter { !samePixel(plain, empty, it) }
+    val greener =
+      body.count { pixel ->
+        val from = pixel * FilamentStage.PIXEL_BYTES
+        val red = (glowing[from].toInt() and BYTE) - (plain[from].toInt() and BYTE)
+        val green = (glowing[from + 1].toInt() and BYTE) - (plain[from + 1].toInt() and BYTE)
+        green >= HUE_MARGIN && green > red
+      }
+    val share = greener.toDouble() / body.size.coerceAtLeast(1)
+    Log.i(TAG, "glow: $greener of ${body.size} body pixels (${(share * PERCENT).toInt()} %) turned green")
+    assertTrue("the die's body was not found (${body.size} pixels)", body.size >= LEAST_BODY)
+    assertTrue("only $greener of ${body.size} pixels of a glowing die glow", share >= LEAST_GLOWING_SHARE)
+  }
+
   /** Whether [pixel] of [frame] is clearly redder than it is blue, or the other way. */
   private fun leans(
     frame: ByteArray,
@@ -233,11 +258,19 @@ class FilamentStageTest {
     roughness: Double = StandardDice.d20.material.roughness,
     colour: Int = StandardDice.d20.material.colorArgb,
     position: Vector3 = Vector3(0.0, 0.0, 10.0),
+    glow: Double = 0.0,
+    glowColour: Int? = null,
   ): ByteArray {
     // Post-processing off, for the reason `aDrawnFrameIsNotBlank` gives.
     FilamentStage(WIDTH, HEIGHT, postProcessing = false).use { stage ->
       val material =
-        StandardDice.d20.material.copy(translucency = translucency, roughness = roughness, colorArgb = colour)
+        StandardDice.d20.material.copy(
+          translucency = translucency,
+          roughness = roughness,
+          colorArgb = colour,
+          glow = glow,
+          glowColorArgb = glowColour,
+        )
       val die = StandardDice.d20.copy(material = material)
       val renderer = FilamentDiceRenderer(stage)
       renderer.begin(
@@ -464,6 +497,19 @@ class FilamentStageTest {
     const val LEAST_BODY = 100
 
     const val BYTE = 0xFF
+
+    /** A body nothing lit takes to white, so a glow has room to show on it. */
+    const val MID_GREY = 0xFF808080.toInt()
+
+    /** Glow-in-the-dark green, the Halloween set's. */
+    const val GLOW_GREEN = 0xFF7CFFB0.toInt()
+
+    /**
+     * How much of a glowing die's body has to come out greener than the same
+     * die not glowing. Not all of it: the edges' antialiased pixels are half
+     * floor, and the numbers do not glow.
+     */
+    const val LEAST_GLOWING_SHARE = 0.6
     const val PERCENT = 100
 
     /** Rotations, near enough: a new surface each, one engine behind them. */

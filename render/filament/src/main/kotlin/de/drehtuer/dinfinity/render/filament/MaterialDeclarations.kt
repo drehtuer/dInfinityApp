@@ -43,8 +43,7 @@ internal fun MaterialBuilder.spreadThinGlints(): MaterialBuilder =
 
 /**
  * What a die's surface reads beyond colour, roughness and metalness: its
- * artwork, its printed numbers and its lacquer. Declared in the order they
- * always were, so the dice compile to the packet they always did.
+ * artwork, its printed numbers, its lacquer and its glow ([Glow]).
  */
 internal fun MaterialBuilder.diceParameters(): MaterialBuilder =
   uniformParameter(MaterialBuilder.UniformType.FLOAT, "textured")
@@ -52,6 +51,7 @@ internal fun MaterialBuilder.diceParameters(): MaterialBuilder =
     .uniformParameter(MaterialBuilder.UniformType.FLOAT4, "inkColor")
     .uniformParameter(MaterialBuilder.UniformType.FLOAT, "clearCoat")
     .uniformParameter(MaterialBuilder.UniformType.FLOAT, "clearCoatRoughness")
+    .uniformParameter(MaterialBuilder.UniformType.FLOAT3, "glow")
     .sampler("atlas")
     .sampler("glyphs")
 

@@ -215,6 +215,7 @@ class DiceMaterialTest {
       "glyphs",
       "clearCoat",
       "clearCoatRoughness",
+      "glow",
     ).forEach {
       val source = DiceMaterial.SOURCE
       assertTrue("the material never reads $it", "materialParams.$it" in source || "materialParams_$it" in source)
@@ -381,6 +382,54 @@ class DiceMaterialTest {
     // A colour out of range is held to it rather than becoming NaN.
     assertEquals(0.0, Resin.tintOf(Colour(red = -0.5, green = 2.0, blue = 0.0, alpha = 1.0)).red, TOLERANCE)
     assertEquals(1.0, Resin.tintOf(Colour(red = -0.5, green = 2.0, blue = 0.0, alpha = 1.0)).green, TOLERANCE)
+  }
+
+  @Test
+  fun `a die that does not glow gives off nothing, and neither does the tray`() {
+    assertEquals(Glow.NONE, DiceMaterial.dieOf(DieMaterial(), texturePath = null).glow)
+    assertEquals(Glow.NONE, DiceMaterial.floorOf(PLAIN).glow)
+    assertEquals(Glow.NONE, DiceMaterial.wallOf(PLAIN).glow)
+  }
+
+  @Test
+  fun `a glowing die gives off its glow colour, scaled by how much it glows`() {
+    val green = 0xFF7CFFB0.toInt()
+    val glow = DiceMaterial.dieOf(DieMaterial(glow = 0.5, glowColorArgb = green), texturePath = null).glow
+    val linear = Colour.of(green)
+    assertEquals(linear.red * 0.5 * Glow.FULL, glow.red, TOLERANCE)
+    assertEquals(linear.green * 0.5 * Glow.FULL, glow.green, TOLERANCE)
+    assertEquals(linear.blue * 0.5 * Glow.FULL, glow.blue, TOLERANCE)
+  }
+
+  @Test
+  fun `a die with no glow colour glows in its body colour`() {
+    val amber = 0xFFE0A030.toInt()
+    val glow = Glow.of(DieMaterial(colorArgb = amber, glow = 1.0))
+    assertEquals(Colour.of(amber).red * Glow.FULL, glow.red, TOLERANCE)
+    assertEquals(Colour.of(amber).blue * Glow.FULL, glow.blue, TOLERANCE)
+  }
+
+  @Test
+  fun `a glow is read through its limits`() {
+    val white = 0xFFFFFFFF.toInt()
+    assertEquals(Glow.FULL, Glow.of(DieMaterial(colorArgb = white, glow = 9.0)).green, TOLERANCE)
+    assertEquals(Glow.NONE, Glow.of(DieMaterial(colorArgb = white, glow = Double.NaN)))
+  }
+
+  @Test
+  fun `a glow does not choose the material, so a solid glowing die stays opaque`() {
+    val solid = DiceMaterial.dieOf(DieMaterial(glow = 1.0), texturePath = null)
+    assertEquals(DiceMaterial.Variant.OPAQUE, DiceMaterial.variantOf(solid))
+    val resin = DiceMaterial.dieOf(DieMaterial(glow = 1.0, translucency = 0.3), texturePath = null)
+    assertEquals(DiceMaterial.Variant.RESIN, DiceMaterial.variantOf(resin))
+  }
+
+  @Test
+  fun `both die materials glow, in the screen's units, and nothing printed glows`() {
+    listOf(DiceMaterial.SOURCE, DiceMaterial.RESIN_SOURCE).forEach { source ->
+      assertTrue(source.contains("material.emissive = vec4(materialParams.glow * (1.0 - printed), 0.0);"))
+    }
+    assertFalse(DiceMaterial.TABLE_SOURCE.contains("emissive"))
   }
 
   @Test

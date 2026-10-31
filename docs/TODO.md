@@ -155,6 +155,12 @@ and read here, and a seed gives the same result with the renderer on and off.
 
 ### 4.6 Face designer — `feature/designer`
 
+- [ ] **A Glow control on the Material step** (decision 111). A set file can
+      make a die glow and the designer cannot: a die copied from a glowing
+      set comes over without its glow (`docs/face-designer.md`). Needs the
+      control drawn in `design/` first, `glow` and `glow_color` in
+      `DieFinish`, the draft file and `DiceSetToml`
+
 - [ ] *Judge on the phone:* the d10's and the d18's own kites (decision 86).
       Open a d18 in the designer: does the long, narrow canvas still leave room
       to draw, and does a whole-face fill and a stamped number land on the
@@ -530,6 +536,10 @@ Pixel 10a.
 - [ ] More catalogue solids, `rhombic-triacontahedron` (d30) first
 - [ ] Author-supplied convex meshes, with the fairness preview they need
       (`docs/dice-sets.md`, "Shapes after v1")
+- [ ] **A glow that reaches past the die** (decision 111): a faint light per
+      glowing die on the felt, and a bloom halo. Both left out on purpose —
+      a hundred moving lights, and a pass that blooms metal highlights too —
+      until somebody misses them
 - [ ] Author-supplied materials — needs a decision on what a stranger's shader
       may do, a compile-time limit and an instruction cap (decision 46)
 

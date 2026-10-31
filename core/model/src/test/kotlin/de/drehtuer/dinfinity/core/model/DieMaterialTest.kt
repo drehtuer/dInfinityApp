@@ -36,6 +36,31 @@ class DieMaterialTest {
   }
 
   @Test
+  fun `a die gives off no light until a set says otherwise`() {
+    val material = DieMaterial()
+    assertEquals(0.0, material.glow)
+    assertFalse(material.isGlowing)
+  }
+
+  @Test
+  fun `a die glows in its own colour unless the set names another`() {
+    val pale = 0xFFDDE8D2.toInt()
+    val green = 0xFF7CFFB0.toInt()
+    assertEquals(pale, DieMaterial(colorArgb = pale, glow = 0.5).glowingColorArgb)
+    assertEquals(green, DieMaterial(colorArgb = pale, glow = 0.5, glowColorArgb = green).glowingColorArgb)
+    assertTrue(DieMaterial(glow = 0.5).isGlowing)
+  }
+
+  @Test
+  fun `a glow is held between none and full, and a glow that is not a number is none`() {
+    assertEquals(1.0, DieMaterial(glow = 3.0).clampedToLimits().glow)
+    assertEquals(0.0, DieMaterial(glow = -0.5).clampedToLimits().glow)
+    assertEquals(0.0, DieMaterial(glow = Double.NaN).clampedToLimits().glow)
+    val green = 0xFF7CFFB0.toInt()
+    assertEquals(green, DieMaterial(glow = 0.5, glowColorArgb = green).clampedToLimits().glowColorArgb)
+  }
+
+  @Test
   fun `the bounding radius is half the size, which is what capacity sums`() {
     assertEquals(8.0, DieMaterial(sizeMm = 16.0).boundingRadiusMm)
   }

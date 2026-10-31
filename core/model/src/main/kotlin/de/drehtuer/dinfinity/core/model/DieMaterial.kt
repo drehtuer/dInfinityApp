@@ -36,6 +36,15 @@ package de.drehtuer.dinfinity.core.model
  *   `docs/architecture.md`, decisions 91 and 94). A physical property rather
  *   than a look, because what is drawn is what collides — so it is clamped
  *   like friction is, to [EdgeRoundingRange].
+ * @param glow how much light the body gives off of its own, `0` for a die
+ *   that only reflects and `1` for glow-in-the-dark at full charge. Like
+ *   [translucency] it is a look — nothing in the solver reads it — and what
+ *   is printed on a die does not glow: ink is paint on the outside of the
+ *   body (`docs/dice-sets.md`, `glow`; `docs/physics-and-rendering.md`,
+ *   "A die that glows").
+ * @param glowColorArgb the colour it gives off, or null for [colorArgb]. A
+ *   glow-in-the-dark die is pale in daylight and green in the dark, so the
+ *   two are a set's to choose apart.
  */
 data class DieMaterial(
   val colorArgb: Int = DEFAULT_COLOR_ARGB,
@@ -48,6 +57,8 @@ data class DieMaterial(
   val restitution: Double = 0.55,
   val friction: Double = 0.5,
   val edgeRounding: Double = DEFAULT_EDGE_ROUNDING,
+  val glow: Double = 0.0,
+  val glowColorArgb: Int? = null,
 ) {
   /**
    * The radius of the sphere that contains this die at scale 1, in
@@ -71,6 +82,12 @@ data class DieMaterial(
   /** True for a die light passes through at all, which is a die that must be blended. */
   val isTranslucent: Boolean get() = translucency > 0.0
 
+  /** True for a die that gives off light of its own. */
+  val isGlowing: Boolean get() = glow > 0.0
+
+  /** The colour the die glows in: [glowColorArgb], or the body's own when the set named none. */
+  val glowingColorArgb: Int get() = glowColorArgb ?: colorArgb
+
   /**
    * The same material with every value forced inside its range.
    *
@@ -92,6 +109,8 @@ data class DieMaterial(
       restitution = clamp(restitution, RestitutionRange, DieMaterial().restitution),
       friction = clamp(friction, FrictionRange, DieMaterial().friction),
       edgeRounding = clamp(edgeRounding, EdgeRoundingRange, DEFAULT_EDGE_ROUNDING),
+      glow = clamp(glow, UnitRange, DieMaterial().glow),
+      glowColorArgb = glowColorArgb,
     )
 
   companion object {
@@ -101,7 +120,7 @@ data class DieMaterial(
     /** The built-in set's numerals. */
     const val DEFAULT_NUMBER_COLOR_ARGB: Int = 0xFF2B2B2B.toInt()
 
-    /** `roughness` and `metallic`, which are plain PBR unit ranges. */
+    /** `roughness`, `metallic`, `translucency` and `glow`: plain unit ranges. */
     val UnitRange: ClosedFloatingPointRange<Double> = 0.0..1.0
 
     /** A die smaller than 8 mm is unreadable; one over 40 mm is not a die. */

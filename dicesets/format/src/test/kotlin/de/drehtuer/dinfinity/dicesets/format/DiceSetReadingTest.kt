@@ -98,6 +98,50 @@ class DiceSetReadingTest {
   }
 
   @Test
+  fun `a set that says nothing about glow has dice that give off no light`() {
+    val only = accepting(minimalToml()).set.dice.single()
+    assertEquals(0.0, only.material.glow)
+    assertNull(only.material.glowColorArgb)
+  }
+
+  @Test
+  fun `glow is written as a per cent, and its colour as a colour`() {
+    val only = accepting(minimalToml("glow = 70\nglow_color = \"#7cffb0\"")).set.dice.single()
+    assertEquals(0.7, only.material.glow, 1e-12)
+    assertEquals(0xFF7CFFB0.toInt(), only.material.glowColorArgb)
+  }
+
+  @Test
+  fun `a die inherits the set's glow and may glow brighter than it`() {
+    val toml =
+      full
+        .replace("translucency = 18", "translucency = 18\n    glow = 40\n    glow_color = \"#7cffb0\"")
+        .replace(D20_COLOUR, "$D20_COLOUR\n    glow = 90")
+    val dice = accepting(toml).set.dice.associateBy { it.id }
+    assertEquals(0.4, dice.getValue("d6").material.glow, 1e-12)
+    assertEquals(0.9, dice.getValue("d20").material.glow, 1e-12)
+    assertEquals(0xFF7CFFB0.toInt(), dice.getValue("d20").material.glowColorArgb)
+  }
+
+  @Test
+  fun `a glow past a hundred per cent is clamped, and says so`() {
+    val result = accepting(minimalToml("glow = 250"))
+    assertEquals(
+      1.0,
+      result.set.dice
+        .single()
+        .material.glow,
+    )
+    assertTrue(result.codes().contains(ValidationCode.Clamped))
+  }
+
+  @Test
+  fun `a glow colour that is not a colour refuses the set`() {
+    val rejected = rejecting(minimalToml("glow_color = \"green\""))
+    assertTrue(ValidationCode.WrongType in rejected.codes(), "${rejected.messages}")
+  }
+
+  @Test
   fun `the set's own details are read`() {
     val set = accepting(full).set
     assertEquals("brass-and-bone", set.id)

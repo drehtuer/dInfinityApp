@@ -96,8 +96,9 @@ a tumble; everything else is real.
   `d%` is an alias for `d100`), and Fudge dice (`dF`), whose total carries its
   sign.
 - **Extensible dice sets** — dice are defined in plain text files with
-  optional face textures; install sets from GitHub, GitLab, Codeberg or any
-  `https` link to an archive. [examples/](examples/) is a working set to copy:
+  optional face textures, and may be see-through or glow in the dark;
+  install sets from GitHub, GitLab, Codeberg or any `https` link to an
+  archive. [examples/](examples/) is a working set to copy:
   every shape, every field commented, blank atlases to draw on.
   Four finished ones come installed — marble, steel, green resin and red
   glass, from [sample-sets/](sample-sets/) — so resin, glass and metal dice
