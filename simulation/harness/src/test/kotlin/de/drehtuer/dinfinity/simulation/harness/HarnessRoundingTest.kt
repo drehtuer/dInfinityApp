@@ -10,7 +10,8 @@ import kotlin.test.assertTrue
 /**
  * Throwing rounder dice than the built-in set has, from the terminal
  * (`harness.edgeRounding`, and `FairnessTest`'s `edgeRounding`;
- * `docs/architecture.md`, decision 94).
+ * `docs/architecture.md`, decision 94) — and grippier or bouncier ones
+ * (`harness.friction`, `harness.restitution`).
  */
 class HarnessRoundingTest {
   @Test
@@ -58,5 +59,41 @@ class HarnessRoundingTest {
   fun `both ends of the range are a die a set may have`() {
     assertEquals(0.015, HarnessRequest.edgeRoundingOf("0.015"))
     assertEquals(0.06, HarnessRequest.edgeRoundingOf("0.06"))
+  }
+
+  @Test
+  fun `a run can ask for its own friction and bounce, each on its own`() {
+    val request =
+      HarnessRequest.from(
+        mapOf(
+          "harness.rolls" to "10",
+          "harness.friction" to "0.7",
+          "harness.restitution" to "0.6",
+        )::get,
+      )!!
+    assertEquals(0.7, request.friction)
+    assertEquals(0.6, request.restitution)
+    val die =
+      request
+        .plan()
+        .dice
+        .first()
+        .die.material
+    assertEquals(0.7, die.friction)
+    assertEquals(0.6, die.restitution)
+    assertEquals(DieMaterial().edgeRounding, die.edgeRounding)
+    assertEquals("20d20-friction0.7-bounce0.6", request.label)
+    assertEquals(DieMaterial().copy(friction = 0.8), HarnessRequest.materialOf(null, friction = 0.8))
+  }
+
+  @Test
+  fun `a friction or bounce a set file could not say is refused, not clamped`() {
+    val refused = listOf("harness.friction" to "0.05", "harness.friction" to "lots", "harness.restitution" to "0.9")
+    refused.forEach { (key, value) ->
+      assertFailsWith<IllegalArgumentException>("$key=$value") {
+        HarnessRequest.from(mapOf("harness.rolls" to "10", key to value)::get)
+      }
+    }
+    assertNull(HarnessRequest.boundedOf(" ", "friction", DieMaterial.FrictionRange))
   }
 }
