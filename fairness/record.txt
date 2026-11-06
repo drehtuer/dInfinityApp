@@ -1,8 +1,8 @@
 # Written by tools/fairness.sh on the reference device. Not edited by hand: the release checks it.
-fingerprint: 4becb4079b52a4a6ab94539b90d25f88a0d5086c71c0ec740f262533e52e7642
+fingerprint: 281ce671ebcc6cdd8e50e2543d6e7e2c6f86cec710af2c097bb619eccb37c151
 rolls: 100000
 verdict: pass
-commit: 4d15fbdbff4e1d1a454225c0f7e35c54010dbef5
+commit: e271b3a7257155024c8b8c7f8912704cadd9174a
 device: Pixel 10a, API 37
 date: 2026-11-06
 edge rounding: default

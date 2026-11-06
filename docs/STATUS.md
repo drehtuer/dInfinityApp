@@ -40,7 +40,7 @@ This is a snapshot, not a changelog — git history is the changelog.
 - **Every release is shown fair**: `tools/fairness.sh` throws every shape
   100,000 times on the phone into `fairness/record.txt`, tied to the physics
   by a fingerprint, and the release workflow refuses a tag without a passing
-  record. Re-made on 2026-11-06 at `4d15fbdb`, and a release would accept it.
+  record. Re-made on 2026-11-06 at `e271b3a7`, and a release would accept it.
   Any edit to the physics' files makes it stale again.
 - **Dice that glow, and a Halloween set** (#432): a set file's `glow` and
   `glow_color` (decision 111), and a fifth sample set that comes installed —
