@@ -637,6 +637,23 @@ object Glow {
   const val MASK_SCALE: Int = 2
 
   /**
+   * How many levels the mask needs: the full size and one more for each
+   * blur [HALO_WEIGHTS] reads, and never more than halving can make.
+   */
+  fun maskLevels(
+    width: Int,
+    height: Int,
+  ): Int {
+    var halvings = 0
+    var side = maxOf(width, height)
+    while (side > 1) {
+      side /= 2
+      halvings++
+    }
+    return minOf(HALO_WEIGHTS.size + 1, halvings + 1)
+  }
+
+  /**
    * The glow mask, in Filament's material language: unlit, a surface's glow
    * and nothing else, so that what [GlowPass] blurs is the light the dice give
    * off and not every bright thing on the tray. What is printed is worked out
