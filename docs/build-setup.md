@@ -1169,6 +1169,12 @@ by name only the device-only files in modules it does measure (`DiceTray.kt`,
 files that hold an engine, a context or their thread — so the rest of both
 modules still counts there.
 
+**The branch figure depends on JaCoCo's version.** From 0.8.14, JaCoCo filters the
+branches the Compose compiler generates for skipping and pausable composition, which
+no test of ours decides. Moving from 0.8.13 to 0.8.16 took the count from about
+17,000 branches to about 11,300 and the figure from 75.8 % to 87.2 % with no new
+test, so a jump like that says the measure changed, not that more was tested.
+
 ## Releasing
 
 Push a tag of the form `vX.Y.Z`. Nothing else triggers a release, and the
