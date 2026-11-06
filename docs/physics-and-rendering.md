@@ -1345,8 +1345,11 @@ stirring is a bug of its own, and has its own task (`docs/TODO.md`, Step 5.2).
 
 ### What it measured
 
-The release record (`fairness/record.txt`, 2026-10-23): 100,000 rolls of each
-shape on the Pixel 10a, 800,000 in about twenty-three minutes:
+The release record (`fairness/record.txt`, 2026-11-06): 100,000 rolls of each
+shape on the Pixel 10a, 800,000 in about twenty-one minutes. Every count is the
+same as in the record of 2026-10-24. The seeds are fixed, so that shows the
+glowing dice and the dead-code removal did not move a single landing; it is not
+a second sample of the dice:
 
 | shape | χ² | limit | worst face off |
 | --- | --- | --- | --- |
@@ -1382,7 +1385,7 @@ three degrees of freedom, as fair as a die gets.
 
 ### The d18 is not fair, and the shape is not why
 
-197 against a limit of 41 is not an unlucky run. The bias is reproducible: the
+267 against a limit of 41 is not an unlucky run. The bias is reproducible: the
 same faces are heavy across three independent seed schemes, the deviation
 patterns of separate runs correlate at +0.6 to +0.9 where independent samples of
 a fair die would sit near ±0.24. Some faces come up 6 % more often than their
@@ -1505,7 +1508,7 @@ of the representation.
 
 So the d18 is as fair as a single-precision rigid-body engine can make a solid
 with basins that narrow. In the terms that matter to a player it is very fair
-indeed — **no face is off its share by more than 0.455 %**, against the 1 % this
+indeed — **no face is off its share by more than 0.609 %**, against the 1 % this
 project set itself and against the 1–2 % a moulded plastic d20 manages. What it
 cannot pass is a chi-squared test at one in a thousand over a hundred thousand
 throws, which detects a bias far below anything anybody could play with.
