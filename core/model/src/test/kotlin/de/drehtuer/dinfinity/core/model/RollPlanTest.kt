@@ -14,7 +14,6 @@ class RollPlanTest {
     val plan = RollPlan(formula = "4")
     assertTrue(plan.dice.isEmpty())
     assertEquals(0, plan.capacityDiceCount)
-    assertFalse(plan.hasFallbacks)
   }
 
   @Test
@@ -41,9 +40,7 @@ class RollPlanTest {
 
   @Test
   fun `a die from the set the formula asked for has not fallen back`() {
-    val plan = plan(group("1d20", d20, 1))
-    assertFalse(plan.hasFallbacks)
-    assertFalse(plan.groups.single().fellBack)
+    assertFalse(plan(group("1d20", d20, 1)).groups.single().fellBack)
   }
 
   @Test
@@ -52,7 +49,7 @@ class RollPlanTest {
       DieInstance(index = 0, groupId = 0, setId = "builtin", requestedSetId = "brass", die = d20)
     val plan = RollPlan(formula = "1d20", groups = listOf(PlannedGroup(0, "1d20", listOf(fallback))))
     assertTrue(fallback.fellBack)
-    assertTrue(plan.hasFallbacks)
+    assertTrue(plan.groups.single().fellBack)
   }
 
   @Test

@@ -52,24 +52,10 @@ object FaceHistogram {
     tallies: List<FaceTally>,
   ): List<FaceBar> {
     if (values.isEmpty()) return emptyList()
-    val counted = tallies.associateBy(FaceTally::faceValue)
-    val throws = tallies.sumOf(FaceTally::count)
     // Repeats are what make the fair line right, so they are counted here and
     // the bars are drawn one per distinct value.
     val weights = values.groupingBy { it }.eachCount()
-    return values
-      .distinct()
-      .sorted()
-      .map { value ->
-        val tally = counted[value]
-        FaceBar(
-          value = value,
-          count = tally?.count ?: 0,
-          droppedCount = tally?.droppedCount ?: 0,
-          share = if (throws == 0L) 0.0 else (tally?.count ?: 0).toDouble() / throws,
-          fairShare = weights.getValue(value).toDouble() / values.size,
-        )
-      }
+    return barsOf(weights.keys, tallies) { value -> weights.getValue(value).toDouble() / values.size }
   }
 
   /**
@@ -105,20 +91,27 @@ object FaceHistogram {
     }
     val pooledThrows = thrown.sumOf(PooledDie::throws).toDouble()
 
+    return barsOf(expected.keys, tallies) { value -> expected.getValue(value) / pooledThrows }
+  }
+
+  /** One bar per value, lowest first: what [tallies] recorded of it, against [fairShare]. */
+  private fun barsOf(
+    values: Set<Int>,
+    tallies: List<FaceTally>,
+    fairShare: (Int) -> Double,
+  ): List<FaceBar> {
     val counted = tallies.associateBy(FaceTally::faceValue)
     val recorded = tallies.sumOf(FaceTally::count)
-    return expected.keys
-      .sorted()
-      .map { value ->
-        val tally = counted[value]
-        FaceBar(
-          value = value,
-          count = tally?.count ?: 0,
-          droppedCount = tally?.droppedCount ?: 0,
-          share = if (recorded == 0L) 0.0 else (tally?.count ?: 0).toDouble() / recorded,
-          fairShare = expected.getValue(value) / pooledThrows,
-        )
-      }
+    return values.sorted().map { value ->
+      val tally = counted[value]
+      FaceBar(
+        value = value,
+        count = tally?.count ?: 0,
+        droppedCount = tally?.droppedCount ?: 0,
+        share = if (recorded == 0L) 0.0 else (tally?.count ?: 0).toDouble() / recorded,
+        fairShare = fairShare(value),
+      )
+    }
   }
 
   /**

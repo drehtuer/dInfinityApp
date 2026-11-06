@@ -4,9 +4,7 @@ import de.drehtuer.dinfinity.core.model.DiceSet
 import de.drehtuer.dinfinity.dicesets.format.DiceSetLimits
 import de.drehtuer.dinfinity.dicesets.format.PackageFiles
 import de.drehtuer.dinfinity.dicesets.format.ReferencedFile
-import de.drehtuer.dinfinity.dicesets.format.Severity
 import de.drehtuer.dinfinity.dicesets.format.ValidationCode
-import de.drehtuer.dinfinity.dicesets.format.ValidationMessage
 
 /**
  * A die's artwork, fetched from the package it belongs to
@@ -145,15 +143,6 @@ class InstalledArtwork(
     val bytes = files.read(reference.path) ?: return refused(named, ValidationCode.ReferencedFileMissing, "is not here")
     return decode(bytes, named, set.facesForTexture(reference.path))
   }
-
-  private fun refused(
-    file: String,
-    code: ValidationCode,
-    said: String,
-  ): AtlasDecode.Unusable =
-    AtlasDecode.Unusable(
-      listOf(ValidationMessage(severity = Severity.Error, code = code, text = "'$file' $said", file = file)),
-    )
 
   private companion object {
     /** What the bundled package's files are stamped with: they are the APK's. */

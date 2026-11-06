@@ -293,9 +293,6 @@ interface DieSummaryDao {
   @Query("SELECT * FROM die_summary ORDER BY last_rolled_at DESC")
   fun all(): Flow<List<DieSummaryRow>>
 
-  @Query("SELECT * FROM die_summary WHERE set_id = :setId ORDER BY sides")
-  fun forSet(setId: String): Flow<List<DieSummaryRow>>
-
   @Query("DELETE FROM die_summary WHERE set_id = :setId AND die_id = :dieId")
   suspend fun reset(
     setId: String,

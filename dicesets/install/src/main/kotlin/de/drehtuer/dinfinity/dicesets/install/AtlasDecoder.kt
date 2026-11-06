@@ -125,15 +125,6 @@ class AtlasDecoder(
     )
   }
 
-  private fun refused(
-    file: String,
-    code: ValidationCode,
-    said: String,
-  ): AtlasDecode.Unusable =
-    AtlasDecode.Unusable(
-      listOf(ValidationMessage(severity = Severity.Error, code = code, text = "'$file' $said", file = file)),
-    )
-
   companion object {
     /** The decoder the app uses, over the platform's own. */
     val platform: AtlasDecoder = AtlasDecoder()
@@ -205,3 +196,13 @@ class AtlasDecoder(
     }
   }
 }
+
+/** A picture that cannot be used, and the one line that says why: `'$file' $said`. */
+internal fun refused(
+  file: String,
+  code: ValidationCode,
+  said: String,
+): AtlasDecode.Unusable =
+  AtlasDecode.Unusable(
+    listOf(ValidationMessage(severity = Severity.Error, code = code, text = "'$file' $said", file = file)),
+  )

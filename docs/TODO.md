@@ -575,11 +575,13 @@ wrong answer in:
 - [ ] `GraphMachine.redraw()` rebuilds the distribution with
       `truncatedMass = 0`, so an exploding formula loses its tail after a tap
       or a mode switch (nothing shows the value yet)
-- [ ] Dead code: `Solids.trapezohedronRadiusPerEdge`, `order(directions)` in
-      `Solids.kt`, `RollColour.argbs`, `SessionsState.active`, the public
-      getter of `RollMachine.cameFrom`, and the guards `GraphBars.of`'s
-      `tallest > 0.0` and `GraphMachine.redraw`'s `formula ?: return` that
-      cannot be false
+- [ ] `GraphMachine.redraw`'s `formula ?: return` cannot be false: `graphed` and
+      `formula` are set together, and could be one nullable pair
+- [ ] **Nothing in production calls `CorrectionLadder.mayTouch` or `bias`**, though
+      its KDoc says every correction goes through `mayTouch`, and
+      `withinBudget` has only tests too. Either a bridge should ask them, or the
+      ladder's documentation should stop saying one does. A design question, so
+      they are left in place (`.claude/CLAUDE.md`, "Nothing touches a die")
 
 ## Open questions
 

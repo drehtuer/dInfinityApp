@@ -288,8 +288,7 @@ class RollMachine(
    * belongs to nothing, and the saved-roll statistics screen has nothing to
    * show (`docs/statistics.md`, per saved roll and per group).
    */
-  var cameFrom: SavedRollSource? = null
-    private set
+  private var cameFrom: SavedRollSource? = null
 
   /**
    * The look the dice land on, now.
@@ -536,13 +535,7 @@ class RollMachine(
       RunningScore.of(
         formula = flight.prepared.formula,
         plan = flight.prepared.plan,
-        outcome =
-          ThrowOutcome(
-            faces = flight.faces,
-            rethrows = flight.rethrows,
-            forcedSettles = flight.forcedSettles,
-            rolledAtEpochMs = clock(),
-          ),
+        outcome = outcomeSoFar(flight),
         rounding = flight.rounding,
         added = AddedDice(faces = flight.added, room = { die -> roomForAnother(flight, die) }),
       )
@@ -554,13 +547,7 @@ class RollMachine(
           RunningScore.pending(
             formula = flight.prepared.formula,
             plan = flight.prepared.plan,
-            outcome =
-              ThrowOutcome(
-                faces = flight.faces,
-                rethrows = flight.rethrows,
-                forcedSettles = flight.forcedSettles,
-                rolledAtEpochMs = clock(),
-              ),
+            outcome = outcomeSoFar(flight),
             rounding = flight.rounding,
             // Each die the round owes takes floor the next one cannot have, so
             // the question is asked with the ones already owed standing on it.
@@ -1056,6 +1043,15 @@ class RollMachine(
       thrownAgain = thrownAgain,
     )
   }
+
+  /** What this throw has come to, as the score reads it. */
+  private fun outcomeSoFar(flight: InFlight): ThrowOutcome =
+    ThrowOutcome(
+      faces = flight.faces,
+      rethrows = flight.rethrows,
+      forcedSettles = flight.forcedSettles,
+      rolledAtEpochMs = clock(),
+    )
 
   /**
    * Whether the tray could take one more of [die], asked once per die of a

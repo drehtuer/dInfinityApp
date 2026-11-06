@@ -119,10 +119,7 @@ data class SessionsState(
   val activeId: String = SessionRepository.DEFAULT_ID,
   val editing: SessionDraft? = null,
   val loaded: Boolean = false,
-) {
-  /** The one new rolls are filed under, or null before anything has loaded. */
-  val active: Session? get() = sessions.firstOrNull { it.id == activeId }
-}
+)
 
 /**
  * Which session new rolls are filed under, given the list that has just

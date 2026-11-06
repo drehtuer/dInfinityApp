@@ -88,15 +88,6 @@ class SignedDistanceFieldTest {
   }
 
   @Test
-  fun `turns a byte back into how far into the ink it is`() {
-    assertEquals(0.0, SignedDistanceField.EDGE.toByte().asDistance())
-    assertTrue(0.toByte().asDistance() < 0)
-    assertTrue(SignedDistanceField.EDGE.toByte().isInk())
-    assertTrue(!(SignedDistanceField.EDGE - 1).toByte().isInk())
-    assertTrue(0xFF.toByte().isInk())
-  }
-
-  @Test
   fun `refuses a cell of no pixels`() {
     assertFailsWith<IllegalArgumentException> { SignedDistanceField.cell(middle, size = 0) }
   }

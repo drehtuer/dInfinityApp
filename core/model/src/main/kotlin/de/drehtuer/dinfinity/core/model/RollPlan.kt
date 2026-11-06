@@ -33,9 +33,6 @@ data class RollPlan(
    */
   val capacityDiceCount: Int
     get() = groups.sumOf { group -> group.dice.size * if (group.explodes) 2 else 1 }
-
-  /** True when some die came from a different set than the formula asked for. */
-  val hasFallbacks: Boolean get() = groups.any(PlannedGroup::fellBack)
 }
 
 /**

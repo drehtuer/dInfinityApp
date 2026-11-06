@@ -54,16 +54,6 @@ enum class RollColour(
   ;
 
   companion object {
-    /**
-     * The twelve as a colour a roll stores, in the order they are offered.
-     *
-     * A roll stores a packed colour rather than the name of one, so a tag
-     * chosen today survives this list being edited tomorrow — and so a custom
-     * colour is stored exactly the same way as one of these rather than
-     * needing a second field to say which kind it is.
-     */
-    val argbs: List<Int> = entries.map(RollColour::argb)
-
     /** The entry [argb] is one of, or null when it is somebody's own colour. */
     fun of(argb: Int?): RollColour? = entries.firstOrNull { it.argb == argb }
 

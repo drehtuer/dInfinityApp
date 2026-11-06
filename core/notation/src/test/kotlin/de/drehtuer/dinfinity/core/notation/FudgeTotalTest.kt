@@ -41,7 +41,7 @@ class FudgeTotalTest {
   @Test
   fun `a fudge die beside an ordinary one is a count, because the d6 is`() {
     assertEquals("4", FudgeTotal.writeRoll(4L, listOf(die("df", 1), die("d6", 3))))
-    assertFalse(FudgeTotal.isFudgeRoll(listOf(die("df", 1), die("d6", 3))))
+    assertFalse(FudgeTotal.isFudge(listOf("df", "d6")))
   }
 
   @Test
@@ -55,7 +55,6 @@ class FudgeTotalTest {
     // What decides the spelling is what was thrown, not what counted: a
     // `4dFkh3` is still a Fudge roll and still reads as a sign.
     val dice = fudge(1, 1, 0) + RolledDie(instanceIndex = 3, dieId = "df", value = -1, notes = setOf(DieNote.Dropped))
-    assertTrue(FudgeTotal.isFudgeRoll(dice))
     assertEquals("+2", FudgeTotal.writeRoll(2L, dice))
   }
 

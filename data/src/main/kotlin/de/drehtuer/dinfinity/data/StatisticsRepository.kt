@@ -218,7 +218,7 @@ class RollReplay(
   val inputBlob: ByteArray? = null,
 )
 
-private fun DieStatsRow.toTally(): FaceTally =
+internal fun DieStatsRow.toTally(): FaceTally =
   FaceTally(
     setId = setId,
     dieId = dieId,
@@ -239,7 +239,7 @@ private fun FaceTally.toRow(sessionId: String): DieStatsRow =
     droppedCount = droppedCount,
   )
 
-private fun DieSummaryRow.toSummary(): DieSummary =
+internal fun DieSummaryRow.toSummary(): DieSummary =
   DieSummary(
     setId = setId,
     dieId = dieId,

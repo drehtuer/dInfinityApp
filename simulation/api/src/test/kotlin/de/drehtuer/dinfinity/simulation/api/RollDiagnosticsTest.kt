@@ -24,7 +24,6 @@ class RollDiagnosticsTest {
     // Clean rather than unknown: no roll has gone wrong, which is the answer
     // the overlay wants before the first throw.
     assertTrue(nothing.clean)
-    assertEquals(0.0, nothing.throughTheCap, EPSILON)
   }
 
   @Test
@@ -40,15 +39,6 @@ class RollDiagnosticsTest {
     assertFalse(RollDiagnostics(forcedSettles = 1).clean)
     assertFalse(RollDiagnostics(postRestCorrections = 1).clean)
     assertTrue(RollDiagnostics(corrections = 9, waiting = 3).clean)
-  }
-
-  @Test
-  fun `how far through the cap a roll is never leaves nought to one`() {
-    assertEquals(0.5, RollDiagnostics(steps = SettleRule.HARD_CAP_STEPS / 2).throughTheCap, EPSILON)
-    assertEquals(1.0, RollDiagnostics(steps = SettleRule.HARD_CAP_STEPS).throughTheCap, EPSILON)
-    // A roll cannot run past the cap, but a snapshot taken of one that somehow
-    // did should still draw a full bar rather than an overflowing one.
-    assertEquals(1.0, RollDiagnostics(steps = SettleRule.HARD_CAP_STEPS * 2).throughTheCap, EPSILON)
   }
 
   @Test

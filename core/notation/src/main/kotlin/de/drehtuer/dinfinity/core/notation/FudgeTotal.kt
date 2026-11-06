@@ -47,9 +47,6 @@ object FudgeTotal {
   fun isFudge(dieIds: List<String>): Boolean =
     dieIds.isNotEmpty() && dieIds.all { id -> id == DieResolver.FUDGE_DIE_ID }
 
-  /** The same question of dice that have just landed. */
-  fun isFudgeRoll(dice: List<RolledDie>): Boolean = isFudge(dice.map(RolledDie::dieId))
-
   /**
    * [total] as the player should read it, given the [dice] that made it.
    *

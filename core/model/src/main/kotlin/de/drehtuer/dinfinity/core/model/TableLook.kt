@@ -102,9 +102,6 @@ data class TableLook(
     /** Above 0.6 the tray is a trampoline and dice never settle. */
     val RestitutionRange: ClosedFloatingPointRange<Double> = 0.0..0.6
 
-    /** How often a texture may repeat before it is moiré rather than felt. */
-    val TilingRange: IntRange = 1..32
-
     /**
      * How much table one copy of a texture may cover, in millimetres. A
      * centimetre is already a weave nobody can see on a phone, and a metre is

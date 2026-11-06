@@ -2,10 +2,8 @@ package de.drehtuer.dinfinity
 
 import android.content.Context
 import android.content.Intent
-import androidx.core.content.FileProvider
 import de.drehtuer.dinfinity.designer.MinePackage
 import de.drehtuer.dinfinity.designer.PackageFile
-import java.io.File
 
 /**
  * Handing the personal dice set to whatever the author wants to do with it
@@ -34,9 +32,6 @@ object PackageSharing {
   /** Where the copies go. Cleared each time, so yesterday's export is not offered today. */
   private const val DIRECTORY = "packages"
 
-  /** Matches `collection_paths.xml`; the authority is the app's, with this suffix. */
-  private const val AUTHORITY = ".collections"
-
   /**
    * Writes [file] into the cache and opens the share sheet on it.
    *
@@ -46,30 +41,5 @@ object PackageSharing {
   fun share(
     context: Context,
     file: PackageFile,
-  ): Intent {
-    val directory = File(context.cacheDir, DIRECTORY)
-    // Emptied rather than added to: the sheet offers one file, and a zip of
-    // every die anybody ever drew is a copy of the drafts folder sitting in a
-    // place nothing prunes.
-    directory.deleteRecursively()
-    directory.mkdirs()
-    val written = File(directory, file.name)
-    written.writeBytes(file.bytes)
-
-    val uri = FileProvider.getUriForFile(context, context.packageName + AUTHORITY, written)
-    val send =
-      Intent(Intent.ACTION_SEND).apply {
-        type = MinePackage.MEDIA_TYPE
-        putExtra(Intent.EXTRA_STREAM, uri)
-        putExtra(Intent.EXTRA_TITLE, file.name)
-        // Without this the app on the other side gets a URI it may not read.
-        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-      }
-    val chooser =
-      Intent
-        .createChooser(send, null)
-        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    context.startActivity(chooser)
-    return chooser
-  }
+  ): Intent = ShareSheet.offer(context, DIRECTORY, file.name, MinePackage.MEDIA_TYPE) { it.writeBytes(file.bytes) }
 }

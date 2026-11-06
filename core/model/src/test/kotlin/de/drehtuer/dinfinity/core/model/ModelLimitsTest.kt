@@ -45,9 +45,4 @@ class ModelLimitsTest {
     assertEquals(0.2..1.0, TableLook.FrictionRange)
     assertEquals(0.0..0.6, TableLook.RestitutionRange)
   }
-
-  @Test
-  fun `a texture repeats at least once and at most thirty-two times`() {
-    assertEquals(1..32, TableLook.TilingRange)
-  }
 }

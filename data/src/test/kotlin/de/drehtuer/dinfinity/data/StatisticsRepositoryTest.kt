@@ -297,9 +297,9 @@ class StatisticsRepositoryTest {
         1,
         database
           .dieSummary()
-          .forSet("gone")
+          .all()
           .first()
-          .size,
+          .count { it.setId == "gone" },
       )
     }
 
