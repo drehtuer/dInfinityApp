@@ -222,8 +222,8 @@ fun DInfinityTheme(
   // going through the screens against the prototype
   // (`docs/design-handover.md`).
   val scheme =
-    if (darkTheme) {
-      darkColorScheme(
+    (if (darkTheme) darkColorScheme() else lightColorScheme())
+      .copy(
         primary = palette.accent,
         onPrimary = palette.background,
         background = palette.background,
@@ -232,17 +232,6 @@ fun DInfinityTheme(
         onSurface = palette.text,
         outline = palette.divider,
       ).modernist(palette)
-    } else {
-      lightColorScheme(
-        primary = palette.accent,
-        onPrimary = palette.background,
-        background = palette.background,
-        onBackground = palette.text,
-        surface = palette.surface,
-        onSurface = palette.text,
-        outline = palette.divider,
-      ).modernist(palette)
-    }
 
   CompositionLocalProvider(LocalModernistColors provides palette) {
     MaterialTheme(

@@ -285,13 +285,6 @@ class DesignerPresenterTest {
   }
 
   @Test
-  fun `with one die there is nothing to choose between`() {
-    val presenter = DesignerPresenter(d6, choosable = listOf(d6))
-
-    assertFalse("a chooser was offered for one die", presenter.state.baseChoosable)
-  }
-
-  @Test
   fun `the bucket on bare paper colours the whole face`() {
     val presenter = DesignerPresenter(d6)
     presenter.use(Nib.Bucket)

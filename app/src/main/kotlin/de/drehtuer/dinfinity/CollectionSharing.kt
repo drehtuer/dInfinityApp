@@ -2,10 +2,8 @@ package de.drehtuer.dinfinity
 
 import android.content.Context
 import android.content.Intent
-import androidx.core.content.FileProvider
 import de.drehtuer.dinfinity.feature.saved.CollectionExport
 import de.drehtuer.dinfinity.feature.saved.CollectionFile
-import java.io.File
 
 /**
  * Handing a collection to whatever the player wants to do with it
@@ -30,9 +28,6 @@ object CollectionSharing {
   /** Where the copies go. Cleared each time, so yesterday's export is not offered today. */
   private const val DIRECTORY = "collections"
 
-  /** Matches `collection_paths.xml`; the authority is the app's, with this suffix. */
-  private const val AUTHORITY = ".collections"
-
   /**
    * Writes [file] into the cache and opens the share sheet on it.
    *
@@ -42,29 +37,5 @@ object CollectionSharing {
   fun share(
     context: Context,
     file: CollectionFile,
-  ): Intent {
-    val directory = File(context.cacheDir, DIRECTORY)
-    // Emptied rather than added to: the sheet offers one file, and a directory
-    // that only grows is a directory of everything anybody ever exported.
-    directory.deleteRecursively()
-    directory.mkdirs()
-    val written = File(directory, file.name)
-    written.writeText(file.json)
-
-    val uri = FileProvider.getUriForFile(context, context.packageName + AUTHORITY, written)
-    val send =
-      Intent(Intent.ACTION_SEND).apply {
-        type = CollectionExport.MEDIA_TYPE
-        putExtra(Intent.EXTRA_STREAM, uri)
-        putExtra(Intent.EXTRA_TITLE, file.name)
-        // Without this the app on the other side gets a URI it may not read.
-        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-      }
-    val chooser =
-      Intent
-        .createChooser(send, null)
-        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    context.startActivity(chooser)
-    return chooser
-  }
+  ): Intent = ShareSheet.offer(context, DIRECTORY, file.name, CollectionExport.MEDIA_TYPE) { it.writeText(file.json) }
 }

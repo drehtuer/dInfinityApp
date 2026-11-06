@@ -9,7 +9,6 @@ import de.drehtuer.dinfinity.fixtures.StandardDice
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
-import kotlin.test.assertTrue
 
 class DieStatisticsTest {
   private val d20 = StandardDice.d20
@@ -121,27 +120,6 @@ class DieStatisticsTest {
   fun `a dropped die counts towards the streaks too, because it was thrown`() {
     val dropped = rolled(20).copy(notes = setOf(DieNote.Dropped))
     assertEquals(1, DieStatistics.record(null, d20, dropped, atEpochMs = 1).highestStreak)
-  }
-
-  @Test
-  fun `the fair share of a plain die is one over its faces`() {
-    val expected = DieStatistics.expectedShare(StandardDice.d6)
-    assertEquals(6, expected.size)
-    expected.values.forEach { assertEquals(1.0 / 6, it, 1e-12) }
-  }
-
-  @Test
-  fun `the fair share of a d6 of 1,2,3,1,2,3 is a third each`() {
-    val expected = DieStatistics.expectedShare(die("d3-as-d6", DieShape.Cube, listOf(1, 2, 3, 1, 2, 3)))
-    assertEquals(setOf(1, 2, 3), expected.keys)
-    expected.values.forEach { assertEquals(1.0 / 3, it, 1e-12) }
-  }
-
-  @Test
-  fun `the fair shares add to one`() {
-    StandardDice.all.forEach { die ->
-      assertTrue(kotlin.math.abs(DieStatistics.expectedShare(die).values.sum() - 1.0) < 1e-12, die.id)
-    }
   }
 
   @Test

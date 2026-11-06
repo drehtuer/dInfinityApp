@@ -79,9 +79,6 @@ data class DieMaterial(
    */
   val opacity: Double get() = 1.0 - translucency
 
-  /** True for a die light passes through at all, which is a die that must be blended. */
-  val isTranslucent: Boolean get() = translucency > 0.0
-
   /** True for a die that gives off light of its own. */
   val isGlowing: Boolean get() = glow > 0.0
 

@@ -82,13 +82,6 @@ internal object Solids {
     }
   }
 
-  /** The bounding radius of an n-gonal trapezohedron whose apex edge is 1. */
-  fun trapezohedronRadiusPerEdge(n: Int): Double {
-    val ring = ringHeight(n)
-    val apex = apexHeight(n)
-    return apex / sqrt(1 + (apex - ring) * (apex - ring))
-  }
-
   /** The outward normal of the plane through a kite's four corners. */
   private fun outward(
     tip: Vector3,
@@ -140,9 +133,7 @@ private fun apexRatio(n: Int): Double = TWO / (1 - Exact.cos(PI / n)) - 1
 private const val COIN_SEGMENTS = CoinShape.RIM_SEGMENTS
 
 /**
- * Unit vectors in the catalogue's face order: from the top of the reference
- * orientation downwards, and anticlockwise around each ring from the `+x`
- * side.
+ * The rotation that puts the highest of [directions] straight up.
  *
  * The whole solid is first turned so that its **first position points straight
  * up**. That is worth doing rather than taking whatever orientation the
@@ -153,12 +144,6 @@ private const val COIN_SEGMENTS = CoinShape.RIM_SEGMENTS
  * which is not a thing a die is ever in. With this, face 0 is the face that is
  * up when nothing has been turned, which is what both the atlas and every test
  * of a face reading expect.
- */
-internal fun order(directions: List<Vector3>): List<Vector3> =
-  uprightRotation(directions).let { rotation -> directions.turnedAndOrdered(rotation) }
-
-/**
- * The rotation that puts the highest of [directions] straight up.
  *
  * Worked out once and applied to a solid's faces *and* its corners, so the two
  * describe the same solid in the same orientation.

@@ -21,7 +21,7 @@ class DieStatisticsRepository(
 ) {
   /** Every die ever thrown, most recently used first. */
   val dice: Flow<List<DieSummary>> =
-    database.dieSummary().all().map { rows -> rows.map(DieSummaryRow::asSummary) }
+    database.dieSummary().all().map { rows -> rows.map(DieSummaryRow::toSummary) }
 
   /**
    * Every die thrown in one session, and what it did there
@@ -69,7 +69,7 @@ class DieStatisticsRepository(
    * screen that re-exported itself every time a roll landed would be opening
    * share sheets.
    */
-  suspend fun allFaces(): List<FaceTally> = database.dieStats().everything().map(DieStatsRow::asTally)
+  suspend fun allFaces(): List<FaceTally> = database.dieStats().everything().map(DieStatsRow::toTally)
 
   /**
    * "All my d20s", rolled up across every set that has one
@@ -94,7 +94,7 @@ class DieStatisticsRepository(
    * differ in their `WHERE`, not in what a row means.
    */
   private fun tallies(rows: Flow<List<DieStatsRow>>): Flow<List<FaceTally>> =
-    rows.map { row -> row.map(DieStatsRow::asTally) }
+    rows.map { row -> row.map(DieStatsRow::toTally) }
 
   /** And the same for a roll-up, which has a kind of die but no die of its own. */
   private fun pooled(
@@ -105,28 +105,3 @@ class DieStatisticsRepository(
       total.map { FaceTally(setId = "", dieId = "", sides = sides, faceValue = it.faceValue, count = it.total) }
     }
 }
-
-private fun DieSummaryRow.asSummary(): DieSummary =
-  DieSummary(
-    setId = setId,
-    dieId = dieId,
-    sides = sides,
-    throws = throws,
-    sum = sum,
-    sumOfSquares = sumOfSquares,
-    highestStreak = highestStreak,
-    highestStreakMax = highestStreakMax,
-    lowestStreak = lowestStreak,
-    lowestStreakMax = lowestStreakMax,
-    lastRolledAtEpochMs = lastRolledAtEpochMs,
-  )
-
-private fun DieStatsRow.asTally(): FaceTally =
-  FaceTally(
-    setId = setId,
-    dieId = dieId,
-    sides = sides,
-    faceValue = faceValue,
-    count = count,
-    droppedCount = droppedCount,
-  )

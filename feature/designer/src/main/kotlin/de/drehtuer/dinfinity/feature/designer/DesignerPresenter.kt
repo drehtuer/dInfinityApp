@@ -270,9 +270,6 @@ data class DesignerState(
    */
   val showsSolid: Boolean get() = step != DesignerStep.Faces || view == DesignerView.Solid
 
-  /** True when there is more than one die to start from, so a chooser is worth drawing. */
-  val baseChoosable: Boolean get() = choosable.size > 1
-
   /** The drawing on the face in front of the player. */
   val face: FaceDrawing get() = draft.face(cell)
 

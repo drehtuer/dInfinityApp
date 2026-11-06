@@ -40,7 +40,8 @@ This is a snapshot, not a changelog — git history is the changelog.
 - **Every release is shown fair**: `tools/fairness.sh` throws every shape
   100,000 times on the phone into `fairness/record.txt`, tied to the physics
   by a fingerprint, and the release workflow refuses a tag without a passing
-  record. Re-made on 2026-10-24 for the re-throw reasons' contact flag.
+  record. Made on 2026-10-24 and **stale since the glow work changed
+  `core/model`**, so the next release needs a fresh run.
 - **Dice that glow, and a Halloween set** (#432): a set file's `glow` and
   `glow_color` (decision 111), and a fifth sample set that comes installed —
   glowing frosted resin with a `pumpkin` die counted by value. Waits on the

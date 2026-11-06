@@ -136,8 +136,7 @@ class FilamentDiceRenderer(
     // them takes the table away and leaves no way to tell four dice from two
     // (`docs/TODO.md`, Step 4.1 — panning and pinching are the way to look
     // closer, and they are the player's to do).
-    place(frame)
-    stage.draw()
+    show(frame)
   }
 
   override fun end() {

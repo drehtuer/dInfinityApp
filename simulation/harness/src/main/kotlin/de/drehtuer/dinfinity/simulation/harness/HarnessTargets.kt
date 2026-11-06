@@ -144,7 +144,7 @@ data class HarnessTargets(
     val gpuMillis = rendered?.gpuMillis
     val gpu =
       if (gpuMillis == null) {
-        TargetResult(GPU_FRAME_TIME, written("%.2f ms", p99FrameMillis), NOT_MEASURED, TargetOutcome.NotMeasured)
+        TargetResult(GPU_FRAME_TIME, written(MILLIS_FORMAT, p99FrameMillis), NOT_MEASURED, TargetOutcome.NotMeasured)
       } else {
         millis(GPU_FRAME_TIME, gpuMillis.p99, p99FrameMillis)
       }
@@ -164,12 +164,12 @@ data class HarnessTargets(
   private fun frameTime(frames: FrameSummary?): TargetResult =
     when {
       frames == null ->
-        TargetResult(FRAME_TIME, written("%.2f ms", p99FrameMillis), NOT_MEASURED, TargetOutcome.NotMeasured)
+        TargetResult(FRAME_TIME, written(MILLIS_FORMAT, p99FrameMillis), NOT_MEASURED, TargetOutcome.NotMeasured)
       !frames.drawn ->
         TargetResult(
           FRAME_TIME,
-          written("%.2f ms", p99FrameMillis),
-          written("%.2f ms", frames.millis.p99) + " (simulation only)",
+          written(MILLIS_FORMAT, p99FrameMillis),
+          written(MILLIS_FORMAT, frames.millis.p99) + " (simulation only)",
           TargetOutcome.NotMeasured,
         )
       else -> millis(FRAME_TIME, frames.millis.p99, p99FrameMillis)
@@ -234,7 +234,7 @@ data class HarnessTargets(
     measured: Double,
     bar: Double,
   ): TargetResult =
-    TargetResult(name, written("%.2f ms", bar), written("%.2f ms", measured), TargetOutcome.of(measured <= bar))
+    TargetResult(name, written(MILLIS_FORMAT, bar), written(MILLIS_FORMAT, measured), TargetOutcome.of(measured <= bar))
 
   private fun millimetres(
     name: String,
@@ -469,3 +469,5 @@ data class Scorecard(
     private const val RESULT_HEADING = "result"
   }
 }
+
+private const val MILLIS_FORMAT = "%.2f ms"

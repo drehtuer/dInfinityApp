@@ -18,14 +18,12 @@ class DieMaterialTest {
     val material = DieMaterial()
     assertEquals(0.0, material.translucency)
     assertEquals(1.0, material.opacity)
-    assertFalse(material.isTranslucent)
   }
 
   @Test
   fun `translucency and opacity are the two ends of one number`() {
     val glass = DieMaterial(translucency = 0.18)
     assertEquals(0.82, glass.opacity, 1e-12)
-    assertTrue(glass.isTranslucent)
   }
 
   @Test

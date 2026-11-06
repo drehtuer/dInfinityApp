@@ -232,11 +232,3 @@ object SignedDistanceField {
   private const val TO_Y = 3
   private const val EDGE_NUMBERS = 4
 }
-
-/** How far into the ink a byte of the field is, `-1` at the spread outside to `1` inside. */
-fun Byte.asDistance(): Double = ((toInt() and BYTE) - SignedDistanceField.EDGE) / SignedDistanceField.EDGE.toDouble()
-
-/** Whether a byte of the field is inside the ink. */
-fun Byte.isInk(): Boolean = (toInt() and BYTE) >= SignedDistanceField.EDGE
-
-private const val BYTE = 0xFF

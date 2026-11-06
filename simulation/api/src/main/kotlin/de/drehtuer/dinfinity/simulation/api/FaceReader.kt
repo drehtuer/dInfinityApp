@@ -44,7 +44,7 @@ object FaceReader {
         best = index
       }
     }
-    return if (bestAlignment >= UPRIGHT_THRESHOLD) Reading.Face(best) else Reading.Cocked(best, bestAlignment)
+    return if (bestAlignment >= UPRIGHT_THRESHOLD) Reading.Face(best) else Reading.Cocked(bestAlignment)
   }
 }
 
@@ -63,15 +63,11 @@ sealed interface Reading {
    * fabricate a result nobody rolled. It is thrown again, visibly
    * (`docs/physics-and-rendering.md`, rung 4: "Never").
    *
-   * @param nearestIndex the position that came closest to being up. It is
-   *   **not** the result — reading it would fabricate a number nobody rolled —
-   *   but the anomaly log and the debug overlay both want to know which face
-   *   nearly won, and it is the only thing the safety valve at the 12-second
-   *   cap has left to report (`docs/physics-and-rendering.md`).
-   * @param bestAlignment how close that position came, for the same log.
+   * @param bestAlignment how close the nearest position came to being up. Which
+   *   position that was is deliberately not said: it is not the result, and
+   *   reading it would fabricate a number nobody rolled.
    */
   data class Cocked(
-    val nearestIndex: Int,
     val bestAlignment: Double,
   ) : Reading
 }

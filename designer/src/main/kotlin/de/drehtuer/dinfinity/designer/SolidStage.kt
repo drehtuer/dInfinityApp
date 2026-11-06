@@ -183,7 +183,6 @@ object SolidStage {
     turn: SolidTurn,
   ): Stage {
     val shape = draft.die.shape
-    val faces = SolidFaces.of(shape)
     // A long d4's ends as well as its cells, numbered after them: drawn in the
     // die's colour with nothing on them ([endOf]).
     val drawn = RoundedSolid.facesOf(shape)

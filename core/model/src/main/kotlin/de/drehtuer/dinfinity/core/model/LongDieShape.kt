@@ -34,7 +34,4 @@ object LongDieShape {
    * were inside that range's lower bound, and a die could balance there.
    */
   const val BODY_HALF_LENGTH: Double = 0.7
-
-  /** How long the whole die is against how wide: 2 against 0.8. */
-  const val LENGTH_TO_WIDTH: Double = 1.0 / HALF_WIDTH
 }

@@ -63,18 +63,4 @@ object DieStatistics {
       droppedCount = previous.droppedCount + if (rolled.kept) 0 else 1,
     )
   }
-
-  /**
-   * The fair share of a die's throws each of its face *values* should get.
-   *
-   * The faint line the histogram is drawn against (`docs/statistics.md`,
-   * "Overview"). It is per value rather than per face, so a d6 labelled
-   * `1,2,3,1,2,3` is drawn against a third each rather than a sixth.
-   */
-  fun expectedShare(die: Die): Map<Int, Double> =
-    die
-      .values()
-      .groupingBy { it }
-      .eachCount()
-      .mapValues { (_, faces) -> faces.toDouble() / die.faces.size }
 }

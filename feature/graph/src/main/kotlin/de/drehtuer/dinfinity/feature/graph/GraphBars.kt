@@ -46,8 +46,8 @@ object GraphBars {
           atLeast = pmf.atLeast(bucket.first()),
         )
       }
-    val tallest = bars.maxOfOrNull { it.value(mode) } ?: 0.0
-    return bars.map { bar -> bar.copy(share = if (tallest > 0.0) bar.value(mode) / tallest else 0.0) }
+    val tallest = bars.maxOfOrNull { it.value(mode) } ?: return bars
+    return bars.map { bar -> bar.copy(share = bar.value(mode) / tallest) }
   }
 }
 

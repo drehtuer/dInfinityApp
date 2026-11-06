@@ -69,9 +69,6 @@ data class RollDiagnostics(
    */
   val clean: Boolean get() = forcedSettles == 0 && postRestCorrections == 0
 
-  /** How far through the twelve-second cap the roll is, `0` to `1`. */
-  val throughTheCap: Double get() = (steps.toDouble() / SettleRule.HARD_CAP_STEPS).coerceIn(0.0, 1.0)
-
   companion object {
     /** No roll, which is what a tray with nothing on it has to report. */
     val NONE: RollDiagnostics = RollDiagnostics()
