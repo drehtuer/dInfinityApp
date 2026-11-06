@@ -97,6 +97,27 @@ class CollectionReaderTest {
   }
 
   @Test
+  fun `a collection of groups with no rolls key at all reads`() {
+    // The list is not required. Only having nothing in either is refused.
+    val groups = """{ "format": 1, "name": "G", "groups": [{ "id": "a", "name": "A" }] }"""
+
+    assertEquals(1, loaded(groups).collection.groups.size)
+  }
+
+  @Test
+  fun `a collection with neither list in it is refused as empty`() {
+    assertEquals(CollectionCode.Empty, only("""{ "format": 1, "name": "Nothing" }""").code)
+  }
+
+  @Test
+  fun `a group with no id is named as missing one`() {
+    val problem = rejected(collection(groups = """{ "name": "A" }""")).errors.first()
+
+    assertEquals(CollectionCode.MissingField, problem.code)
+    assertEquals("groups[0].id", problem.at)
+  }
+
+  @Test
   fun `every problem is reported, not just the first`() {
     // Somebody fixing a file by hand wants the whole list. The import is
     // refused entirely either way, so there is nothing to gain by stopping.

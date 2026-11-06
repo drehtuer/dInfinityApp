@@ -145,6 +145,16 @@ class GraphMachineTest {
   }
 
   @Test
+  fun `tapping below the lowest total is a tap on nothing too`() {
+    val machine = machine()
+    machine.type("2d6")
+
+    machine.pick(1)
+
+    assertNull((machine.state as GraphState.Graphed).picked)
+  }
+
+  @Test
   fun `retyping drops the pick, because a bar at 14 is not the same bar`() {
     val machine = machine()
     machine.type("2d6")
@@ -199,6 +209,16 @@ class GraphMachineTest {
     machine.type("2d6")
 
     machine.rolled(total = 99, formula = "2d6")
+
+    assertNull((machine.state as GraphState.Graphed).rolled)
+  }
+
+  @Test
+  fun `a total below where the chart starts is not marked either`() {
+    val machine = machine()
+    machine.type("2d6")
+
+    machine.rolled(total = 1, formula = "2d6")
 
     assertNull((machine.state as GraphState.Graphed).rolled)
   }

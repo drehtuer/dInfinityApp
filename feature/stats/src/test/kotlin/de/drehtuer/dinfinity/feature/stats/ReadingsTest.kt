@@ -51,6 +51,16 @@ class ReadingsTest {
   }
 
   @Test
+  fun `where the totals run does not depend on the order they were handed over in`() {
+    val (three, four, five) = rolled()
+
+    val reading = TotalsReading.of(listOf(four, three, five))
+
+    assertEquals(3, reading?.lowest)
+    assertEquals(5, reading?.highest)
+  }
+
+  @Test
   fun `it counts the totals that came up more often than the maths says`() {
     // The one claim the picture makes: a bar above its mark.
     assertEquals(2, TotalsReading.of(rolled())?.above)

@@ -116,6 +116,25 @@ class ValidationErrorTest {
   }
 
   @Test
+  fun `a face value below the documented range is refused as well`() {
+    val rejected = rejecting(minimalToml().replace("[1, 2, 3, 4, 5, 6]", "[-10000, 2, 3, 4, 5, 6]"))
+    assertTrue(ValidationCode.FaceValueOutOfRange in rejected.codes(), "${rejected.messages}")
+  }
+
+  @Test
+  fun `a die with no id is refused, by name`() {
+    val rejected = rejecting(minimalToml().replace("id = \"d6\"\n", ""))
+    assertTrue(ValidationCode.MissingField in rejected.codes(), "${rejected.messages}")
+  }
+
+  @Test
+  fun `the read mode that went with the tetrahedron says so`() {
+    val rejected = rejecting(minimalToml("read = \"vertex-up\""))
+    assertTrue(ValidationCode.UnknownPreset in rejected.codes(), "${rejected.messages}")
+    assertTrue(rejected.errors.any { "tetrahedron" in it.text }, "${rejected.errors}")
+  }
+
+  @Test
   fun `a read mode the app does not have is refused`() {
     val rejected = rejecting(minimalToml("read = \"edge-up\""))
     assertTrue(ValidationCode.UnknownPreset in rejected.codes(), "${rejected.messages}")

@@ -551,16 +551,14 @@ Pixel 10a.
 
 ## Coverage
 
-Branch coverage is **~87.2 %** against a floor of 62. It rose from 75.8 % because
-JaCoCo 0.8.16 filters the Compose compiler's generated branches, not because more
-was tested (`docs/build-setup.md`, "Coverage"). What is still missed is mostly real:
-screens' decisions (`DesignerScreen`, `RollScreen`, `DInfinityApp`, `SavedScreen`,
-`StatsScreen`) and presenters' (`RollMachine`, `SetsPresenter`, `SetDetailPresenter`).
-What helps: extract decisions from draw lambdas, and test shared components on
-their own. Figures go in every PR description.
-
-- [ ] Should the floor track the drift? A question for a person — moving a
-      floor to make a check pass is what `.claude/CLAUDE.md` forbids
+Branch coverage is **~89.3 %** against a floor of 80. Most of the rise from 75.8 %
+is JaCoCo 0.8.16 filtering the Compose compiler's generated branches
+(`docs/build-setup.md`, "Coverage"); the last two points are about two hundred
+tests of real behaviour. What is still missed is mostly screens' decisions and
+layout (`DesignerScreen`, `RollScreen`, `DInfinityApp`, `SavedScreen`,
+`StatsScreen`), guards that cannot be reached, and filesystem failures. What helps:
+extract decisions from draw lambdas, and test shared components on their own.
+Figures go in every PR description.
 
 Found by the test pass of 2026-10-05, each left as it was so no test locks a
 wrong answer in:
@@ -570,8 +568,6 @@ wrong answer in:
       the documented refusal of "a link or a device" never fires for them.
       Not exploitable (the extractor writes the bytes itself), but the
       validator should refuse anything but a regular file or a directory
-- [ ] `ReferencedFile.staysInsidePackage` refuses a path with an empty segment,
-      `textures/` included — check a zip's directory entries never reach it
 - [ ] `InstallSource.gitea` drops a `src/branch/<ref>/<folder>` subfolder and
       installs from the repository root; GitHub and GitLab honour one. A
       `blob/…` link on either becomes a subfolder named `blob/…`
@@ -585,6 +581,38 @@ wrong answer in:
       `withinBudget` has only tests too. Either a bridge should ask them, or the
       ladder's documentation should stop saying one does. A design question, so
       they are left in place (`.claude/CLAUDE.md`, "Nothing touches a die")
+
+Found by the test pass of 2026-11-06, again left as they were. "Run" means a probe
+showed it; "read" means it was only read in the code:
+
+- [ ] **Typing over an earned throw keeps it** (run; the stuck shake is read).
+      `RollMachine.type` does not clear `earned`: land `1d6!` on a six, type `2d20`,
+      and the next shake throws the old d6 instead, with the machine left in
+      `Rolling`
+- [ ] **`SafeExtractor` does not count skipped entries against its caps** (read).
+      An entry off the allowlist is decompressed and discarded without touching the
+      500 entries or 64 MiB, so a big gzip named `.bin` costs time without limit,
+      against `docs/dice-sets.md`. Nothing reaches the disk
+- [ ] `SavedStatsPresenter`: deleting a roll with its chart open leaves `selected`
+      on the deleted roll (run)
+- [ ] `PackageFolder.swap`: failing with no previous package throws
+      `NoSuchFileException` instead of returning false, and leaves `.mine.writing`
+      behind (run)
+- [ ] `StatsPresenter.filterBy` and `rollUp` clear `selected` but not `watching`, so
+      the next throw reopens the die (read; the chips are hidden while a die is open)
+- [ ] `DesignerPresenter`: shutting the sheet during New set reopens it when the
+      create succeeds (read)
+- [ ] `Breakdown`: JSON `null` for `notation` reads as the text "null", and a
+      non-list `adjustments` throws away readable groups (read)
+- [ ] `PackageRoot`: `endsWith` has no path boundary, so `skulls` also matches
+      `old-skulls` (read)
+- [ ] `InstallSource`: an archive link with surrounding whitespace is refused, and
+      forge `archive/…` links become subfolders, like the `blob/…` item above (read)
+- [ ] `RollProgress.complete` ignores `range.more`, so an exploding six reads as
+      complete; nothing in production reads it (read)
+- [ ] Guards no input reaches, left uncovered rather than tested: among them
+      `GroupRoller`'s empty groups, `RollLoop:363,467,516`, `RollMachine:366,694,798`
+      and `TablesPresenter:261,286`. `PlanSpot.onThePlan` has no production caller
 
 ## Open questions
 

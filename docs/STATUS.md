@@ -40,7 +40,7 @@ This is a snapshot, not a changelog — git history is the changelog.
 - **Every release is shown fair**: `tools/fairness.sh` throws every shape
   100,000 times on the phone into `fairness/record.txt`, tied to the physics
   by a fingerprint, and the release workflow refuses a tag without a passing
-  record. Re-made on 2026-11-06 at `4d15fbdb`, and a release would accept it.
+  record. Re-made on 2026-11-06 at `e271b3a7`, and a release would accept it.
   Any edit to the physics' files makes it stale again.
 - **Dice that glow, and a Halloween set** (#432): a set file's `glow` and
   `glow_color` (decision 111), and a fifth sample set that comes installed —
@@ -143,9 +143,10 @@ of it in `docs/TODO.md` (4.1 and 5.6). The most useful three:
   `blitLow` program failing to compile (seen 2026-10-10); the phone runs them.
   `docs/TODO.md`, Step 2.
 - Determinism holds across both ABIs; unproven across devices of one ABI.
-- **Coverage:** branch ~87.2 % against a floor of 62, function ~95.4 % against
-  85. The branch figure rose from 75.8 % when JaCoCo began filtering the Compose
-  compiler's generated branches, so the real gaps are the ones it had before.
+- **Coverage:** branch ~89.3 % against a floor of 80, function ~95.5 % against
+  85. Most of the rise from 75.8 % is JaCoCo filtering the Compose compiler's
+  generated branches, and the test pass behind the rest found bugs that are not
+  fixed yet (`docs/TODO.md`, "Found by the test pass of 2026-11-06").
 
 ## Decisions pending
 

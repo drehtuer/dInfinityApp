@@ -160,6 +160,52 @@ class PhotoStoreTest {
   }
 
   @Test
+  fun `a folder named like a picture is not a photo`() {
+    val photos = store()
+    File(folder, "photo-oak.webp").mkdirs()
+
+    assertTrue(photos.ids().isEmpty())
+    assertTrue(photos.photos().isEmpty())
+    assertTrue("something that is not a photo counted against the cap", photos.hasRoom())
+  }
+
+  @Test
+  fun `an id with nothing usable in it still names a file`() {
+    val photos = store()
+
+    assertTrue(photos.add(TablePhoto("!!!", "Oak", Drawings.webp(8, 8))))
+
+    assertEquals(setOf(PhotoTable.UNNAMED), photos.ids())
+    assertEquals("Oak", photos.photos().single().name)
+  }
+
+  @Test
+  fun `a picture that will not go is handed back rather than called gone`() {
+    // The next read of the folder would offer it again, so saying it was
+    // forgotten would be a lie that read exposes.
+    val photos = store()
+    val stuck = stuck("photo-oak.webp")
+    photos.add(TablePhoto("photo-elm", "Elm", Drawings.webp(8, 8)))
+
+    assertEquals(listOf(stuck), photos.forget("photo-oak"))
+    assertTrue("a photo that went was reported as still there", photos.forget("photo-elm").isEmpty())
+  }
+
+  @Test
+  fun `a picture that cannot land says no, and leaves no half-written file`() {
+    val photos = store()
+    stuck("photo-oak.webp")
+
+    assertFalse(photos.add(TablePhoto("photo-oak", "Oak", Drawings.webp(8, 8))))
+
+    assertEquals(
+      "the failed write left something behind",
+      listOf("photo-oak.webp"),
+      folder.listFiles().orEmpty().map(File::getName),
+    )
+  }
+
+  @Test
   fun `a folder that cannot be written leaves nothing behind`() {
     val blocked = temporary.newFile("not-a-folder")
     val photos = PhotoStore(blocked)
@@ -167,5 +213,13 @@ class PhotoStoreTest {
     assertFalse(photos.add(TablePhoto("photo-oak", "Oak", Drawings.webp(8, 8))))
     assertTrue(photos.photos().isEmpty())
     assertTrue(blocked.isFile)
+  }
+
+  /** A non-empty folder at [name], which `delete` and `renameTo` both refuse, for root as well. */
+  private fun stuck(name: String): File {
+    val blocked = File(folder, name)
+    blocked.mkdirs()
+    File(blocked, "in-the-way").writeText("x")
+    return blocked
   }
 }

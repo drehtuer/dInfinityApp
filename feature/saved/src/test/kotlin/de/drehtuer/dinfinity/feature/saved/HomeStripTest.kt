@@ -297,6 +297,24 @@ class HomeStripTest {
     compose.onNodeWithTag(HomeStripTestTags.STRIP).assertDoesNotExist()
   }
 
+  @Test
+  fun `the strip itself draws nothing while the database has not answered`() {
+    // The presenter's scope never runs, so the answer cannot have arrived — and
+    // the guard being asserted is the strip's own.
+    val presenter =
+      SavedPresenter(
+        library = library,
+        catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set)),
+        scope = CoroutineScope(NeverRuns),
+        unfiledName = "Unfiled",
+      )
+
+    compose.setContent { HomeStrip(presenter = presenter) }
+
+    compose.onNodeWithTag(HomeStripTestTags.STRIP).assertDoesNotExist()
+    compose.onNodeWithTag(HomeStripTestTags.NEW).assertDoesNotExist()
+  }
+
   private fun given(vararg rolls: SavedRoll) {
     runBlocking {
       groupRepository.ensureUnfiled("Unfiled")

@@ -54,6 +54,12 @@ class RollHistoryRowTest {
   }
 
   @Test
+  fun `two rows that recorded no input are the same row, and hash alike`() {
+    assertEquals(row(blob = null), row(blob = null))
+    assertEquals(row(blob = null).hashCode(), row(blob = null).hashCode())
+  }
+
+  @Test
   fun `a row is not some other thing`() {
     assertNotEquals(row(), "not a row")
   }

@@ -109,6 +109,22 @@ class DraftFinishTest {
   }
 
   @Test
+  fun `a finish whose number is infinite or not a value at all is dropped, and the drawing kept`() {
+    // `DieFinish.of` clamps a number, and infinity has no in-range neighbour
+    // worth choosing on somebody's behalf.
+    val text = DraftFile.write(Drawings.drawn(d20, 0).copy(finish = glass))
+
+    listOf("\"Infinity\"", "\"NaN\"", "[0.5]").forEach { bad ->
+      val edited = text.replace(Regex("\"roughness\":[0-9.]+"), "\"roughness\":$bad")
+
+      val back = DraftFile.read(edited, d20)
+
+      assertNull("$bad was read as a finish", back?.finish)
+      assertEquals("the drawing was lost with $bad", setOf(0), back?.faces?.keys)
+    }
+  }
+
+  @Test
   fun `a finish edited past the format's limits on disk is brought back inside them`() {
     val text =
       DraftFile

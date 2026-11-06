@@ -5,6 +5,7 @@ import de.drehtuer.dinfinity.core.model.TablePin
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.core.notation.RollRange
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
+import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -115,6 +116,92 @@ class RollProgressTest {
 
     assertEquals(RollRange(24L, 24L), done.range)
     assertTrue("a roll with every die read is not complete", done.complete)
+  }
+
+  @Test
+  fun `a roll with dice still to read is not complete`() {
+    val machine = machine()
+    machine.type("4d6")
+    machine.throwDice()
+
+    assertFalse(requireNotNull(machine.progress(mapOf(0 to 5))).complete)
+  }
+
+  @Test
+  fun `a six on an exploding die says the roll can go higher than the seven it would be`() {
+    // Every die the formula planned has been read, and the throw it earned has
+    // not: the `+` on the readout is the only thing saying so.
+    val machine = machine()
+    machine.type("1d6!")
+    machine.throwDice()
+
+    val read = requireNotNull(machine.progress(mapOf(0 to 5)))
+
+    assertEquals(read.of, read.read)
+    assertEquals(RollRange(lowest = 7L, highest = 7L, more = true), read.range)
+  }
+
+  @Test
+  fun `a throw an explosion earned waits for a hand`() {
+    val machine = machine()
+    machine.type("1d6!")
+    machine.throwDice()
+    assertFalse("nothing has been earned while the first die is in the air", machine.awaitingShake)
+
+    machine.settled(SimulationOutcome(faces = mapOf(0 to 5)))
+
+    assertTrue("the chain did not say it was waiting on a hand", machine.awaitingShake)
+  }
+
+  @Test
+  fun `a chain's own round reports nothing about the roll`() {
+    // "One of one" of a single added die says nothing about a roll of four
+    // dice, so the readout keeps out of it rather than go backwards.
+    val machine = machine()
+    machine.type("4d6!")
+    machine.throwDice()
+    machine.settled(SimulationOutcome(faces = mapOf(0 to 5, 1 to 1, 2 to 1, 3 to 1)))
+    requireNotNull(machine.throwEarned(emptyList()))
+
+    assertNull(machine.progress(mapOf(0 to 2)))
+  }
+
+  @Test
+  fun `a stall from a throw that was typed over changes nothing`() {
+    // The tray answers from its own thread, so its answer can arrive after the
+    // formula it was answering has gone.
+    val machine = machine()
+    machine.type("3d6")
+    machine.throwDice()
+    machine.type("2d20")
+
+    assertFalse(machine.gaveUp(unsettled = listOf(0)))
+
+    assertEquals(2, (machine.state as RollState.Ready).diceCount)
+    assertFalse("a throw nobody is making was offered back", machine.awaitingRethrow)
+  }
+
+  @Test
+  fun `a stall that names no dice is not a stall`() {
+    val machine = machine()
+    machine.type("3d6")
+    machine.throwDice()
+
+    assertFalse(machine.gaveUp(unsettled = emptyList()))
+
+    assertEquals(RollState.Rolling(diceCount = 3), machine.state)
+  }
+
+  @Test
+  fun `a stall after the dice have stopped does not overwrite what they came to`() {
+    val machine = machine()
+    machine.type("3d6")
+    machine.throwDice()
+    machine.settled(SimulationOutcome(faces = mapOf(0 to 1, 1 to 2), unread = listOf(2)))
+
+    assertFalse(machine.gaveUp(unsettled = listOf(2)))
+
+    assertEquals(RollState.ThrowAgain(unread = 1, read = 2), machine.state)
   }
 
   @Test

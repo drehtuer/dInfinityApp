@@ -11,9 +11,12 @@ import de.drehtuer.dinfinity.data.InstalledSetRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 import de.drehtuer.dinfinity.dicesets.format.DiceSetValidator
 import de.drehtuer.dinfinity.dicesets.install.InstalledSets
+import de.drehtuer.dinfinity.dicesets.install.PackageFetcher
 import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
+import de.drehtuer.dinfinity.dicesets.install.PackageMeta
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -182,6 +185,137 @@ class InstallingTest {
     presenter.install(zip("brass", toml("brass", "Brass")))
     await("the first install never finished") { presenter.state.outcome != null }
     assertFalse("it was still marked as installing afterwards", presenter.state.installing)
+  }
+
+  @Test
+  fun `a file chosen while a download is running is not installed over it`() {
+    val presenter = downloading { _, far -> held(far) }
+    presenter.installFrom("https://example.test/brass.zip")
+    var released = false
+
+    presenter.install(zip("runes", toml("runes", "Runes"))) { released = true }
+
+    assertFalse("a second install started beside the first", released)
+    assertTrue("the running download was forgotten", presenter.state.installing)
+    assertFalse("the second one reached the folder", File(root, "runes").exists())
+  }
+
+  @Test
+  fun `a link pasted while a download is running does not start another`() {
+    val asked = mutableListOf<String>()
+    val presenter =
+      downloading { url, far ->
+        asked += url
+        held(far)
+      }
+    presenter.installFrom("https://example.test/brass.zip")
+
+    presenter.installFrom("https://example.test/runes.zip")
+
+    assertEquals(listOf("https://example.test/brass.zip"), asked)
+  }
+
+  @Test
+  fun `nobody asks the forges about updates while a download is running`() {
+    // Whatever came back would be about a list the download is about to change.
+    var asked = 0
+    val presenter =
+      SetsPresenter(
+        library,
+        scope,
+        download = { _, far -> held(far) },
+        latestCommit = { _, _ ->
+          asked++
+          LatestCommit.Unknown
+        },
+      )
+    write("brass", toml("brass", "Brass"))
+    File(root, "brass/${PackageMeta.FILE_NAME}").writeText(
+      PackageMeta(source = "https://example.test/brass.zip", commit = "aaaa").asJson(),
+    )
+    presenter.refresh()
+    await("the set never reached the list") { presenter.state.sets.any { it.checkable } }
+    presenter.installFrom("https://example.test/runes.zip")
+
+    presenter.checkForUpdates()
+
+    assertEquals(0, asked)
+    assertFalse(presenter.state.checking)
+    assertNull(presenter.state.checked)
+  }
+
+  @Test
+  fun `a download that reports being stopped says nothing about it`() {
+    // The other way to arrive here from pressing Stop: the fetcher noticed
+    // before the coroutine did.
+    val presenter = downloading { _, _ -> FetchedPackage.Cancelled }
+
+    presenter.installFrom("https://example.test/brass.zip")
+    await("it was still marked as installing") { !presenter.state.installing }
+
+    assertNull("somebody who pressed Stop was answered with a message", presenter.state.outcome)
+    assertNull(presenter.state.progress)
+  }
+
+  @Test
+  fun `stop does nothing once the download is over, and the answer stays`() {
+    val presenter = loaded()
+    presenter.install(zip("runes", "format = 1\n\n[set]\nid = \"runes\"\n"))
+    await("the install never finished") { presenter.state.outcome != null }
+
+    presenter.cancel()
+
+    assertTrue("a late Stop took the refusal away", presenter.state.outcome is PackageInstaller.Result.Failed)
+  }
+
+  @Test
+  fun `stop does nothing until there is a download to stop`() {
+    // Before the first byte there is no bar and so no button. A press that
+    // arrived anyway must not call a running install finished.
+    val presenter = downloading { _, _ -> awaitCancellation() }
+    presenter.installFrom("https://example.test/brass.zip")
+
+    presenter.cancel()
+
+    assertTrue("the install was called finished while it was running", presenter.state.installing)
+  }
+
+  @Test
+  fun `a filesystem that throws is a refusal, not a crash, and says what it said`() {
+    val presenter = loaded()
+    var released = 0
+
+    presenter.install(Refusing("the disk has gone")) { released++ }
+    await("the install never finished") { presenter.state.outcome != null }
+
+    assertEquals(PackageInstaller.Result.Failed("the disk has gone"), presenter.state.outcome)
+    assertEquals("the temporary copy was not let go", 1, released)
+    assertFalse(presenter.state.installing)
+  }
+
+  @Test
+  fun `a throw with nothing to say still gets a sentence`() {
+    val presenter = loaded()
+
+    presenter.install(Refusing(null))
+    await("the install never finished") { presenter.state.outcome != null }
+
+    val outcome = presenter.state.outcome as PackageInstaller.Result.Failed
+    assertTrue("nothing was said", outcome.reason.isNotBlank())
+  }
+
+  @Test
+  fun `a downloaded copy that will not delete does not stop the answer arriving`() {
+    // A non-empty folder, which is refused by the extractor and by `delete`.
+    val stuck = File(temporary, "stuck.zip").apply { mkdirs() }
+    File(stuck, "in-the-way").writeText("x")
+    val presenter = downloading { _, _ -> FetchedPackage.Archive(stuck) }
+
+    presenter.installFrom("https://example.test/brass.zip")
+    await("the install never finished") { presenter.state.outcome != null }
+
+    assertTrue(presenter.state.outcome is PackageInstaller.Result.Failed)
+    assertFalse(presenter.state.installing)
   }
 
   @Test
@@ -360,6 +494,25 @@ class InstallingTest {
   private fun loaded(): SetsPresenter =
     SetsPresenter(library, scope)
       .also { presenter -> await("the disk was never read") { presenter.state.loaded } }
+
+  private fun downloading(
+    download: suspend (String, (PackageFetcher.Progress) -> Unit) -> FetchedPackage,
+  ): SetsPresenter =
+    SetsPresenter(library, scope, download)
+      .also { presenter -> await("the disk was never read") { presenter.state.loaded } }
+
+  /** A download that reports one step and then never finishes. */
+  private suspend fun held(onProgress: (PackageFetcher.Progress) -> Unit): FetchedPackage {
+    onProgress(PackageFetcher.Progress(bytes = 512, total = 2048))
+    awaitCancellation()
+  }
+
+  /** An archive whose filesystem does something nobody asked about, the moment it is looked at. */
+  private class Refusing(
+    private val why: String?,
+  ) : File("refusing.zip") {
+    override fun getName(): String = throw IllegalStateException(why)
+  }
 
   private fun await(
     why: String,

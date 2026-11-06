@@ -77,6 +77,13 @@ class RollPlannerTest {
   }
 
   @Test
+  fun `keeping or dropping more dice than a group throws is refused rather than scored`() {
+    listOf("2d6kh5", "2d6kl3", "2d6dl5", "2d6dh3").forEach { text ->
+      assertTrue(refusedPlan(text, catalog).message.isNotBlank(), text)
+    }
+  }
+
+  @Test
   fun `the suggestion points at the group that is wrong`() {
     assertEquals(6..8, refusedPlan("3d6 + 1d7 - 4", catalog).range)
   }

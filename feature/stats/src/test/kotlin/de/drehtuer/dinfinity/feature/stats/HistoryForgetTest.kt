@@ -183,6 +183,78 @@ class HistoryForgetTest {
     compose.onNodeWithText("what each die has done", substring = true).assertIsDisplayed()
   }
 
+  @Test
+  fun `the confirmation names the saved roll when that is what would go`() {
+    savedRoll("fireball", "Fireball")
+    given("8d6", 28, row = { copy(savedRollId = "fireball") })
+    val presenter = show()
+
+    presenter.filterBy(HistoryFilter.OfSavedRoll("fireball", "Fireball"))
+    compose.waitUntil(PATIENCE) { presenter.state.rolls.size == 1 }
+    compose.onNodeWithTag(HistoryTestTags.FORGET).performClick()
+
+    compose.onNodeWithText("Every throw made through “Fireball”", substring = true).assertIsDisplayed()
+    compose.onNodeWithText("The saved roll itself stays", substring = true).assertIsDisplayed()
+  }
+
+  @Test
+  fun `a forget asked for with everything showing puts no question and forgets nothing`() {
+    // The screen does not offer it, but a stale frame or an accessibility
+    // service can deliver one. "Forget the entire history" must never be what
+    // a filter being off turns a forget into.
+    given("2d6", 7)
+    given("1d20", 20)
+    val presenter = show()
+    compose.waitUntil(PATIENCE) { presenter.state.rolls.size == 2 }
+
+    presenter.confirmForget(true)
+    compose.waitForIdle()
+    compose.onNodeWithTag(HistoryTestTags.FORGET_DIALOG).assertDoesNotExist()
+
+    val forgotten = mutableListOf<Int>()
+    presenter.forget(onDone = forgotten::add)
+
+    compose.waitUntil(PATIENCE) { forgotten.isNotEmpty() }
+    assertEquals(listOf(0), forgotten)
+    assertEquals(2, presenter.state.rolls.size)
+  }
+
+  @Test
+  fun `how many were forgotten is handed back`() {
+    session(id = "tuesday", name = "Tuesday campaign")
+    given("2d6", 7, session = "tuesday")
+    given("1d20", 20, session = "tuesday")
+    val presenter = show()
+    presenter.filterBy(HistoryFilter.InSession("tuesday", "Tuesday campaign"))
+    compose.waitUntil(PATIENCE) { presenter.state.rolls.size == 2 }
+
+    val forgotten = mutableListOf<Int>()
+    presenter.forget(onDone = forgotten::add)
+
+    compose.waitUntil(PATIENCE) { forgotten.isNotEmpty() }
+    assertEquals(listOf(2), forgotten)
+  }
+
+  @Test
+  fun `forgetting a filter that matched nothing leaves the filter on`() {
+    // Going back to everything is for when the list somebody was looking at
+    // has just gone. Here nothing went, and the screen has no reason to move.
+    session(id = "tuesday", name = "Tuesday campaign")
+    given("2d6", 7)
+    val presenter = show()
+    val quiet = HistoryFilter.InSession("tuesday", "Tuesday campaign")
+    presenter.filterBy(quiet)
+    compose.waitUntil(PATIENCE) { presenter.state.filteredToNothing }
+
+    val forgotten = mutableListOf<Int>()
+    presenter.forget(onDone = forgotten::add)
+
+    compose.waitUntil(PATIENCE) { forgotten.isNotEmpty() }
+    assertEquals(listOf(0), forgotten)
+    assertEquals(quiet, presenter.state.filter)
+    assertTrue(presenter.state.filteredToNothing)
+  }
+
   private fun given(
     formula: String,
     total: Long,

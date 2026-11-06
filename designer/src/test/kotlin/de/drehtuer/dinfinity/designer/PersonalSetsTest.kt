@@ -4,6 +4,7 @@ import de.drehtuer.dinfinity.core.model.DiceSet
 import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.DieMaterial
 import de.drehtuer.dinfinity.core.model.DieShape
+import de.drehtuer.dinfinity.dicesets.format.DiceSetLimits
 import de.drehtuer.dinfinity.dicesets.format.DiceSetValidator
 import de.drehtuer.dinfinity.dicesets.format.PackageFiles
 import de.drehtuer.dinfinity.dicesets.format.ValidationResult
@@ -177,6 +178,38 @@ class PersonalSetsTest {
     assertEquals(NewSet.Taken("brass"), sets.create("Brass"))
     assertEquals(NewSet.Taken("props"), sets.create("PROPS!"))
     assertEquals(listOf(DiceSet.PERSONAL_ID, "props"), sets.all().map(MineSets::id))
+  }
+
+  @Test
+  fun `a records folder with no name in it still takes the id`() {
+    // It has no name in it, so it is not a set — but the answer to a clash is
+    // a different name, never a folder of somebody's overwritten.
+    val leftover = File(records, "props").apply { mkdirs() }
+    File(leftover, "keep-me").writeText("x")
+
+    assertEquals(NewSet.Taken("props"), personal().create("Props"))
+    assertEquals("x", File(leftover, "keep-me").readText())
+  }
+
+  @Test
+  fun `a set the validator would not read is refused with its report, and nothing is written`() {
+    root.mkdirs()
+    val mine =
+      MineSets(
+        drafts = drafts,
+        root = root,
+        painter = Drawings.headers(),
+        dice = { listOf(cube) },
+        photos = PhotoStore(File(files, PhotoStore.DIRECTORY)),
+        author = { "x".repeat(DiceSetLimits.MAX_TOML_BYTES.toInt() + 1) },
+      )
+
+    val answer = PersonalSets(mine, records).create("Props")
+
+    assertTrue("$answer", answer is NewSet.Rejected)
+    assertTrue("the report was empty", (answer as NewSet.Rejected).report.isNotEmpty())
+    assertFalse(File(root, "props").exists())
+    assertFalse(records.exists())
   }
 
   @Test

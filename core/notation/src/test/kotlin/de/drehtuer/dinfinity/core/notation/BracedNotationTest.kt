@@ -161,6 +161,28 @@ class BracedNotationTest {
   }
 
   @Test
+  fun `a braced die with nothing before its colon is told what goes there`() {
+    val error = refused("{:d6}")
+
+    assertEquals(NotationErrorCode.BadDieId, error.code)
+    assertTrue("in front of the ':'" in error.message, error.message)
+  }
+
+  @Test
+  fun `a wrong character after the set is blamed on itself, not on the set`() {
+    val error = refused("{brass:skull d6}")
+
+    assertEquals(NotationErrorCode.BadDieId, error.code)
+    assertEquals(12..12, error.range)
+    assertTrue("' ' cannot be part of a die id" in error.message, error.message)
+  }
+
+  @Test
+  fun `a brace left open after its set is an open brace`() {
+    assertEquals(NotationErrorCode.UnclosedBrace, refused("{brass:").code)
+  }
+
+  @Test
   fun `a braced die names at most one set`() {
     val error = refused("{a:b:c}")
 

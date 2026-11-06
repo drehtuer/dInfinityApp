@@ -5,6 +5,7 @@ import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry
 import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream
 import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream
+import java.io.ByteArrayOutputStream
 import java.io.File
 
 /**
@@ -89,6 +90,29 @@ faces = [1, 2, 3, 4, 5, 6]
     return file
   }
 
+  /** A tar of the given entries with no gzip around it, for damaging the tar itself. */
+  fun tar(entries: Map<String, ByteArray>): ByteArray =
+    ByteArrayOutputStream()
+      .also { bytes ->
+        TarArchiveOutputStream(bytes).use { out ->
+          entries.forEach { (path, contents) ->
+            val entry = TarArchiveEntry(path)
+            entry.size = contents.size.toLong()
+            out.putArchiveEntry(entry)
+            out.write(contents)
+            out.closeArchiveEntry()
+          }
+        }
+      }.toByteArray()
+
+  fun gzip(bytes: ByteArray): ByteArray =
+    ByteArrayOutputStream()
+      .also { out -> GzipCompressorOutputStream(out).use { it.write(bytes) } }
+      .toByteArray()
+
+  /** A valid set file long enough that its gzip has a middle to be cut at. */
+  fun compressibleToml(): ByteArray = (MINIMAL_TOML + "# padding\n".repeat(PADDING_LINES)).encodeToByteArray()
+
   /** A perfectly ordinary package: one set file, in a folder, as a forge would send it. */
   fun wellFormed(
     into: File,
@@ -99,6 +123,8 @@ faces = [1, 2, 3, 4, 5, 6]
   fun compressible(megabytes: Int): ByteArray = ByteArray(megabytes * ONE_MIB)
 
   private const val ONE_MIB = 1024 * 1024
+
+  private const val PADDING_LINES = 200
 
   /** The unix mode bits that say "this is a symbolic link". */
   private const val SYMLINK_MODE = 0xA000 or 0x1FF

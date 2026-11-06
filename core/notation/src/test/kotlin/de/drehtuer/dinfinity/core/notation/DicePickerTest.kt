@@ -94,6 +94,37 @@ class DicePickerTest {
   }
 
   @Test
+  fun `taking off a later group takes the operator in front of it`() {
+    assertEquals("1d20", DicePicker.remove("1d20 + 1d6", d6))
+    assertEquals("1d20 - 4", DicePicker.remove("1d20 + 1d6 - 4", d6))
+  }
+
+  @Test
+  fun `taking the first group off leaves a subtraction after it as a subtraction`() {
+    assertEquals("- 1d20", DicePicker.remove("1d6 - 1d20", d6))
+  }
+
+  @Test
+  fun `a group's own brackets go when the group does`() {
+    assertEquals("1d20", DicePicker.remove("(1d6) + 1d20", d6))
+    assertEquals("1d20", DicePicker.remove("1d20 + (1d6)", d6))
+    assertEquals("", DicePicker.remove("( (1d6) )", d6))
+  }
+
+  @Test
+  fun `brackets that belong to the term beside it stay`() {
+    // A bracket further along the text is not this group's just because one
+    // can be found: cutting it would leave a formula that does not parse.
+    assertEquals("(1d4 * 2)", DicePicker.remove("1d6 + (1d4 * 2)", d6))
+    assertEquals("(1d4 * 2)", DicePicker.remove("(1d4 * 2) + 1d6", d6))
+  }
+
+  @Test
+  fun `a new group goes outside the brackets of the one before it`() {
+    assertEquals("(1d6) + 1d20", DicePicker.add("(1d6)", d20))
+  }
+
+  @Test
   fun `a long press with nothing to take off does nothing`() {
     assertEquals("2d20", DicePicker.remove("2d20", d6))
   }
@@ -169,6 +200,13 @@ class DicePickerTest {
     val offered = DicePicker.offeredBy(setOf("d100", "d06", "d0")).map { it.notation(1) }
 
     assertEquals(listOf("1{d100}", "1{d06}", "1{d0}"), offered)
+  }
+
+  @Test
+  fun `a set's own die too big to be plain notation is braced`() {
+    val tooBig = "d${NotationLimits.MAX_SIDES + 1}"
+
+    assertEquals("1{$tooBig}", DicePicker.offeredBy(setOf(tooBig)).single().notation(1))
   }
 
   @Test

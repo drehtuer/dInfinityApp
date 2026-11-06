@@ -1,6 +1,7 @@
 package de.drehtuer.dinfinity.ui.common
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
@@ -63,6 +64,24 @@ class InkTest {
       val light = ground?.luminance()?.let { it >= 0.5f } == true
       val expected = AccentRamp.of(requireNotNull(accent).toArgb(), if (light) Ground.Light else Ground.Dark)
       assertEquals(Color(expected.v700), deep)
+    }
+  }
+
+  @Test
+  fun `on a dark page the deep accent is mixed against the dark ground`() {
+    // The same pick on the other ground has to come out as that ground's step,
+    // or a player in dark mode reads a kicker meant for a white page.
+    var accent: Color? = null
+    var deep: Color? = null
+    compose.setContent {
+      MaterialTheme(colorScheme = darkColorScheme()) {
+        accent = MaterialTheme.colorScheme.primary
+        deep = Ink.accentDeep
+      }
+    }
+
+    compose.runOnIdle {
+      assertEquals(Color(AccentRamp.of(requireNotNull(accent).toArgb(), Ground.Dark).v700), deep)
     }
   }
 

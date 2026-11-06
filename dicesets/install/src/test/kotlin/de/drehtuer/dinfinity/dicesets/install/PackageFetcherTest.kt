@@ -4,15 +4,23 @@ import mockwebserver3.MockResponse
 import mockwebserver3.MockResponseBody
 import mockwebserver3.MockWebServer
 import mockwebserver3.SocketEffect
+import okhttp3.Interceptor
 import okhttp3.OkHttpClient
+import okhttp3.Protocol
+import okhttp3.Response
+import okhttp3.ResponseBody.Companion.asResponseBody
 import okhttp3.tls.HandshakeCertificates
 import okhttp3.tls.HeldCertificate
+import okio.Buffer
 import okio.BufferedSink
+import okio.ForwardingSource
+import okio.buffer
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
+import java.io.IOException
 import java.nio.file.Files
 
 /**
@@ -181,7 +189,7 @@ class PackageFetcherTest {
         .onResponseBody(SocketEffect.CloseSocket())
         .build(),
     )
-    fetcher.fetch(url(), into)
+    failed(fetcher.fetch(url(), into))
     assertTrue("half a download was left on disk", into.listFiles().orEmpty().isEmpty())
   }
 
@@ -281,6 +289,206 @@ class PackageFetcherTest {
     assertTrue("expected a cancellation, got $result", result is PackageFetcher.Result.Cancelled)
   }
 
+  @Test
+  fun `stopping it once bytes are arriving ends the copy and leaves nothing behind`() {
+    // The Cancel button pressed during a download rather than before it: the
+    // first check, before the request, says carry on, and the one after the
+    // first buffer says stop.
+    server.enqueue(MockResponse.Builder().body(zeroes(BIG)).build())
+    val seen = mutableListOf<PackageFetcher.Progress>()
+
+    val result = fetcher.fetch(url(), into, onProgress = seen::add, cancelled = { seen.isNotEmpty() })
+
+    assertTrue("expected a cancellation, got $result", result is PackageFetcher.Result.Cancelled)
+    assertEquals("it went on reading after being told to stop", 1, seen.size)
+    assertTrue("it stopped only at the end of the file", seen.single().bytes < BIG)
+    assertEquals("a stopped download left a file behind", emptyList<File>(), into.listFiles().orEmpty().toList())
+  }
+
+  @Test
+  fun `stopping it between two hops of a redirect makes no second request`() {
+    server.enqueue(redirect(url("/moved")))
+    server.enqueue(MockResponse(body = "hello"))
+    val checks = generateSequence(false) { true }.iterator()
+
+    val result = fetcher.fetch(url(), into, cancelled = { checks.next() })
+
+    assertTrue("expected a cancellation, got $result", result is PackageFetcher.Result.Cancelled)
+    assertEquals("the redirect was followed after the stop", 1, server.requestCount)
+  }
+
+  @Test
+  fun `a redirect to a relative path stays on the host that sent it`() {
+    server.enqueue(redirect("/moved/brass.zip"))
+    server.enqueue(MockResponse(body = "hello"))
+
+    assertEquals("hello", downloaded(fetcher.fetch(url(), into)).file.readText())
+    server.takeRequest()
+    assertEquals("/moved/brass.zip", server.takeRequest().url.encodedPath)
+  }
+
+  @Test
+  fun `a server nobody can reach is a failure that says why, not a crash`() {
+    val gone = url()
+    server.close()
+
+    val result = failed(fetcher.fetch(gone, into))
+
+    assertTrue("the reason was empty", result.reason.isNotBlank())
+    assertEquals("nothing should have been written", emptyList<File>(), into.listFiles().orEmpty().toList())
+  }
+
+  @Test
+  fun `an https link too malformed to request is a failure, not a crash`() {
+    assertTrue(failed(fetcher.fetch("https://", into)).reason.isNotBlank())
+  }
+
+  @Test
+  fun `a connection failing with nothing to say still gets a sentence`() {
+    val silent = fetcherThrough { throw IOException() }
+
+    assertEquals("the download failed", failed(silent.fetch(url(), into)).reason)
+  }
+
+  @Test
+  fun `a body that breaks part-way is a failure, and the part of it deleted`() {
+    val broken = fetcherThrough { chain -> ok(chain, breaksAfterSomeBytes(message = "the line dropped")) }
+
+    assertEquals("the line dropped", failed(broken.fetch(url(), into)).reason)
+    assertEquals("half a download was left on disk", emptyList<File>(), into.listFiles().orEmpty().toList())
+  }
+
+  @Test
+  fun `a body that breaks with nothing to say still gets a sentence`() {
+    val broken = fetcherThrough { chain -> ok(chain, breaksAfterSomeBytes(message = null)) }
+
+    assertEquals("the download failed", failed(broken.fetch(url(), into)).reason)
+  }
+
+  @Test
+  fun `a progress listener that throws fails the download without leaving a file`() {
+    // The listener is the caller's code on the download's thread. Its mistake
+    // may not leave half an archive in the cache, or take the install with it.
+    server.enqueue(MockResponse(body = "hello"))
+
+    val result = fetcher.fetch(url(), into, onProgress = { error("the screen has gone") })
+
+    assertEquals("the download failed", failed(result).reason)
+    assertEquals("a file was left on disk", emptyList<File>(), into.listFiles().orEmpty().toList())
+  }
+
+  @Test
+  fun `a cache folder that has gone is a failure, not a crash`() {
+    server.enqueue(MockResponse(body = "hello"))
+
+    val result = fetcher.fetch(url(), File(into, "not-there"))
+
+    assertTrue("expected a failure, got $result", result is PackageFetcher.Result.Failed)
+  }
+
+  @Test
+  fun `a reply that never says its length draws no bar, but the bytes are still counted`() {
+    server.enqueue(
+      MockResponse
+        .Builder()
+        .body(
+          object : MockResponseBody {
+            override val contentLength: Long = -1
+
+            override fun writeTo(sink: BufferedSink) {
+              sink.writeUtf8("hello")
+            }
+          },
+        ).build(),
+    )
+    val seen = mutableListOf<PackageFetcher.Progress>()
+
+    assertEquals(5L, downloaded(fetcher.fetch(url(), into, onProgress = seen::add)).bytes)
+    assertEquals(5L, seen.last().bytes)
+    assertEquals(null, seen.last().total)
+  }
+
+  @Test
+  fun `a Content-Length that is not a number is ignored rather than believed`() {
+    server.enqueue(MockResponse(body = "hello"))
+    val liar =
+      fetcherThrough { chain ->
+        chain
+          .proceed(chain.request())
+          .newBuilder()
+          .header("Content-Length", "lots")
+          .build()
+      }
+    val seen = mutableListOf<PackageFetcher.Progress>()
+
+    assertEquals("hello", downloaded(liar.fetch(url(), into, onProgress = seen::add)).file.readText())
+    assertEquals(null, seen.last().fraction)
+  }
+
+  @Test
+  fun `an empty reply arrives as an empty file, with no progress to report`() {
+    // Saying what it is, an archive of nothing, is the extractor's job.
+    server.enqueue(MockResponse(body = ""))
+    val seen = mutableListOf<PackageFetcher.Progress>()
+
+    val result = downloaded(fetcher.fetch(url(), into, onProgress = seen::add))
+
+    assertEquals(0L, result.bytes)
+    assertEquals("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", result.sha256)
+    assertEquals(emptyList<PackageFetcher.Progress>(), seen)
+  }
+
+  @Test
+  fun `the stamps a server sends are passed on verbatim`() {
+    server.enqueue(
+      MockResponse
+        .Builder()
+        .body("hello")
+        .addHeader("ETag", "\"abc\"")
+        .addHeader("Last-Modified", "Wed, 21 Oct 2026 07:28:00 GMT")
+        .build(),
+    )
+
+    val result = downloaded(fetcher.fetch(url(), into))
+
+    assertEquals("\"abc\"", result.etag)
+    assertEquals("Wed, 21 Oct 2026 07:28:00 GMT", result.lastModified)
+  }
+
+  /** A fetcher whose every request is answered by [answer]. */
+  private fun fetcherThrough(answer: (Interceptor.Chain) -> Response): PackageFetcher =
+    PackageFetcher(
+      OkHttpClient
+        .Builder()
+        .sslSocketFactory(clientCertificates.sslSocketFactory(), clientCertificates.trustManager)
+        .addInterceptor(Interceptor { chain -> answer(chain) })
+        .build(),
+    )
+
+  private fun ok(
+    chain: Interceptor.Chain,
+    body: okio.Source,
+  ): Response =
+    Response
+      .Builder()
+      .request(chain.request())
+      .protocol(Protocol.HTTP_1_1)
+      .code(OK)
+      .message("OK")
+      .body(body.buffer().asResponseBody())
+      .build()
+
+  /** Five bytes, and then the connection fails with [message]. */
+  private fun breaksAfterSomeBytes(message: String?): okio.Source {
+    val start = Buffer().writeUtf8("hello")
+    return object : ForwardingSource(start) {
+      override fun read(
+        sink: Buffer,
+        byteCount: Long,
+      ): Long = if (start.exhausted()) throw IOException(message) else super.read(sink, byteCount)
+    }
+  }
+
   /** A body of the given size that costs nothing to hold. */
   private fun zeroes(length: Long): MockResponseBody =
     object : MockResponseBody {
@@ -309,6 +517,7 @@ class PackageFetcherTest {
 
   private companion object {
     const val FOUND = 302
+    const val OK = 200
     const val KIB = 1024L
     const val CHUNK = 64 * 1024
 

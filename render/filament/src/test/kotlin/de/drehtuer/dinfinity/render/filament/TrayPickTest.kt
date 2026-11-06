@@ -103,6 +103,16 @@ class TrayPickTest {
     val (across, down) = shot.screenFraction(near, PORTRAIT)
 
     assertEquals("the finger reached through the near die", 1, TrayPick(shot, PORTRAIT).dieUnder(across, down, dice))
+    val nearFirst = TrayPick(shot, PORTRAIT).dieUnder(across, down, listOf(at(near), at(far)))
+    assertEquals("the order the dice are listed in chose the die", 0, nearFirst)
+  }
+
+  @Test
+  fun `a die behind the camera is never picked, however straight the line`() {
+    val shot = TrayCamera.framingTheTray(geometry, PORTRAIT)
+    val behind = shot.position - shot.forward * (4 * radiusMm)
+
+    assertEquals(null, TrayPick(shot, PORTRAIT).dieUnder(HALF, HALF, listOf(at(behind))))
   }
 
   @Test

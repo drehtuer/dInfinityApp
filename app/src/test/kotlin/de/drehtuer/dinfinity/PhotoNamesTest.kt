@@ -1,7 +1,9 @@
 package de.drehtuer.dinfinity
 
 import android.content.Context
+import android.database.MatrixCursor
 import android.net.Uri
+import android.provider.OpenableColumns
 import androidx.core.content.FileProvider
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
@@ -55,6 +57,29 @@ class PhotoNamesTest {
   @Test
   fun `a uri with nothing in it at all is simply nameless`() {
     assertEquals("", PhotoNames.of(context.contentResolver, Uri.EMPTY))
+  }
+
+  @Test
+  fun `a provider that finds no such row falls back to the last path segment`() {
+    AnsweringProvider.installed().answer = { MatrixCursor(arrayOf(OpenableColumns.DISPLAY_NAME)) }
+
+    assertEquals("felt.png", PhotoNames.of(context.contentResolver, AnsweringProvider.uriOf("photos/felt.png")))
+  }
+
+  @Test
+  fun `a provider that answers a query with nothing at all falls back the same way`() {
+    AnsweringProvider.installed().answer = { null }
+
+    assertEquals("felt.png", PhotoNames.of(context.contentResolver, AnsweringProvider.uriOf("photos/felt.png")))
+  }
+
+  @Test
+  fun `a provider that publishes an empty name has not published one`() {
+    AnsweringProvider.installed().answer = {
+      MatrixCursor(arrayOf(OpenableColumns.DISPLAY_NAME)).apply { addRow(arrayOf("")) }
+    }
+
+    assertEquals("felt.png", PhotoNames.of(context.contentResolver, AnsweringProvider.uriOf("photos/felt.png")))
   }
 
   private fun uriOf(name: String): Uri {

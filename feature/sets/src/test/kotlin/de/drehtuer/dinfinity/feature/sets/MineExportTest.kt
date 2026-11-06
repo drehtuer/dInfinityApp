@@ -24,11 +24,13 @@ import de.drehtuer.dinfinity.designer.PhotoStore
 import de.drehtuer.dinfinity.designer.PhysicalStore
 import de.drehtuer.dinfinity.designer.SetLicense
 import de.drehtuer.dinfinity.designer.Stroke
+import de.drehtuer.dinfinity.designer.TablePhoto
 import de.drehtuer.dinfinity.dicesets.format.DiceSetValidator
 import de.drehtuer.dinfinity.dicesets.format.PackageFiles
 import de.drehtuer.dinfinity.dicesets.format.ValidationResult
 import de.drehtuer.dinfinity.dicesets.install.InstalledSets
 import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
+import de.drehtuer.dinfinity.dicesets.install.PackageMeta
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -318,6 +320,136 @@ class MineExportTest {
     assertFalse("its records are still there", File(File(temporary, PersonalSets.DIRECTORY), id).exists())
   }
 
+  @Test
+  fun `each thing the share waits for closes the gate on its own`() {
+    val ready =
+      SetDetailState(
+        row =
+          SetRow(
+            id = MinePackage.ID,
+            name = "My dice",
+            set = bundled(),
+            report = emptyList(),
+            meta = PackageMeta(),
+            folder = null,
+            enabled = true,
+          ),
+        license = SetLicense.Mit,
+      )
+    val row = ready.row ?: error("the row went missing")
+
+    assertTrue("everything was in place and the share was still refused", ready.canExport)
+    assertFalse("shared with no licence", ready.copy(license = null).canExport)
+    assertFalse("shared twice at once", ready.copy(exporting = true).canExport)
+    assertFalse("a package that stopped validating was shared", ready.copy(row = row.copy(set = null)).canExport)
+    assertFalse("somebody else's package was shared", ready.copy(row = row.copy(id = "brass")).canExport)
+    assertFalse("nothing at all was shared", ready.copy(row = null).canExport)
+  }
+
+  @Test
+  fun `a licence chosen on somebody else's package still shares nothing`() {
+    // The button is not drawn there. This is the rule rather than the courtesy.
+    write("brass")
+    val presenter = detail("brass")
+
+    presenter.choose(SetLicense.Mit)
+    presenter.export()
+
+    assertNull("somebody else's package went out", shared)
+    assertFalse(presenter.state.exporting)
+    assertFalse(presenter.state.exported)
+  }
+
+  @Test
+  fun `a package the validator refuses is not shared, and the screen says which lines`() {
+    // It should never happen, so the way to it is a picture past the limit,
+    // put in the record behind the validator's back. The folder still holds the
+    // good package from before, so the gate is open when the press comes.
+    draw()
+    val presenter = detail(MinePackage.ID)
+    presenter.choose(SetLicense.Mit)
+    photos.add(TablePhoto("photo-big", "Big", webp(TOO_WIDE, TOO_WIDE)))
+
+    presenter.export()
+    await("the export never finished") { !presenter.state.exporting }
+
+    assertNull("a package that does not validate went out", shared)
+    assertFalse("the screen says a file went out", presenter.state.exported)
+    assertTrue(
+      "the report does not say what was wrong: ${presenter.state.exportProblem}",
+      presenter.state.exportProblem.any { "$TOO_WIDE" in it.text },
+    )
+  }
+
+  @Test
+  fun `changing the licence takes the refusal away with it`() {
+    draw()
+    val presenter = detail(MinePackage.ID)
+    presenter.choose(SetLicense.Mit)
+    photos.add(TablePhoto("photo-big", "Big", webp(TOO_WIDE, TOO_WIDE)))
+    presenter.export()
+    await("the export never finished") { presenter.state.exportProblem.isNotEmpty() }
+
+    presenter.choose(null)
+
+    assertTrue("a report about the last attempt outlived it", presenter.state.exportProblem.isEmpty())
+  }
+
+  @Test
+  fun `a stepper already at the end of its range writes nothing`() {
+    // The package is rebuilt whenever the record moves, and rasterising every
+    // drawn face for a tap that changed nothing would be a stall for nothing.
+    draw()
+    val presenter = detail(MinePackage.ID)
+    presenter.resize(-A_LONG_WAY)
+    await("the tap never reached the record") { physical.material() == presenter.state.declared }
+    val floor = presenter.state.declared
+    val stamp = physical.stamp()
+
+    presenter.resize(-1)
+
+    assertEquals(floor, presenter.state.declared)
+    assertEquals("the record was written again for nothing", stamp, physical.stamp())
+  }
+
+  @Test
+  fun `a tap arriving after the set has gone writes nothing`() {
+    // The screen is on its way out by then, and a write would bring back a
+    // record of a set somebody has just removed.
+    draw()
+    val presenter = detail(MinePackage.ID)
+    presenter.remove()
+    await("the set was never removed") { presenter.state.gone }
+    val stamp = physical.stamp()
+
+    presenter.weigh(1)
+
+    assertEquals("a removed set was written to", stamp, physical.stamp())
+  }
+
+  @Test
+  fun `a material meant for a set this phone did not write goes nowhere`() {
+    val untouched = physical.stamp()
+    val heavy = DiePhysical.weighted(DieMaterial(), 1)
+    val bare =
+      SetLibrary(
+        bundled = bundled(),
+        installed = InstalledSets(root),
+        registry = registry,
+        io = Dispatchers.Unconfined,
+        installer = PackageInstaller(root),
+        defaultSetId = { DiceSet.BUILTIN_ID },
+      )
+
+    runBlocking {
+      library().setPersonalPhysical("brass", heavy)
+      bare.setPersonalPhysical(MinePackage.ID, heavy)
+    }
+
+    assertEquals("My dice was written to on another set's behalf", untouched, physical.stamp())
+    assertNull("a library with no designer has a material to show", runBlocking { bare.personalPhysical("mine") })
+  }
+
   /** What the details screen is currently saying the package is licensed under. */
   private fun licenseOnScreen(presenter: SetDetailPresenter): String? {
     val set = presenter.state.row?.set
@@ -411,6 +543,17 @@ class MineExportTest {
     )
   }
 
+  /** The first bytes of a lossless WebP, which is as much as the validator reads. */
+  private fun webp(
+    width: Int,
+    height: Int,
+  ): ByteArray {
+    val bits = (width - 1) or ((height - 1) shl WEBP_HEIGHT_SHIFT)
+    val littleEndian = { value: Int -> ByteArray(Int.SIZE_BYTES) { at -> (value ushr (at * Byte.SIZE_BITS)).toByte() } }
+    return "RIFF".encodeToByteArray() + littleEndian(0) + "WEBPVP8L".encodeToByteArray() + littleEndian(0) +
+      byteArrayOf(WEBP_LOSSLESS) + littleEndian(bits)
+  }
+
   private fun bundled() = DiceSet(id = DiceSet.BUILTIN_ID, name = "Standard", version = "1.0.0", dice = listOf(d6))
 
   private fun await(
@@ -426,6 +569,14 @@ class MineExportTest {
 
   private companion object {
     const val INK = 0xFF202020.toInt()
+
+    /** Past `MAX_TEXTURE_PIXELS`, which the validator reads out of the header. */
+    const val TOO_WIDE = 4096
+
+    /** More taps than any stepper has stops. */
+    const val A_LONG_WAY = 1_000
+    const val WEBP_HEIGHT_SHIFT = 14
+    const val WEBP_LOSSLESS: Byte = 0x2F
     const val PATIENCE_MS = 5_000L
     const val POLL_MS = 5L
   }

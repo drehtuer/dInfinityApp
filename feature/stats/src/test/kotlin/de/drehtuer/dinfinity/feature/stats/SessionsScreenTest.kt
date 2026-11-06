@@ -137,6 +137,33 @@ class SessionsScreenTest {
   }
 
   @Test
+  fun `a press of Save on a name of nothing but spaces writes nothing and leaves the sheet open`() {
+    // The button is dead then, but a stale frame can still deliver one, and the
+    // sheet staying open is what lets the name be fixed.
+    val presenter = show()
+    presenter.edit(SessionDraft())
+    presenter.name("   ")
+
+    presenter.save()
+    compose.waitForIdle()
+
+    assertEquals(SessionDraft(name = "   "), presenter.state.editing)
+    assertEquals(listOf("First rolls"), names())
+  }
+
+  @Test
+  fun `a name is trimmed before it is written`() {
+    show()
+
+    compose.onNodeWithTag(SessionsTestTags.NEW).performClick()
+    compose.onNodeWithTag(SessionsTestTags.NAME).performTextInput("  Tuesday  ")
+    compose.onNodeWithTag(SessionsTestTags.SAVE).performClick()
+
+    compose.waitUntil(PATIENCE) { names().size == 2 }
+    assertTrue("the spaces were kept: ${names()}", "Tuesday" in names())
+  }
+
+  @Test
   fun `Cancel makes nothing`() {
     show()
 

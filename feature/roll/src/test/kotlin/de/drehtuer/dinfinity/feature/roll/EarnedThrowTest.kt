@@ -80,6 +80,18 @@ class EarnedThrowTest {
     compose.onNodeWithTag(RollTestTags.TOTAL).assertTextEquals("7")
   }
 
+  @Test
+  fun `the plate asking for the earned die says where the roll can still come out`() {
+    val tray = CountingThenLanding(mapOf(0 to 5))
+    compose.setContent { RollScreen(presenter = rollPresenter(tray, PassingRolls(listOf(SIX, ONE)))) }
+    typeFormula("1d6!")
+
+    shake()
+
+    compose.onNodeWithTag(RollTestTags.SHAKE_AGAIN).assertIsDisplayed()
+    compose.onNodeWithTag(RollTestTags.STILL_TO_COME).assertIsDisplayed()
+  }
+
   private fun typeFormula(text: String) {
     compose.onNodeWithTag(RollTestTags.FORMULA_TAB).performClick()
     compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput(text)

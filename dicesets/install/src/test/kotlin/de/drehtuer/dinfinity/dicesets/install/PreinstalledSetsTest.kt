@@ -98,6 +98,16 @@ class PreinstalledSetsTest {
   }
 
   @Test
+  fun `an older copy the player installed themselves is brought up to the one the app carries`() {
+    // Never seen before, so nothing says it was removed; older, so nothing is
+    // lost by replacing it.
+    val outcomes = seeder.seed("1", archives) { mapOf("steel" to "0.1.0") }
+
+    assertTrue(outcomes.single { it.name == "steel.zip" } is PreinstalledSets.Outcome.Installed)
+    assertTrue("steel" in onDisk())
+  }
+
+  @Test
   fun `a newer copy the player installed is never downgraded, and counts as seen`() {
     val players = mapOf("steel" to "9.0.0")
 

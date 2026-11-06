@@ -29,6 +29,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -328,6 +329,64 @@ class SavedStatsScreenTest {
     compose.onNodeWithTag(SavedStatsTestTags.BACK).performClick()
 
     compose.waitUntil(PATIENCE) { presenter.state.selected == null }
+    compose.onNodeWithTag(SavedStatsTestTags.LIST).assertIsDisplayed()
+  }
+
+  @Test
+  fun `a list that has not arrived is not a group with no saved rolls`() {
+    assertFalse(SavedStatsState().empty)
+    assertTrue(SavedStatsState(loaded = true).empty)
+    assertFalse(
+      SavedStatsState(
+        rolls = listOf(SavedRoll(id = "a", groupId = GROUP, name = "A", formula = "1d6")),
+        loaded = true,
+      ).empty,
+    )
+  }
+
+  @Test
+  fun `asking for a roll this group does not have opens nothing`() {
+    given("fireball", "Fireball", "2d6")
+    val presenter = show()
+    compose.waitUntil(PATIENCE) { presenter.state.rolls.isNotEmpty() }
+
+    presenter.select("never-existed")
+    compose.waitForIdle()
+
+    assertNull(presenter.state.selected)
+    compose.onNodeWithTag(SavedStatsTestTags.LIST).assertIsDisplayed()
+  }
+
+  @Test
+  fun `a roll edited while it is open is judged against what it says now`() {
+    // Elsewhere, or by an import. The bars are still what was thrown; the marks
+    // have to be the new formula's or the comparison is against nothing real.
+    given("fireball", "Fireball", "2d6")
+    rolled("fireball", totals = listOf(7L))
+    val presenter = opened("fireball")
+
+    given("fireball", "Inferno", "3d6")
+
+    compose.waitUntil(PATIENCE) {
+      presenter.state.selected
+        ?.roll
+        ?.name == "Inferno"
+    }
+    val stats = presenter.state.selected!!
+    assertEquals(10.5, stats.comparison.expectedMean, 1e-9)
+    assertEquals(1L, stats.comparison.throws)
+  }
+
+  @Test
+  fun `going back with nothing open stays on the list`() {
+    given("fireball", "Fireball", "2d6")
+    val presenter = show()
+    compose.waitUntil(PATIENCE) { presenter.state.rolls.isNotEmpty() }
+
+    presenter.close()
+    compose.waitForIdle()
+
+    assertNull(presenter.state.selected)
     compose.onNodeWithTag(SavedStatsTestTags.LIST).assertIsDisplayed()
   }
 

@@ -278,6 +278,59 @@ class StatsSessionsTest {
     )
   }
 
+  @Test
+  fun `choosing a session closes the open die, and a throw landing afterwards does not open it again`() {
+    // The histogram on screen is the wrong die's worth of throws the moment the
+    // filter moves. Its subscription has to go with it, or the next throw would
+    // bring the chart back over a list nobody asked to leave.
+    given(dieId = "d20", sides = 20, throws = 4, sum = 80)
+    faces(dieId = "d20", sides = 20, counts = mapOf(20 to 4L))
+    val presenter = show(sessions = twoSessions())
+    compose.waitUntil(PATIENCE) { presenter.state.sessionsChoosable }
+    open(presenter, "builtin", "d20")
+
+    presenter.inSession("tuesday")
+    assertEquals(null, presenter.state.selected)
+
+    faces(dieId = "d20", sides = 20, counts = mapOf(20 to 5L))
+    given(dieId = "d20", sides = 20, throws = 5, sum = 100)
+    compose.waitUntil(PATIENCE) {
+      presenter.state.allTime
+        .single()
+        .summary.throws == 5L
+    }
+    compose.waitForIdle()
+
+    assertEquals("the closed die came back by itself", null, presenter.state.selected)
+  }
+
+  @Test
+  fun `a throw landing in the chosen session moves the open die's own numbers`() {
+    given(dieId = "d20", sides = 20, throws = 3, sum = 60)
+    faces(dieId = "d20", sides = 20, counts = mapOf(20 to 3L), sessionId = "tuesday")
+    val presenter = show(sessions = twoSessions())
+    compose.waitUntil(PATIENCE) { presenter.state.sessionsChoosable }
+    presenter.inSession("tuesday")
+    compose.waitUntil(PATIENCE) { presenter.state.dice.isNotEmpty() }
+    open(presenter, "builtin", "d20")
+
+    faces(dieId = "d20", sides = 20, counts = mapOf(20 to 4L), sessionId = "tuesday")
+
+    compose.waitUntil(PATIENCE) {
+      presenter.state.selected
+        ?.row
+        ?.summary
+        ?.throws == 4L
+    }
+    assertEquals(
+      4L,
+      presenter.state.selected
+        ?.bars
+        ?.single { it.value == 20 }
+        ?.count,
+    )
+  }
+
   /**
    * Opens a die and waits for its faces.
    *

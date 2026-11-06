@@ -161,6 +161,20 @@ class ExportSheetTest {
     assertTrue(exported == null)
   }
 
+  @Test
+  fun `before any group has arrived only everything is offered`() {
+    // "This group" with no group is a choice that names nothing.
+    val chosen = mutableListOf<String?>()
+    compose.setContent {
+      ExportSheet(state = SavedState(), onExport = chosen::add, onImport = {}, onDismiss = {})
+    }
+
+    compose.onNodeWithTag(ExportTestTags.GROUP).assertDoesNotExist()
+    compose.onNodeWithTag(ExportTestTags.EVERYTHING).performClick()
+
+    assertEquals(listOf<String?>(null), chosen)
+  }
+
   private fun exported(): CollectionFile = exported ?: error("nothing was handed up to export")
 
   private fun given(vararg groups: SavedRollGroup) {

@@ -203,6 +203,37 @@ internal class StallingTray(
   }
 }
 
+/** A tray that reports [read] counted and then lets the roll land. */
+internal class CountingThenLanding(
+  private val read: Map<Int, Int>,
+) : DirectTray() {
+  override fun roll(
+    start: (Renderer) -> WatchedRoll,
+    onCounted: (Map<Int, Int>) -> Unit,
+    onStalled: (List<Int>) -> Unit,
+    onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
+  ) {
+    onCounted(read)
+    super.roll(start, onCounted, onStalled, onSettled)
+  }
+}
+
+/** A tray that reports [read] counted before the roll gives up on [unsettled]. */
+internal class CountingThenStalling(
+  private val read: Map<Int, Int>,
+  private val unsettled: List<Int>,
+) : Tray by PendingTray() {
+  override fun roll(
+    start: (Renderer) -> WatchedRoll,
+    onCounted: (Map<Int, Int>) -> Unit,
+    onStalled: (List<Int>) -> Unit,
+    onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
+  ) {
+    onCounted(read)
+    onStalled(unsettled)
+  }
+}
+
 /** A tray that takes the throw and leaves the dice in the air. */
 internal class PendingTray : Tray {
   val shaken = mutableListOf<ShakeSample>()

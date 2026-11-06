@@ -169,6 +169,17 @@ class NotationErrorTest {
   }
 
   @Test
+  fun `any two of keep and drop on one group are refused, whichever they are`() {
+    // Keeping and then dropping has no order the player could have meant, and
+    // the clash is between the two kinds rather than one being written twice.
+    listOf("4d6kl1dh1", "4d6dh1kl1", "4d6kh1dl1", "4d6dl1kl1").forEach { text ->
+      val error = refused(text)
+      assertEquals(NotationErrorCode.DuplicateModifier, error.code, text)
+      assertTrue("once, not twice" in error.message, error.message)
+    }
+  }
+
+  @Test
   fun `a number too long to be one is refused`() {
     val error = refused("1d6 + ${"9".repeat(40)}")
     assertEquals(NotationErrorCode.NumberOutOfRange, error.code)

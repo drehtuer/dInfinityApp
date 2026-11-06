@@ -5,6 +5,7 @@ import de.drehtuer.dinfinity.designer.Draft
 import de.drehtuer.dinfinity.designer.NewSet
 import de.drehtuer.dinfinity.designer.PersonalSetId
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
+import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -140,6 +141,55 @@ class DesignerNewSetTest {
     assertFalse(Saving(into = null, busy = true, naming = true, name = "Props").canSave)
     assertTrue(Saving(into = "mine").canSave)
     assertFalse(Saving(into = null).canSave)
+  }
+
+  @Test
+  fun `a sheet shut while the save was running is not opened again by the answer`() {
+    // Close stays pressable while a save runs, so somebody can have walked
+    // away from the sheet by the time the disk answers.
+    val answer = CompletableDeferred<SaveResult>()
+    val presenter = DesignerPresenter(d6, sets = Held(answer))
+    presenter.offerSave()
+    presenter.save()
+    assertTrue("the save was not running", presenter.state.saving?.busy == true)
+
+    presenter.stopSaving()
+    answer.complete(SaveResult.Refused)
+
+    assertNull("the sheet sprang back with an answer nobody waited for", presenter.state.saving)
+  }
+
+  @Test
+  fun `a name refused after the sheet was shut does not open it again`() {
+    val answer = CompletableDeferred<SaveResult>()
+    val presenter = DesignerPresenter(d6, sets = Held(answer))
+    presenter.offerSave()
+    presenter.nameNewSet()
+    presenter.newSetName("Props")
+    presenter.save()
+    assertTrue("the save was not running", presenter.state.saving?.busy == true)
+
+    presenter.stopSaving()
+    answer.complete(SaveResult.NotMade(NewSet.Taken("props")))
+
+    assertNull("the sheet sprang back with an answer nobody waited for", presenter.state.saving)
+  }
+
+  /** Sets whose every answer waits for the test to give it. */
+  private class Held(
+    private val answer: CompletableDeferred<SaveResult>,
+  ) : DesignerSets {
+    override val writable: List<WritableSet> = listOf(WritableSet("mine", "My dice"))
+
+    override suspend fun save(
+      setId: String,
+      draft: Draft,
+    ): SaveResult = answer.await()
+
+    override suspend fun create(
+      name: String,
+      draft: Draft,
+    ): SaveResult = answer.await()
   }
 
   /** Sets that are made under the id the name comes to, unless told otherwise. */

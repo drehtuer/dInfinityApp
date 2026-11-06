@@ -389,6 +389,34 @@ class GroupPresenterTest {
     assertEquals(listOf(group("Thorin")?.id), made)
   }
 
+  @Test
+  fun `a name taken while the sheet is open is refused from then on`() {
+    // Another screen or an import can take it. The list is what says a name is
+    // taken, and a new group's draft must not be thrown away by the news.
+    val presenter = presenter()
+    presenter.create()
+    presenter.name("D&D")
+    assertTrue(presenter.draft!!.savable)
+
+    given(SavedRollGroup(id = "dnd", name = "D&D"))
+
+    await("the sheet never heard the name had been taken") { presenter.draft?.clash == "D&D" }
+    assertFalse(presenter.draft!!.savable)
+    assertEquals("the name somebody typed went with it", "D&D", presenter.draft!!.name)
+  }
+
+  @Test
+  fun `a roll filed in a group while its sheet is open is counted in what deleting would move`() {
+    given(SavedRollGroup(id = "dnd", name = "D&D"))
+    val presenter = presenter()
+    presenter.edit("dnd")
+    assertEquals(0, presenter.draft!!.rolls)
+
+    runBlocking { repository.save(SavedRoll(id = "axe", groupId = "dnd", name = "Axe", formula = "1d12")) }
+
+    await("the count on the sheet stayed at nothing") { presenter.draft?.rolls == 1 }
+  }
+
   private fun presenter() =
     GroupPresenter(
       library = library,

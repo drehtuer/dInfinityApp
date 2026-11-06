@@ -330,6 +330,80 @@ class RollLoopTest {
   }
 
   @Test
+  fun `a roll that has ended takes no more steps, however often it is asked`() {
+    val world = FakeWorld(1) { _, _, _ -> FakeWorld.settled() }
+    val loop = loop(listOf(StandardDice.d6), world)
+    val outcome = loop.run()
+    val taken = world.steps
+
+    assertFalse(loop.advance())
+    assertEquals("a finished roll moved the world", taken, world.steps)
+    assertEquals(outcome, loop.outcome())
+  }
+
+  @Test
+  fun `nor does a roll that gave up start again when asked`() {
+    val world = FakeWorld(1) { _, _, _ -> FakeWorld.tumbling() }
+    val loop = loop(listOf(StandardDice.d6), world)
+    @Suppress("ControlFlowWithEmptyBody")
+    while (loop.advance()) {
+      // Every step is the same step.
+    }
+    val taken = world.steps
+
+    assertFalse(loop.advance())
+    assertEquals("a roll that gave up moved the world", taken, world.steps)
+  }
+
+  @Test
+  fun `a die has landed on whatever it first touches, and in the air its turning does not count`() {
+    // What says the dice rolled rather than were placed. A die that hits a wall
+    // or another die first is already rolling; one spinning in the air is not.
+    val alone = FakeWorld.tumbling()
+    val inTheAir = turnsAfterLanding(alone)
+
+    assertEquals(0.0, inTheAir, 1e-9)
+    listOf(
+      alone.copy(touchingFloor = true),
+      alone.copy(touchingWall = true),
+      alone.copy(supportedByDie = true),
+    ).forEach { state ->
+      assertEquals("$state", TURN_PER_STEP * (SPINNING_STEPS - 1) / (2 * PI), turnsAfterLanding(state), 1e-9)
+    }
+  }
+
+  private fun turnsAfterLanding(spinning: DieState): Double {
+    val turn: (Int) -> Quaternion = { step -> Quaternion.about(Vector3.Up, TURN_PER_STEP * step) }
+    val world =
+      FakeWorld(1) { step, _, _ ->
+        if (step < SPINNING_STEPS) {
+          spinning.copy(orientation = turn(step))
+        } else {
+          FakeWorld.settled(turn(SPINNING_STEPS - 1))
+        }
+      }
+    return loop(listOf(StandardDice.d6), world).run().medianTurnsAfterLanding
+  }
+
+  @Test
+  fun `the overlay marks a contact at the die that made it, where that die is now`() {
+    val world =
+      FakeWorld(1) { step, _, _ ->
+        if (step < IMPACT_STEP) FakeWorld.tumbling().copy(motion = DieMotion(1_200.0, 0.0)) else FakeWorld.settled()
+      }
+    val spec = spec(listOf(StandardDice.d6), 42L)
+    val loop = RollLoop(spec, world, ShakeDriver(spec.shake, tosses = false), ImpactRecorder(listOf(16.0)))
+    loop.run()
+
+    val contact = loop.diagnostics().contacts.single()
+
+    assertEquals(0, contact.dieIndex)
+    assertEquals(IMPACT_STEP, contact.stepIndex)
+    assertEquals(FakeWorld.settled().position, contact.position)
+    assertTrue("the contact has no strength", contact.strength > 0.0)
+  }
+
+  @Test
   fun `a throw with no dice in it is not a roll`() {
     val world = FakeWorld(0) { _, _, _ -> FakeWorld.settled() }
     val outcome = loop(emptyList(), world).run()
@@ -642,5 +716,8 @@ class RollLoopTest {
     /** A step index off the sensor's own clock, unlike any the world will take. */
     const val SENSOR_NUMBERING = 500
     const val TROUBLE_STEPS = 12
+    const val SPINNING_STEPS = 10
+    const val TURN_PER_STEP = 0.1
+    const val IMPACT_STEP = 5
   }
 }

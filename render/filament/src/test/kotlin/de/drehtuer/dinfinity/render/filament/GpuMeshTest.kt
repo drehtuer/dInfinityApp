@@ -197,6 +197,16 @@ class GpuMeshTest {
     assertEquals("a mesh is itself", packed, packed)
   }
 
+  @Test
+  fun `meshes that differ only in one buffer are not the same mesh`() {
+    val base = GpuMesh(floatArrayOf(1f), floatArrayOf(2f), floatArrayOf(3f), intArrayOf(4))
+
+    assertEquals(base, base.copy(positions = floatArrayOf(1f)))
+    assertNotEquals(base, base.copy(tangents = floatArrayOf(9f)))
+    assertNotEquals(base, base.copy(uvs = floatArrayOf(9f)))
+    assertNotEquals(base, base.copy(indices = intArrayOf(9)))
+  }
+
   /** A single triangle with the frame given, for the packing to chew on. */
   private fun surface(
     tangent: Vector3,

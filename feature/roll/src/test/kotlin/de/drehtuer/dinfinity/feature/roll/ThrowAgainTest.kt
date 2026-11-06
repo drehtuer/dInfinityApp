@@ -4,6 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertContentDescriptionEquals
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -15,10 +16,7 @@ import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.render.filament.PowerSavingTray
 import de.drehtuer.dinfinity.render.filament.Tray
-import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.Rolls
-import de.drehtuer.dinfinity.render.headless.WatchedRoll
-import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import org.junit.Assert.assertEquals
@@ -169,6 +167,19 @@ class ThrowAgainTest {
   }
 
   @Test
+  fun `a roll that gave up with dice counted says where it can still come out`() {
+    // Nothing else on that plate says what the shake would be worth.
+    val tray = CountingThenStalling(read = mapOf(0 to 2), unsettled = listOf(1))
+    compose.setContent { RollScreen(presenter = rollPresenter(tray, LandingRolls(mapOf(0 to 0)))) }
+    typeFormula("2d6")
+
+    shake()
+
+    compose.onNodeWithTag(RollTestTags.STALLED).assertIsDisplayed()
+    compose.onNodeWithTag(RollTestTags.STILL_TO_COME).assertContentDescriptionEquals("Still to come, 4 to 9")
+  }
+
+  @Test
   fun `typing a new formula over the wait drops the die it was holding`() {
     val rolls = PassingRolls(listOf(oneCocked, allRead))
     val presenter = presenter(rolls, DirectTray())
@@ -241,21 +252,6 @@ class ThrowAgainTest {
       recorder = recorder,
       toTheScreen = { it() },
     )
-
-  /** A tray that reports [read] counted and then lets the roll land. */
-  private class CountingThenLanding(
-    private val read: Map<Int, Int>,
-  ) : DirectTray() {
-    override fun roll(
-      start: (Renderer) -> WatchedRoll,
-      onCounted: (Map<Int, Int>) -> Unit,
-      onStalled: (List<Int>) -> Unit,
-      onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
-    ) {
-      onCounted(read)
-      super.roll(start, onCounted, onStalled, onSettled)
-    }
-  }
 
   private companion object {
     /** Three dice: two read, the third cocked. */

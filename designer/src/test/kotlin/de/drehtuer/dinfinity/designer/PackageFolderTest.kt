@@ -105,6 +105,20 @@ class PackageFolderTest {
   }
 
   @Test
+  fun `a swap that does not happen puts the installed package back`() {
+    // A package of no files leaves staging with nothing in it to rename, which
+    // is the one way to make the swap itself fail on any filesystem. The old
+    // package has already been moved aside by then, so this is the rollback.
+    val folder = PackageFolder(temp.root, "mine")
+    folder.install(mapOf("diceset.toml" to "the original".toByteArray()))
+
+    assertFalse("a swap that did not happen was called a success", folder.install(emptyMap()))
+
+    assertEquals("the original", File(temp.root, "mine/diceset.toml").readText())
+    assertFalse("the holding folder outlived the rollback", File(temp.root, ".mine.previous").exists())
+  }
+
+  @Test
   fun `removing takes the folder off the disk`() {
     val folder = PackageFolder(temp.root, "mine")
     folder.install(mapOf("diceset.toml" to "x".toByteArray()))

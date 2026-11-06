@@ -6,8 +6,10 @@ import mockwebserver3.MockWebServer
 import okhttp3.OkHttpClient
 import okhttp3.tls.HandshakeCertificates
 import okhttp3.tls.HeldCertificate
+import okio.Buffer
 import okio.BufferedSink
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -92,6 +94,38 @@ class ForgeInstallTest {
     assertTrue("expected an install, got $installed", installed is PackageInstaller.Result.Installed)
     val meta = File((installed as PackageInstaller.Result.Installed).folder, ".meta.json").readText()
     assertFalse("a commit nobody knows should not be written down", meta.contains("\"commit\""))
+  }
+
+  @Test
+  fun `a link pasted for a plain archive installs, and records the link and the server's stamps`() {
+    val bytes = Archives.wellFormed(temporary).readBytes()
+    server.enqueue(
+      MockResponse
+        .Builder()
+        .body(Buffer().write(bytes))
+        .addHeader("ETag", "\"stamp\"")
+        .build(),
+    )
+    val link = "${server.url("/brass.tar.gz")}"
+
+    val installed = installerThatIsTold(null).installFrom(link)
+
+    assertTrue("expected an install, got $installed", installed is PackageInstaller.Result.Installed)
+    val meta = File((installed as PackageInstaller.Result.Installed).folder, ".meta.json").readText()
+    assertTrue(meta, meta.contains(link))
+    assertTrue(meta, meta.contains("stamp"))
+  }
+
+  @Test
+  fun `a download that fails installs nothing, says why, and leaves no workspace`() {
+    server.enqueue(MockResponse(code = 503))
+
+    val result = installerThatIsTold(COMMIT).installFrom(source())
+
+    assertTrue("$result", result is PackageInstaller.Result.Failed)
+    assertTrue("$result", (result as PackageInstaller.Result.Failed).reason.contains("503"))
+    assertFalse("something was installed", root.exists())
+    assertEquals(emptyList<String>(), temporary.list().orEmpty().filter { it.startsWith("install-") })
   }
 
   private fun source(): InstallSource =

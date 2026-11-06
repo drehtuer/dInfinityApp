@@ -558,6 +558,21 @@ class EditorScreenTest {
     assertEquals("", presenter.state.formula)
   }
 
+  @Test
+  fun `a formula too big to work out exactly can still be saved, with no numbers beside it`() {
+    // Worth saving all the same: refusing it would be the graph's limit
+    // deciding what somebody may write down (`docs/probability.md`).
+    val presenter = show()
+
+    compose.onNodeWithTag(FormulaTestTags.FIELD).performTextInput("300d20 * 300d20")
+
+    compose.waitUntil(PATIENCE) { presenter.state.formula.isNotBlank() }
+    assertNull(presenter.state.odds)
+    compose.onNodeWithTag(EditorTestTags.ODDS).assertDoesNotExist()
+    compose.onNodeWithTag(FormulaTestTags.ERROR).assertDoesNotExist()
+    compose.onNodeWithTag(EditorTestTags.SAVE).assertIsEnabled()
+  }
+
   private fun given(vararg rolls: SavedRoll) {
     runBlocking { rolls.forEach { repository.save(it) } }
   }

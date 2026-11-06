@@ -107,6 +107,19 @@ class OutcomeGraphTest {
   }
 
   @Test
+  fun `an exploding fudge die can come back down, because the die that follows may be a minus`() {
+    // Worked by hand, a third for each of minus, blank and plus: the chain's
+    // total is 0 from a blank or from a plus then a minus, and 1 only from a
+    // plus followed by another chain that came to nought.
+    val exploding = graph("1dF!")
+
+    assertEquals(-1..exploding.max, exploding.support)
+    assertEquals(1.0 / 3, exploding.probabilityOf(-1), 1e-12)
+    assertEquals(4.0 / 9, exploding.probabilityOf(0), 1e-12)
+    assertEquals(4.0 / 27, exploding.probabilityOf(1), 1e-12)
+  }
+
+  @Test
   fun `the truncated tail of an exploding d6 is vanishingly small, and reported`() {
     val computed = OutcomeGraph.of(parsed("8d6!"), plan("8d6!")) as DistributionResult.Computed
     assertTrue(computed.truncatedMass < 1e-15, "${computed.truncatedMass}")

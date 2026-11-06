@@ -5,6 +5,7 @@ import com.twelvemonkeys.imageio.plugins.hdr.tonemap.NullToneMapper
 import de.drehtuer.dinfinity.simulation.api.Vector3
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.ByteArrayInputStream
@@ -60,6 +61,13 @@ class StudioLightTest {
     assertEquals(1.0 + 2.0 / 3, StudioLight.evaluate(harmonics, PANORAMA_UP).red, PROJECTION_TOLERANCE)
     assertEquals(1.0 - 2.0 / 3, StudioLight.evaluate(harmonics, PANORAMA_DOWN).red, PROJECTION_TOLERANCE)
     assertEquals(1.0, StudioLight.evaluate(harmonics, Vector3(1.0, 0.0, 0.0)).red, PROJECTION_TOLERANCE)
+  }
+
+  @Test
+  fun `a panorama that is not as many floats as its size says is refused`() {
+    assertThrows(IllegalArgumentException::class.java) {
+      StudioLight.irradianceOf(FloatArray(WIDTH * HEIGHT * 3 - 1), WIDTH, HEIGHT)
+    }
   }
 
   @Test

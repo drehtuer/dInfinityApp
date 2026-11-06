@@ -35,6 +35,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -644,6 +645,19 @@ class HistoryScreenTest {
     val file = exported.single()
     assertEquals("fireball.json", file.name)
     assertTrue("the roll is not in the file: ${file.text}", file.text.contains("8d6"))
+  }
+
+  @Test
+  fun `a history told of no sessions and no saved rolls still lists its rolls, with nothing to choose`() {
+    given("2d6", 7)
+    val presenter = HistoryPresenter(history = history, scope = scope)
+    compose.setContent { HistoryScreen(presenter = presenter, formatter = { "at $it" }) }
+
+    compose.waitUntil(PATIENCE) { presenter.state.loaded }
+
+    assertEquals(1, presenter.state.rolls.size)
+    assertFalse("a chooser was offered with nothing to fill it", presenter.state.choosable)
+    compose.onNodeWithTag(HistoryTestTags.ALL).assertDoesNotExist()
   }
 
   private fun show(

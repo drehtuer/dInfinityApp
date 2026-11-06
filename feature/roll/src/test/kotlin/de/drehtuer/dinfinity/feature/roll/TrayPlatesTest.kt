@@ -5,6 +5,9 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.assertContentDescriptionEquals
@@ -186,6 +189,17 @@ class TrayPlatesTest {
     compose.setContent { EarnedPlate(waiting = 1) }
 
     compose.onNodeWithTag(RollTestTags.STILL_TO_COME).assertDoesNotExist()
+  }
+
+  @Test
+  fun `dice nobody could read say where the roll can still come out, once anything has been counted`() {
+    var range by mutableStateOf<RollRange?>(null)
+    compose.setContent { UnreadPlate(unread = 1, read = 2, range = range) }
+    compose.onNodeWithTag(RollTestTags.STILL_TO_COME).assertDoesNotExist()
+
+    range = RollRange(lowest = 4, highest = 9)
+
+    compose.onNodeWithTag(RollTestTags.STILL_TO_COME).assertContentDescriptionEquals("Still to come, 4 to 9")
   }
 
   @Test

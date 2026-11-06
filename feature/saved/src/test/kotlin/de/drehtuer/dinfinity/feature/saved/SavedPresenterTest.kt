@@ -245,6 +245,20 @@ class SavedPresenterTest {
     assertEquals(listOf("first", "second"), presenter.shown())
   }
 
+  @Test
+  fun `a roll arriving during a drag is not hidden by the order the drag was holding`() {
+    // A list that has gained a roll is a different list, and holding an order
+    // for the old one would leave what arrived off the screen or in no place.
+    given("first", "second")
+    val presenter = presenter()
+    presenter.move("second", 0)
+
+    given("third")
+
+    presenter.await("the new roll never appeared") { "third" in presenter.shown() }
+    assertEquals(stored(), presenter.shown())
+  }
+
   private fun given(vararg ids: String) {
     runBlocking {
       groupRepository.ensureUnfiled("Unfiled")
