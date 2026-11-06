@@ -11,7 +11,7 @@
 # count, then the record, with the verdict the test itself gave. Commit the
 # record; a record of physics that has since changed is refused like no record.
 #
-# About fifteen minutes on the Pixel 10a for the eight shapes.
+# About twenty minutes on the Pixel 10a for the eight shapes.
 
 set -euo pipefail
 

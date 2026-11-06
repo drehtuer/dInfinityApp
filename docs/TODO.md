@@ -551,7 +551,7 @@ Pixel 10a.
 
 ## Coverage
 
-Branch coverage is **~75.4 %** against a floor of 62; about seven in ten missed
+Branch coverage is **~75.8 %** against a floor of 62; about seven in ten missed
 branches are Compose skip branches a single-pass test reaches one side of.
 What helps: extract decisions from draw lambdas, test shared components on
 their own, add recomposition tests. Figures go in every PR description.

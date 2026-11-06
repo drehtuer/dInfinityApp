@@ -40,8 +40,8 @@ This is a snapshot, not a changelog — git history is the changelog.
 - **Every release is shown fair**: `tools/fairness.sh` throws every shape
   100,000 times on the phone into `fairness/record.txt`, tied to the physics
   by a fingerprint, and the release workflow refuses a tag without a passing
-  record. Made on 2026-10-24 and **stale since the glow work changed
-  `core/model`**, so the next release needs a fresh run.
+  record. Re-made on 2026-11-06 at `4d15fbdb`, and a release would accept it.
+  Any edit to the physics' files makes it stale again.
 - **Dice that glow, and a Halloween set** (#432): a set file's `glow` and
   `glow_color` (decision 111), and a fifth sample set that comes installed —
   glowing frosted resin with a `pumpkin` die counted by value. Waits on the
@@ -73,6 +73,11 @@ This is a snapshot, not a changelog — git history is the changelog.
 
 ## Last device runs — Pixel 10a
 
+- **2026-11-06, `main` at #438:** `tools/fairness.sh` passes at 100,000 throws
+  a shape, in 21 minutes, with every count the same as on 2026-10-24.
+  `render:filament`'s device suite: 68 passed, 0 failed, 2 skipped (the gallery
+  and the rendered harness, which run only when asked), both glow tests among
+  them. The other modules' suites were not run.
 - **2026-10-21, `feature/realistic-rendering` after #406–#409:** every
   library module's device suite — `designer`, `dicesets:install`,
   `feature:roll`, `simulation:jolt`, `render:filament` — 128 passed, 0
@@ -94,8 +99,6 @@ This is a snapshot, not a changelog — git history is the changelog.
   give-ups fell from 9 to 2 and re-throws from 2.6 % to 2.2 %. What is left is
   a die pinched between two others spinning on the line through them, which
   friction cannot reach — a question for the owner (`docs/TODO.md`, 5.5).
-- **10,000 rolls of 60d20 before that fix:** two gave up; the 1–100 d6 sweep under counting:
-  none gave up at any count (`docs/TODO.md`, 5.3 and 5.5).
 
 ## Blocked / waiting on
 
@@ -130,7 +133,7 @@ of it in `docs/TODO.md` (4.1 and 5.6). The most useful three:
   as interpenetration when a dropped board die lands on a standing one; the
   board has no correction, by design, so it would stay until the shake.
 - **The d18 cannot pass chi-squared** — decided and written down; it is held
-  to the worst-face bound (0.389 % against 1 %).
+  to the worst-face bound (0.609 % against 1 %).
 - **The capacity rule barely bites**: the 100-body cap refuses long before the
   table's floor would (~241 dice).
 - **The emulator can no longer read a frame back.** Every
@@ -138,7 +141,7 @@ of it in `docs/TODO.md` (4.1 and 5.6). The most useful three:
   `blitLow` program failing to compile (seen 2026-10-10); the phone runs them.
   `docs/TODO.md`, Step 2.
 - Determinism holds across both ABIs; unproven across devices of one ABI.
-- **Coverage:** branch ~75.4 % against a floor of 62, function ~92.8 % against
+- **Coverage:** branch ~75.8 % against a floor of 62, function ~95.2 % against
   85, after a pass that pruned about forty redundant tests and added two
   hundred. Most missed branches are Compose skip branches.
 

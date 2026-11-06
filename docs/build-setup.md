@@ -1165,7 +1165,7 @@ real run, made before the tag:
 
 ```mermaid
 flowchart LR
-  run["tools/fairness.sh<br/>on the Pixel 10a, ~15 min"] --> record["fairness/record.txt<br/>fingerprint, verdict, χ² per shape"]
+  run["tools/fairness.sh<br/>on the Pixel 10a, ~20 min"] --> record["fairness/record.txt<br/>fingerprint, verdict, χ² per shape"]
   record --> commit["committed with the release"]
   commit --> tag["tag vX.Y.Z"]
   tag --> gate["release.yml: verifyFairnessRecord"]
