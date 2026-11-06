@@ -200,6 +200,37 @@ Both flags are doing the same job — keeping the compiler from reassociating
 floating-point arithmetic — so silencing the overlap changes nothing about the
 determinism they exist for.
 
+### Moving to a new Jolt
+
+What the trial of 5.6.0 found the move takes. It was not adopted, so none of this
+is on `main` (`docs/physics-and-rendering.md`, "Which Jolt, and when to look
+again", says when it is worth doing):
+
+1. **Change `JOLT_VERSION` and `JOLT_SHA256`** in
+   `simulation/jolt/src/main/cpp/CMakeLists.txt`. Nothing in the bridge used an
+   API that 5.6 changed.
+2. **Set `DOWNLOAD_EXTRACT_TIMESTAMP FALSE`** on the download in that file. It is
+   `TRUE` today, which keeps the archive's dates. A new pin's headers are then
+   older than the bridge's object files, nothing is recompiled, and Jolt aborts
+   the first time a world is made:
+
+   ```text
+   Version mismatch, make sure you compile the client code with the same Jolt version and compiler definitions!
+   Client reported version 5.3.0, library version is 5.6.0.
+   ```
+
+   A build tree that already has the mismatch is fixed by deleting
+   `simulation/jolt/.cxx`.
+3. **Keep every roll on the CPU.** Since 5.6, that means setting `JPH_USE_VK`,
+   `JPH_USE_DX12`, `JPH_USE_MTL` and `JPH_USE_CPU_COMPUTE` to `OFF`. GPU floating
+   point is not the same on every driver, and off, the build needs no Vulkan
+   headers or shader compiler.
+4. **Re-record the golden cases**, on the phone and on x86_64. On 5.6 the spawn
+   digests held and the faces and steps moved. The trial could only re-record them
+   on the phone, so its fixture was never confirmed on x86_64.
+5. **Re-make the fairness record** (`tools/fairness.sh`), because the pin is part
+   of the physics' fingerprint.
+
 ### Building Jolt by hand
 
 Rarely needed, but the container has `cmake` and `ninja` on `PATH` and this is

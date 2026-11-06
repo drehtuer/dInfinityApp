@@ -46,6 +46,8 @@ This is a snapshot, not a changelog — git history is the changelog.
   `glow_color` (decision 111), and a fifth sample set that comes installed —
   glowing frosted resin with a `pumpkin` die counted by value. Waits on the
   owner's eye on the phone (`docs/TODO.md` 4.4).
+- **Jolt stays at 5.3.0** (decision 112): 5.6.0 was measured and offered dice no
+  advantage, re-throwing more of them even at its best settings.
 - **Next:** glass and resin as the two materials they are, with lighter
   shadows (`docs/TODO.md` 5.9), and the lag the owner still sees on some
   throws (5.6).
