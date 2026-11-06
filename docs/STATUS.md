@@ -143,9 +143,9 @@ of it in `docs/TODO.md` (4.1 and 5.6). The most useful three:
   `blitLow` program failing to compile (seen 2026-10-10); the phone runs them.
   `docs/TODO.md`, Step 2.
 - Determinism holds across both ABIs; unproven across devices of one ABI.
-- **Coverage:** branch ~75.8 % against a floor of 62, function ~95.2 % against
-  85, after a pass that pruned about forty redundant tests and added two
-  hundred. Most missed branches are Compose skip branches.
+- **Coverage:** branch ~87.2 % against a floor of 62, function ~95.4 % against
+  85. The branch figure rose from 75.8 % when JaCoCo began filtering the Compose
+  compiler's generated branches, so the real gaps are the ones it had before.
 
 ## Decisions pending
 
