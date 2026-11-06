@@ -52,6 +52,17 @@ class SystemBuzzerTest {
   }
 
   @Test
+  fun `a phone that can vary its strength plays the tick for as long as it says`() {
+    // The other phones get the system's fixed tick, which has no length to set.
+    motor().setHasAmplitudeControl(true)
+    val tick = HapticTick.of(strength = 0.5)
+
+    SystemBuzzer(context).tick(tick)
+
+    assertEquals(tick.milliseconds, motor().milliseconds)
+  }
+
+  @Test
   fun `a tick is feedback about a touch, which is what the system's setting governs`() {
     SystemBuzzer(context).tick(HapticTick.of(strength = 1.0))
 

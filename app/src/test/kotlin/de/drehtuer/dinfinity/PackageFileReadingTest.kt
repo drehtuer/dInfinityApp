@@ -12,6 +12,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import java.io.File
 
 /**
@@ -118,6 +119,26 @@ class PackageFileReadingTest {
     assertFalse("the second copy overwrote the first", one.path == two.path)
     assertEquals(1, one.readBytes().single().toInt())
     assertEquals(2, two.readBytes().single().toInt())
+  }
+
+  @Test
+  fun `a provider with no file to give is a failure that says so, with nothing left behind`() {
+    AnsweringProvider.installed()
+
+    val result = PackageFileReading.copy(context.contentResolver, AnsweringProvider.uriOf("nothing.zip"), into)
+
+    assertEquals(PackageFileReading.Result.Failed("nothing answered at that file"), result)
+    assertEquals("a copy of nothing was kept", emptyList<File>(), into.listFiles().orEmpty().toList())
+  }
+
+  @Test
+  fun `a stream that breaks without a word still gives the player a reason`() {
+    val breaking = Uri.parse("content://de.drehtuer.nobody/breaks.zip")
+    shadowOf(context.contentResolver).registerInputStream(breaking, BreakingStream())
+
+    val result = PackageFileReading.copy(context.contentResolver, breaking, into)
+
+    assertEquals(PackageFileReading.Result.Failed("it could not be read"), result)
   }
 
   private fun assertArrayEqualsish(

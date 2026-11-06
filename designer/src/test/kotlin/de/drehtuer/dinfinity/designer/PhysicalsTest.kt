@@ -2,6 +2,7 @@ package de.drehtuer.dinfinity.designer
 
 import de.drehtuer.dinfinity.core.model.DieMaterial
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Rule
 import org.junit.Test
@@ -96,6 +97,35 @@ class PhysicalsTest {
     store.set(DieMaterial(density = 1.4))
 
     assertNotEquals(first, store.stamp())
+  }
+
+  @Test
+  fun `a number that cannot land is dropped quietly and leaves no half-written file`() {
+    // Nobody can be told: the steppers have already moved. What must not
+    // happen is a crash, or a leftover the next write trips over.
+    val folder = temporary.newFolder()
+    val file = File(folder, PhysicalStore.FILE_NAME)
+    file.mkdirs()
+    File(file, "in-the-way").writeText("x")
+
+    PhysicalStore(file).set(DieMaterial(density = 1.3))
+
+    assertFalse(File(folder, PhysicalStore.FILE_NAME + ".part").exists())
+    assertEquals(DieMaterial(), PhysicalStore(file).material())
+  }
+
+  @Test
+  fun `a half-written file that cannot be written either is not a crash`() {
+    val folder = temporary.newFolder()
+    val file = File(folder, PhysicalStore.FILE_NAME)
+    val partial = File(folder, PhysicalStore.FILE_NAME + ".part")
+    partial.mkdirs()
+    File(partial, "in-the-way").writeText("x")
+
+    PhysicalStore(file).set(DieMaterial(density = 1.3))
+
+    assertFalse("a number was written by a write that failed", file.exists())
+    assertEquals(DieMaterial(), PhysicalStore(file).material())
   }
 
   @Test

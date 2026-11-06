@@ -81,6 +81,26 @@ class DiceMenuTest {
     compose.onNodeWithTag(RollTestTags.FORMULA).assertIsDisplayed()
   }
 
+  @Test
+  fun `a menu with no dice behind it is not drawn at all`() {
+    compose.setContent {
+      DiceMenu(
+        dice = emptyList(),
+        counts = emptyMap(),
+        sets = emptyList(),
+        pickingFrom = "",
+        expanded = true,
+        onExpand = {},
+        onAdd = {},
+        onRemove = {},
+        onChoose = {},
+      )
+    }
+
+    compose.onNodeWithTag(RollTestTags.DICE_MENU).assertDoesNotExist()
+    compose.onNodeWithTag(RollTestTags.PICKER).assertDoesNotExist()
+  }
+
   /** Opens the pull-down the way a player does, through its head. */
   private fun openDice() {
     compose.onNodeWithTag(RollTestTags.DICE_MENU).performClick()

@@ -723,6 +723,61 @@ class RollPresenterTest {
     toTheScreen = { it() },
   )
 
+  @Test
+  fun `a table chosen while the dice are in the air waits for them to land`() {
+    // The tray under a throw is the throw's: redrawn now, the table would
+    // change under dice that are still moving.
+    val tray = LateTray()
+    var chosen = table
+    val presenter =
+      RollPresenter(
+        machine = RollMachine(catalog, geometry, look = { chosen }, outside = Outside(seeds = { 1L }, clock = { 0L })),
+        driver = tray,
+        rolls = RecordingRolls(faces = emptyMap()),
+        toTheScreen = { it() },
+      )
+    presenter.type("1d6")
+    presenter.roll()
+
+    chosen = oak
+    presenter.tableChosen()
+    assertEquals(listOf(geometry to table), tray.tabled)
+
+    tray.land(SimulationOutcome(faces = mapOf(0 to 0)))
+    assertEquals(listOf(geometry to table, geometry to oak), tray.tabled)
+  }
+
+  @Test
+  fun `a stall from a throw that was typed over leaves the new formula ready`() {
+    val tray = LateTray()
+    val presenter = presenter(RecordingRolls(faces = emptyMap()), tray = tray)
+    presenter.type("3d6")
+    presenter.roll()
+    presenter.type("2d20")
+
+    tray.stall(listOf(0))
+
+    assertEquals(2, (presenter.state as RollState.Ready).diceCount)
+  }
+
+  @Test
+  fun `dice that land after their formula was typed over are not written down`() {
+    // A total for a formula nobody is asking about any more would go into the
+    // statistics as a roll that was never finished.
+    val written = mutableListOf<FinishedThrow>()
+    val tray = LateTray()
+    val presenter =
+      presenter(RecordingRolls(faces = emptyMap()), recorder = ThrowRecorder { written += it }, tray = tray)
+    presenter.type("3d6")
+    presenter.roll()
+    presenter.type("2d20")
+
+    tray.land(SimulationOutcome(faces = mapOf(0 to 5, 1 to 5, 2 to 5)))
+
+    assertEquals(2, (presenter.state as RollState.Ready).diceCount)
+    assertTrue("a roll nobody was waiting for was written down", written.isEmpty())
+  }
+
   /**
    * A tray that throws the dice where it stands.
    *
@@ -816,6 +871,33 @@ class RollPresenterTest {
 
     private companion object {
       const val MOST_FRAMES = 64
+    }
+  }
+
+  /**
+   * A tray that takes a throw and answers only when the test says so, which is
+   * however late the roll's own thread gets round to it.
+   */
+  private class LateTray(
+    private val tray: PendingTray = PendingTray(),
+  ) : Tray by tray {
+    val tabled get() = tray.tabled
+
+    var stall: (List<Int>) -> Unit = {}
+      private set
+
+    var land: (SimulationOutcome) -> Unit = {}
+      private set
+
+    override fun roll(
+      start: (Renderer) -> WatchedRoll,
+      onCounted: (Map<Int, Int>) -> Unit,
+      onStalled: (List<Int>) -> Unit,
+      onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
+    ) {
+      start(HeadlessRenderer())
+      stall = onStalled
+      land = { onSettled(it, emptyList()) }
     }
   }
 

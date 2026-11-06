@@ -179,7 +179,7 @@ class SetDetailPresenterTest {
   fun `removing from here takes both halves and leaves the screen`() {
     write("brass", toml("brass", "Brass"))
     var left = 0
-    val presenter = loaded("brass") { left++ }
+    val presenter = loaded("brass", onGone = { left++ })
 
     presenter.remove()
     await("the screen was never left") { left > 0 }
@@ -192,7 +192,7 @@ class SetDetailPresenterTest {
   @Test
   fun `the bundled set cannot be removed from here either`() {
     var left = 0
-    val presenter = loaded(DiceSet.BUILTIN_ID) { left++ }
+    val presenter = loaded(DiceSet.BUILTIN_ID, onGone = { left++ })
 
     presenter.remove()
 
@@ -251,8 +251,71 @@ class SetDetailPresenterTest {
     assertNull(loaded("runes").state.physical)
   }
 
+  @Test
+  fun `a set can be made the default only while its dice are on offer`() {
+    // Making a switched-off or broken package the default would name a set
+    // that every formula then falls straight past (`docs/dice-notation.md`).
+    write("brass", toml("brass", "Brass"))
+    write("runes", "format = 1\n\n[set]\nid = \"runes\"\n")
+    val brass = loaded("brass")
+
+    assertTrue("an ordinary set could not be made the default", brass.state.canBeDefault)
+    assertFalse("a broken set was offered as the default", loaded("runes").state.canBeDefault)
+    assertFalse("the default was offered as the default", loaded(DiceSet.BUILTIN_ID).state.canBeDefault)
+    assertFalse("a set that is not there was offered as the default", loaded("gone").state.canBeDefault)
+
+    brass.setEnabled(false)
+    await("the set was never switched off") { brass.state.row?.enabled == false }
+
+    assertFalse("a switched-off set was offered as the default", brass.state.canBeDefault)
+  }
+
+  @Test
+  fun `making a set the default tells the settings and says so at once`() {
+    write("brass", toml("brass", "Brass"))
+    val told = mutableListOf<String>()
+    val presenter = loaded("brass", onDefault = told::add)
+
+    presenter.makeDefault()
+
+    assertEquals(listOf("brass"), told)
+    assertTrue(presenter.state.isDefault)
+    assertFalse("the button still offers what has just been done", presenter.state.canBeDefault)
+  }
+
+  @Test
+  fun `a set whose dice are not on offer never reaches the settings as the default`() {
+    // The button is not drawn in these states. This is the rule behind it.
+    write("brass", toml("brass", "Brass"))
+    write("runes", "format = 1\n\n[set]\nid = \"runes\"\n")
+    val told = mutableListOf<String>()
+    val off = loaded("brass", onDefault = told::add)
+    off.setEnabled(false)
+    await("the set was never switched off") { off.state.row?.enabled == false }
+
+    off.makeDefault()
+    loaded("runes", onDefault = told::add).makeDefault()
+    loaded("gone", onDefault = told::add).makeDefault()
+
+    assertTrue("the settings were told $told", told.isEmpty())
+    assertFalse(off.state.isDefault)
+  }
+
+  @Test
+  fun `a set that is not there cannot be switched off`() {
+    // A row for a folder that has gone would come back to haunt the next set
+    // installed under that name.
+    val presenter = loaded("gone")
+
+    presenter.setEnabled(false)
+
+    assertTrue("an opinion was recorded about nothing", runBlocking { registry.disabled() }.isEmpty())
+    assertTrue(presenter.state.missing)
+  }
+
   private fun loaded(
     id: String,
+    onDefault: (String) -> Unit = {},
     onGone: () -> Unit = {},
   ): SetDetailPresenter =
     SetDetailPresenter(
@@ -269,7 +332,7 @@ class SetDetailPresenterTest {
       scope = scope,
       onGone = onGone,
       defaultSetId = { DiceSet.BUILTIN_ID },
-      onDefault = {},
+      onDefault = onDefault,
     ).also { presenter -> await("the folder was never read") { presenter.state.loaded } }
 
   private fun await(

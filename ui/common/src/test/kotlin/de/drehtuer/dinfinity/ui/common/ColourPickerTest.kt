@@ -1,5 +1,8 @@
 package de.drehtuer.dinfinity.ui.common
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertHeightIsAtLeast
@@ -156,6 +159,23 @@ class ColourPickerTest {
     tag: String,
     to: Float,
   ) = compose.onNodeWithTag(tag).performSemanticsAction(SemanticsActions.SetProgress) { it(to) }
+
+  @Test
+  fun `a new colour to start from starts it over, rather than keeping what was slid to`() {
+    // The sheet is reused for the next swatch, whose colour is not this one's.
+    var start by mutableStateOf(0xFFEC3013.toInt())
+    val chosen = mutableListOf<Int>()
+    compose.setContent {
+      ColourPicker(start = start, title = "Pick a colour", tags = tags, onDismiss = {}, onChosen = chosen::add)
+    }
+    slide(tags.hue, 150f)
+
+    start = 0xFF2B5AA8.toInt()
+    compose.onNodeWithTag(tags.patch).assertContentDescriptionEquals("#2B5AA8")
+    compose.onNodeWithTag(tags.use).performClick()
+
+    assertEquals(listOf(Hsv.of(0xFF2B5AA8.toInt()).argb), chosen)
+  }
 
   private fun show(
     start: Int = 0xFFEC3013.toInt(),

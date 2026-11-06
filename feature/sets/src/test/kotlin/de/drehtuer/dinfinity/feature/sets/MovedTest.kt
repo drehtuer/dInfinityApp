@@ -113,6 +113,15 @@ class MovedTest {
     )
   }
 
+  @Test
+  fun `a check is only all current when every set answered and none had moved`() {
+    // "Everything is up to date" over a forge that did not answer is the one
+    // thing the summary must not say.
+    assertTrue(UpdateCheck(asked = 2, outdated = 0, unreachable = 0).allCurrent)
+    assertFalse(UpdateCheck(asked = 2, outdated = 1, unreachable = 0).allCurrent)
+    assertFalse(UpdateCheck(asked = 2, outdated = 0, unreachable = 1).allCurrent)
+  }
+
   private fun row(
     commit: String? = null,
     etag: String? = null,

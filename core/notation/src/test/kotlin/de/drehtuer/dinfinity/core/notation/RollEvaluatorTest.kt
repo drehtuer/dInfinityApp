@@ -331,6 +331,55 @@ class RollEvaluatorTest {
     assertEquals(result.adjustments, again.adjustments)
   }
 
+  @Test
+  fun `a percentile pair explodes on a hundred, and the next pair joins its chain`() {
+    // 00 and 0 read as the hundred, which is the pair's highest face.
+    val result = score("1d%!", values = listOf(0, 0), extra = listOf(40, 3))
+
+    assertEquals(143L, result.total)
+    assertEquals(listOf(0, 0, 40, 3), result.dice.map(RolledDie::value))
+    assertTrue(result.dice.drop(2).all { DieNote.FromExplosion in it.notes })
+  }
+
+  @Test
+  fun `a percentile pair below a hundred does not explode, however high`() {
+    assertEquals(99L, score("1d%!", values = listOf(90, 9)).total)
+  }
+
+  @Test
+  fun `a percentile reroll looks at what the pair read, not at either half`() {
+    // A 40 and a 3 are each above a threshold of 5 or below it by turns; the
+    // pair read 43, which is what the rule is about.
+    assertEquals(43L, score("1d%r5", values = listOf(40, 3)).total)
+    val rerolled = score("1d%r5", values = listOf(0, 5), extra = listOf(70, 1))
+    assertEquals(71L, rerolled.total)
+  }
+
+  @Test
+  fun `min raises a percentile pair as one number`() {
+    val result = score("1d%min50", values = listOf(10, 2))
+
+    assertEquals(50L, result.total)
+    assertEquals(listOf(10, 2), result.dice.map(RolledDie::value))
+  }
+
+  @Test
+  fun `a die rerolled into its highest face still explodes`() {
+    // The fixed order, in one roll: the reroll first, then the explosion on
+    // whatever the replacement showed.
+    val result = score("1d6r1!", values = listOf(1), extra = listOf(6, 2))
+
+    assertEquals(8L, result.total)
+    assertEquals(listOf(1, 6, 2), result.dice.map(RolledDie::value))
+    assertEquals(listOf(false, true, true), result.dice.map(RolledDie::kept))
+  }
+
+  @Test
+  fun `min raises a die above the top of the die without setting off an explosion`() {
+    // The explosion looks at the face; `min` only comes afterwards.
+    assertEquals(9L, score("1d6!min9", values = listOf(2)).total)
+  }
+
   private fun score(
     text: String,
     values: List<Int>,

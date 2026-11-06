@@ -189,6 +189,45 @@ class DraftFileTest {
   }
 
   @Test
+  fun `a field that should be a plain value and holds a list reads as if it were wrong`() {
+    // A dot that is a list is no dot; a flag that is a list is no yes; a ring
+    // length that is a list is a ring of nothing.
+    val text =
+      """{"format":2,"die":"d6","faces":[{"cell":0,"strokes":[
+        {"color":$INK,"width":0.02,"dots":[0.1,[0.2],0.3,0.4]},
+        {"color":$INK,"rings":[[4],4],"dots":[0.2,0.2,0.8,0.2,0.8,0.8,0.2,0.8,0.4,0.4,0.6,0.4,0.6,0.6,0.4,0.6]},
+        {"color":$INK,"width":0.02,"erases":[true],"dots":[0.1,0.2,0.3,0.4]}
+      ]}]}"""
+
+    val back = requireNotNull(DraftFile.read(text, d6))
+
+    assertEquals(listOf(stroke()), back.face(0).marks)
+  }
+
+  @Test
+  fun `a stroke with half a dot on the end is not the path that was drawn`() {
+    val text =
+      """{"format":2,"die":"d6","faces":[{"cell":0,"strokes":[
+        {"color":$INK,"width":0.02,"dots":[0.1,0.2,0.3,0.4,0.5]},
+        $GOOD_STROKE
+      ]}]}"""
+
+    assertEquals(listOf(stroke()), requireNotNull(DraftFile.read(text, d6)).face(0).marks)
+  }
+
+  @Test
+  fun `a face past the end of the die goes, and one before the start with it`() {
+    val text =
+      """{"format":2,"die":"d6","faces":[
+        {"cell":-1,"strokes":[$GOOD_STROKE]},
+        {"cell":6,"strokes":[$GOOD_STROKE]},
+        {"cell":5,"strokes":[$GOOD_STROKE]}
+      ]}"""
+
+    assertEquals(setOf(5), requireNotNull(DraftFile.read(text, d6)).faces.keys)
+  }
+
+  @Test
   fun `a file from a format this one does not know is not read`() {
     // The alternative is guessing, and a guess about somebody's drawing is
     // worse than a blank canvas.

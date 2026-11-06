@@ -327,6 +327,40 @@ class MineSetsTest {
   }
 
   @Test
+  fun `a rebuild that would not validate leaves the package that was there`() {
+    // The drawings on the phone are worth more than the picture that spoiled
+    // them. 4096 px is past `MAX_TEXTURE_PIXELS`, and it can only get into the
+    // record behind the validator's back.
+    val sets = mine()
+    drafts.save(Drawings.drawn(cube, 0))
+    sets.bringUpToDate()
+
+    drafts.save(Drawings.drawn(d20, 0))
+    photos.add(TablePhoto("photo-big", "Big", Drawings.webp(4096, 4096)))
+    sets.bringUpToDate()
+
+    assertEquals("the package changed although the rebuild was refused", listOf("d6"), installed().dice.map(Die::id))
+    assertTrue(installed().tables.isEmpty())
+  }
+
+  @Test
+  fun `an export the validator refuses says why, and the folder keeps its licence`() {
+    val sets = mine()
+    drafts.save(Drawings.drawn(cube, 0))
+    sets.export(SetLicense.Mit)
+    photos.add(TablePhoto("photo-big", "Big", Drawings.webp(4096, 4096)))
+
+    val result = sets.export(SetLicense.PublicDomain)
+
+    assertTrue("$result", result is ExportResult.Rejected)
+    assertTrue(
+      "the report does not say what was wrong",
+      (result as ExportResult.Rejected).report.any { "4096" in it.text },
+    )
+    assertEquals(SetLicense.Mit.id, installed().license)
+  }
+
+  @Test
   fun `a rejection carries every line of the report, not the first`() {
     // It should be unreachable — the app's own package validates — and it is
     // carried rather than swallowed because a drawing that produces an invalid

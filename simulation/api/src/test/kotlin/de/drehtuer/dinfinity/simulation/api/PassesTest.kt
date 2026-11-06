@@ -272,6 +272,42 @@ class PassesTest {
   }
 
   @Test
+  fun `nor is a die reported at a position no die could have`() {
+    val passes = Passes(spec(2))
+
+    passes.landed(
+      SimulationOutcome(
+        faces = mapOf(0 to 1, 1 to 2, -2 to 3),
+        unread = listOf(-1, 9),
+        restingAt = resting(2) + mapOf(-1 to RestingPlace(Vector3.Zero, Quaternion.Identity)),
+      ),
+    )
+
+    assertTrue(passes.complete, "a die that does not exist was left waiting for a shake")
+    assertEquals(setOf(0, 1), passes.outcome().restingAt.keys)
+  }
+
+  @Test
+  fun `a pass that gave up files nothing under a die it never threw`() {
+    val passes = Passes(spec(3))
+    passes.landed(SimulationOutcome(faces = mapOf(0 to 1), unread = listOf(1, 2)))
+    passes.next()
+
+    // Its own positions are 0 and 1, which are dice 1 and 2 of the throw.
+    passes.gaveUp(read = mapOf(0 to 5, 7 to 6), unsettled = listOf(1, 7))
+
+    assertEquals(mapOf(0 to 1, 1 to 5), passes.read)
+    assertEquals(listOf(2), passes.waiting)
+  }
+
+  @Test
+  fun `a pass in the air cannot be thrown again on top of itself`() {
+    val passes = Passes(spec(1))
+
+    assertFailsWith<IllegalStateException> { passes.next() }
+  }
+
+  @Test
   fun `nothing lands that was not thrown, and nothing is thrown that is not waiting`() {
     val passes = Passes(spec(1))
     passes.landed(SimulationOutcome(faces = mapOf(0 to 1)))

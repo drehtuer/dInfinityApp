@@ -229,6 +229,16 @@ class InstalledArtworkTest {
       files = PackageFiles.of(mapOf("tables/felt.webp" to png(8, 8))),
     )
 
+  @Test
+  fun `an installed package is still found when a bundled one is there too`() {
+    // The bundled package answers to its own id and no other, or every
+    // installed set would lose its artwork on the build that bundles one.
+    val artwork = InstalledArtwork(InstalledSets(installed()), bundled()) { _, _, _ -> AtlasDecode.Drawn(image()) }
+
+    assertNotNull("the installed atlas was not found", artwork.read("brass", "textures/d6.png").drawn)
+    assertNotNull("the installed atlas was not stamped", artwork.stamp("brass", "textures/d6.png"))
+  }
+
   private fun artwork(
     decode: (ByteArray, String, Int?) -> AtlasDecode = { _, _, _ -> AtlasDecode.Drawn(image()) },
   ): InstalledArtwork = InstalledArtwork(InstalledSets(installed()), decode = decode)

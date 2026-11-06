@@ -76,6 +76,43 @@ class RadianceTest {
   }
 
   @Test
+  fun `a row too narrow for run-length is flat, even when it starts like the code`() {
+    val pixels = byteArrayOf(2, 2, 0, 129.toByte(), 0, 0, 0, 0)
+    val image = requireNotNull(Radiance.decode(file(width = 2, height = 1, body = pixels)))
+
+    assertEquals((2 + 0.5f) / 128, image.at(0, 0, 0), EXACT)
+  }
+
+  @Test
+  fun `a wide row that only looks like the code is flat`() {
+    // The code is `2 2`, then a width with no high bit: miss either and the
+    // same bytes are a dark pixel, which is what a flat writer meant by them.
+    listOf(
+      byteArrayOf(2, 2, 128.toByte(), 129.toByte()),
+      byteArrayOf(2, 1, 0, 129.toByte()),
+      byteArrayOf(1, 2, 0, 129.toByte()),
+    ).forEach { first ->
+      val body = first + ByteArray((RLE_WIDTH - 1) * 4)
+      val image = requireNotNull(Radiance.decode(file(width = RLE_WIDTH, height = 1, body = body)))
+
+      assertEquals(first.toList().toString(), (first[0] + 0.5f) / 128, image.at(0, 0, 0), EXACT)
+    }
+  }
+
+  @Test
+  fun `the header lines nobody here reads are passed over`() {
+    val pixel = byteArrayOf(128.toByte(), 128.toByte(), 128.toByte(), 129.toByte())
+    val header = "#?RADIANCE\nSOFTWARE=somebody\nEXPOSURE=1\nFORMAT=32-bit_rle_rgbe\n\n-Y 1 +X 1\n"
+
+    assertNotNull(Radiance.decode(header.toByteArray() + pixel))
+  }
+
+  @Test
+  fun `a file that ends where its size should be is not a panorama`() {
+    assertNull(Radiance.decode("#?RADIANCE\n\n".toByteArray()))
+  }
+
+  @Test
   fun `the older magic and a header with no format line are both read`() {
     val pixel = byteArrayOf(128.toByte(), 128.toByte(), 128.toByte(), 129.toByte())
     val rgbe = "#?RGBE\n\n-Y 1 +X 1\n".toByteArray() + pixel

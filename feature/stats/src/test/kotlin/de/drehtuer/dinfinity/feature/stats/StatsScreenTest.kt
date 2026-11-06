@@ -241,6 +241,53 @@ class StatsScreenTest {
     compose.waitUntil(PATIENCE) { summaries() == 0 }
   }
 
+  @Test
+  fun `the same die of a set with no record opens nothing`() {
+    // A set and a die id together name a record. The builtin d6's numbers under
+    // a brass d6's heading would be somebody else's record.
+    given(dieId = "d6", sides = 6, throws = 10, sum = 35)
+    val presenter = show()
+
+    presenter.select("brass", "d6")
+    compose.waitForIdle()
+
+    assertEquals(null, presenter.state.selected)
+    compose.onNodeWithTag(StatsTestTags.LIST).assertIsDisplayed()
+  }
+
+  @Test
+  fun `a die whose set is gone and whose faces were never counted still opens`() {
+    // Nobody can say what its faces are and nothing has come up to guess from,
+    // so there are no bars. The record and the warning are still its own.
+    given(dieId = "d20", sides = 20, throws = 3, sum = 30, row = { copy(setId = "brass") })
+    val presenter = show()
+
+    open(presenter, "brass", "d20")
+
+    compose.onNodeWithTag(StatsTestTags.DETAIL).assertIsDisplayed()
+    compose.onNodeWithTag(StatsTestTags.GUESSED, useUnmergedTree = true).assertExists()
+    compose.onNodeWithTag(StatsTestTags.barOf(20), useUnmergedTree = true).assertDoesNotExist()
+  }
+
+  @Test
+  fun `a second tap on the roll-up gives each set its own dice back`() {
+    given(dieId = "d6", sides = 6, throws = 10, sum = 40)
+    given(dieId = "d6", sides = 6, throws = 30, sum = 100, row = { copy(setId = "brass") })
+    val presenter = show()
+    compose.onNodeWithTag(StatsTestTags.ACROSS_SETS).performClick()
+    compose.waitUntil(PATIENCE) { presenter.state.acrossSets }
+
+    compose.onNodeWithTag(StatsTestTags.ACROSS_SETS).performClick()
+
+    compose.waitUntil(PATIENCE) { !presenter.state.acrossSets }
+    assertEquals(
+      setOf("builtin", "brass"),
+      presenter.state.dice
+        .map { it.setId }
+        .toSet(),
+    )
+  }
+
   /**
    * Opens a die and waits for its faces.
    *

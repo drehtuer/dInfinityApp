@@ -67,6 +67,23 @@ class SensorShakeSourceTest {
   }
 
   @Test
+  fun `a reading from a sensor it did not ask for is no shake, whatever it says`() {
+    addSensors()
+    val session = ShakeSession()
+    val source = SensorShakeSource(manager, session, onStarted = { error("a light meter started a shake") })
+    source.start()
+
+    listOf(0L, ShakeThresholds.START_MILLIS).forEach { atMillis ->
+      source.onSensorChanged(event(Sensor.TYPE_LIGHT, atMillis, x = 12f))
+    }
+    val nameless = event(Sensor.TYPE_LINEAR_ACCELERATION, ShakeThresholds.START_MILLIS * 2, x = 12f)
+    SensorEvent::class.java.getField("sensor").set(nameless, null)
+    source.onSensorChanged(nameless)
+
+    assertFalse(session.shaking)
+  }
+
+  @Test
   fun `shaking the phone starts a shake, and going still ends it`() {
     addSensors()
     val session = ShakeSession()

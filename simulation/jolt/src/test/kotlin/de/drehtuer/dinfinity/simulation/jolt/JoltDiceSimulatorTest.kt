@@ -2,15 +2,20 @@ package de.drehtuer.dinfinity.simulation.jolt
 
 import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.DieInstance
+import de.drehtuer.dinfinity.core.model.DieMaterial
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.fixtures.StandardDice
+import de.drehtuer.dinfinity.simulation.api.DieMotion
 import de.drehtuer.dinfinity.simulation.api.Passes
+import de.drehtuer.dinfinity.simulation.api.Placement
 import de.drehtuer.dinfinity.simulation.api.ShapeGeometry
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
+import de.drehtuer.dinfinity.simulation.api.Vector3
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.abs
@@ -90,6 +95,61 @@ class JoltDiceSimulatorTest {
 
     assertEquals(0, outcome.diceCount)
     assertFalse("an empty throw is answered without an engine", opened)
+  }
+
+  @Test
+  fun `a live throw of no dice is refused before a world is opened`() {
+    var opened = false
+    val simulator =
+      JoltDiceSimulator {
+        opened = true
+        null
+      }
+
+    assertThrows(IllegalArgumentException::class.java) { simulator.start(spec(emptyList())) }
+    assertFalse(opened)
+  }
+
+  @Test
+  fun `a world that will not take a die is closed rather than left to leak`() {
+    // A native world nobody holds is native memory nobody frees, and whoever
+    // called this never got a roll to close it through.
+    val inner = FakeWorld(1) { _, _, _ -> FakeWorld.settled() }
+    val refusing =
+      object : PhysicsWorld by inner {
+        override fun addDie(
+          hull: List<Vector3>,
+          material: DieMaterial,
+          placement: Placement,
+        ) = error("no room for that hull")
+      }
+
+    val failure =
+      assertThrows(IllegalStateException::class.java) {
+        JoltDiceSimulator { refusing }.start(spec(listOf(StandardDice.d6)))
+      }
+
+    assertEquals("no room for that hull", failure.message)
+    assertTrue("the world was left open", inner.closed)
+  }
+
+  @Test
+  fun `a roll nobody is listening to hears no impacts and comes to the same thing`() {
+    val hit: () -> FakeWorld = {
+      FakeWorld(1) { step, _, _ ->
+        if (step < 5) FakeWorld.tumbling().copy(motion = DieMotion(1_200.0, 0.0)) else FakeWorld.settled()
+      }
+    }
+    val listening = JoltDiceSimulator { hit() }.start(spec(listOf(StandardDice.d6)))
+    val deaf = JoltDiceSimulator { hit() }.start(spec(listOf(StandardDice.d6)), listening = false)
+
+    val heard = listening.runToEnd()
+    val notHeard = deaf.runToEnd()
+
+    assertEquals(1, listening.impacts.size)
+    assertEquals(emptyList<Any>(), deaf.impacts)
+    assertEquals(heard?.faces, notHeard?.faces)
+    assertEquals(heard?.steps, notHeard?.steps)
   }
 
   @Test

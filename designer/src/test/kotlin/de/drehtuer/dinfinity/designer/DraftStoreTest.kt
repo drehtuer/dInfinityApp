@@ -143,6 +143,26 @@ class DraftStoreTest {
   }
 
   @Test
+  fun `a rename that cannot land leaves no half-written file behind`() {
+    stuck("d6.json")
+
+    store.save(Draft(die = d6).onFace(0) { it.draw(stroke()) })
+
+    assertFalse("the half-written file was left behind", File(directory, "d6.json.part").exists())
+    assertTrue("a drawing that was not written was offered back", store.load(d6).blank)
+  }
+
+  @Test
+  fun `a folder named like a draft is not a draft`() {
+    val before = store.stamp()
+    stuck("d6.json")
+
+    assertTrue(store.known().isEmpty())
+    assertEquals(before, store.stamp())
+    assertTrue(store.load(d6).blank)
+  }
+
+  @Test
   fun `a folder that does not exist yet is made rather than refused`() {
     // A fresh install, where nothing has ever been drawn.
     val fresh = DraftStore(File(directory, "never/been/here"))

@@ -266,6 +266,35 @@ class BreakdownTest {
     assertEquals(listOf(7L), Breakdown.read(mangled).adjustments)
   }
 
+  @Test
+  fun `a breakdown that never listed its groups keeps the numbers it did write down`() {
+    assertEquals(
+      StoredBreakdown(groups = emptyList(), adjustments = listOf(4L)),
+      Breakdown.read("""{"total":4,"adjustments":[4]}"""),
+    )
+  }
+
+  @Test
+  fun `a group that never listed its dice still says what it was and what it came to`() {
+    val group = Breakdown.read("""{"groups":[{"notation":"1d6","set":"brass","subtotal":5}]}""").groups.single()
+
+    assertEquals("1d6", group.notation)
+    assertEquals(5L, group.subtotal)
+    assertEquals(emptyList<StoredDie>(), group.dice)
+  }
+
+  @Test
+  fun `a group that lost its names keeps its dice, and does not claim to have fallen back`() {
+    // Fell back is "the set differs from the one asked for". Two blanks do not
+    // differ, and the history must not say a set stood in when nobody knows.
+    val group = Breakdown.read("""{"groups":[{"subtotal":5,"dice":[{"value":5}]}]}""").groups.single()
+
+    assertEquals("", group.notation)
+    assertEquals("", group.setId)
+    assertFalse(group.fellBack)
+    assertEquals(StoredDie(dieId = "", value = 5, label = "5"), group.dice.single())
+  }
+
   private companion object {
     /** The key a roll with no modifiers must not grow. */
     const val ADJUSTMENTS = "adjustments"

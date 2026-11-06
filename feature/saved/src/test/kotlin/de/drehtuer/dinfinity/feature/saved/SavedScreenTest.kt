@@ -492,6 +492,21 @@ class SavedScreenTest {
     }
   }
 
+  @Test
+  fun `until the database has answered the bar names the screen, and nothing claims to be empty`() {
+    // "Nothing saved yet" over a list that has not arrived is the app telling a
+    // player their rolls are gone.
+    val catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set))
+    val waiting = CoroutineScope(NeverRuns)
+    val presenter = SavedPresenter(library, catalog, waiting, "Unfiled")
+    val groups = GroupPresenter(library, catalog, waiting, "Unfiled")
+
+    compose.setContent { SavedScreen(presenter = presenter, groups = groups) }
+
+    compose.onNodeWithTag(SavedTestTags.SWITCHER).assertTextContains("Saved rolls", substring = true)
+    compose.onNodeWithTag(SavedTestTags.EMPTY).assertDoesNotExist()
+  }
+
   private fun show(
     onRoll: (SavedEntry) -> Unit = {},
     onEdit: (SavedEntry) -> Unit = {},

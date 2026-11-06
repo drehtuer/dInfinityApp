@@ -41,6 +41,7 @@ class TablePhotoLibraryTest {
   private fun library(
     scaler: PhotoScaler,
     keeps: Int = PhotoTable.MAX_PHOTOS,
+    photos: File = temporary.newFolder("photos"),
   ): TablePhotoLibrary =
     TablePhotoLibrary(
       mine =
@@ -49,7 +50,7 @@ class TablePhotoLibraryTest {
           root = root,
           painter = AtlasPainter.NONE,
           dice = { listOf(Die.standard(id = "d6", shape = DieShape.Cube)) },
-          photos = PhotoStore(temporary.newFolder("photos"), limit = keeps),
+          photos = PhotoStore(photos, limit = keeps),
         ),
       refresh = { reread++ },
       scaler = scaler,
@@ -98,6 +99,20 @@ class TablePhotoLibraryTest {
       val outcome = library(scalerOf(webp(64, 48))).add(photo(), "   ")
 
       assertTrue("$outcome", outcome is PhotoOutcome.Refused)
+      assertEquals(0, reread)
+    }
+  }
+
+  @Test
+  fun `a photo the phone will not store says so, and the catalogue is left alone`() {
+    runTest {
+      // A file where the folder should be, which is the nearest a test gets to
+      // a full disk.
+      val blocked = temporary.newFile("photos-blocked")
+
+      val outcome = library(scalerOf(webp(64, 48)), photos = blocked).add(photo(), "Oak table")
+
+      assertEquals(PhotoOutcome.Refused(listOf("it could not be written to this phone's storage")), outcome)
       assertEquals(0, reread)
     }
   }

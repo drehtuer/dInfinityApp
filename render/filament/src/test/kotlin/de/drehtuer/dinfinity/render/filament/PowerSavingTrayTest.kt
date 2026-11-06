@@ -156,6 +156,18 @@ class PowerSavingTrayTest {
   }
 
   @Test
+  fun `leaving the screen while the dice are going stops stepping them, and reports nothing`() {
+    lateinit var tray: PowerSavingTray
+    val roll = FakeRoll(steps = 30, onAdvance = { tray.close() })
+    tray = PowerSavingTray(here)
+
+    tray.roll(start = roll.start(), onSettled = { _, _ -> error("a roll nobody was waiting for was reported") })
+
+    assertEquals("the roll went on after the screen had gone", 1, roll.advanced.size)
+    assertTrue("the world was left open", roll.closed)
+  }
+
+  @Test
   fun `a tray that made its own thread gives it back`() {
     // One tray per visit to the roll screen, and its thread outlives the visit
     // unless somebody ends it. Nothing here is waiting on that thread, so the

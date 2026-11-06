@@ -107,6 +107,14 @@ class ReleaseTest {
   }
 
   @Test
+  fun `a speed that is not a number at all is refused`() {
+    // Either would reach the physics as a velocity and take the die with it.
+    listOf(Double.NaN, Double.POSITIVE_INFINITY).forEach { speed ->
+      assertFailsWith<IllegalArgumentException>("$speed") { Release(direction = null, speedMmPerSecond = speed) }
+    }
+  }
+
+  @Test
   fun `a speed below nothing is refused`() {
     assertFailsWith<IllegalArgumentException> { Release(direction = null, speedMmPerSecond = -1.0) }
   }

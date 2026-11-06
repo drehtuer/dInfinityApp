@@ -123,6 +123,46 @@ class TossTest {
   }
 
   @Test
+  fun `a die heading for a wall still far away is left to get there`() {
+    val tray = TableGeometry.referenceDevice()
+    val inTheOpen = Vector3(10.0, 10.0, 8.0)
+
+    assertEquals(Vector3(0.6, 0.8, 0.0), Toss.offTheWalls(Vector3(0.6, 0.8, 0.0), inTheOpen, tray))
+  }
+
+  @Test
+  fun `a hand that shakes again before its last dice have left has them back`() {
+    val world = FakeWorld(COUNT) { _, _, _ -> FakeWorld.tumbling() }
+    val handful = Toss.Handful(world, COUNT, SEED)
+    val states = List(COUNT) { FakeWorld.tumbling() }
+    handful.letGo(ALONG, step = 0)
+
+    handful.step(0, states, emptyList(), handOn = true)
+    (1..Toss.STAGGER_STEPS * 2).forEach { step -> handful.step(step, states, emptyList(), handOn = false) }
+
+    assertEquals("a die left a hand that had taken it back", emptyList<Pair<Int, Int>>(), world.respawns)
+  }
+
+  @Test
+  fun `a hand that lets go before anything has been measured throws its own way`() {
+    // No step has been taken yet, so no die has a speed of its own to carry on.
+    val world = FakeWorld(COUNT) { _, _, _ -> FakeWorld.tumbling() }
+    val handful = Toss.Handful(world, COUNT, SEED)
+    handful.letGo(ALONG, step = 0)
+
+    (0..Toss.STAGGER_STEPS).forEach { step ->
+      handful.step(step, List(COUNT) { FakeWorld.tumbling() }, emptyList(), handOn = false)
+    }
+
+    assertEquals("every die leaves the hand once", (0 until COUNT).toSet(), world.respawns.map { it.second }.toSet())
+    assertEquals(COUNT, world.respawns.size)
+    assertTrue(
+      "a die went against the hand",
+      world.respawnPlacements.all { it.linearVelocity.x > 0.0 },
+    )
+  }
+
+  @Test
   fun `the dice leave the hand within a tenth of a second, each when its seed says`() {
     val delays = List(COUNT * 4) { Toss.delayOf(SEED, it) }
 

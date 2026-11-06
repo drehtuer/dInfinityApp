@@ -18,7 +18,11 @@ import de.drehtuer.dinfinity.core.model.RolledDie
 import de.drehtuer.dinfinity.core.model.RolledGroup
 import de.drehtuer.dinfinity.core.notation.PickableDie
 import de.drehtuer.dinfinity.core.notation.Sides
+import de.drehtuer.dinfinity.simulation.api.Quaternion
+import de.drehtuer.dinfinity.simulation.api.RestingPlace
+import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
+import de.drehtuer.dinfinity.simulation.api.Vector3
 import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
 import org.junit.Rule
 import org.junit.Test
@@ -169,6 +173,29 @@ class RollAccessibilityTest {
     shake()
 
     tray().assertContentDescriptionEquals("Dice tray, 1 die would not settle")
+  }
+
+  @Test
+  fun `a tray with a die picked up says so, and what a shake will do with it`() {
+    // A ring round a die is drawn and nothing else, so without this a screen
+    // reader has no way to tell a pick landed.
+    val landed =
+      SimulationOutcome(
+        faces = mapOf(0 to 0, 1 to 5),
+        restingAt =
+          mapOf(
+            0 to RestingPlace(Vector3(-40.0, 0.0, 8.0), Quaternion.Identity),
+            1 to RestingPlace(Vector3(40.0, 0.0, 8.0), Quaternion.Identity),
+          ),
+      )
+    val presenter = rollPresenter(DirectTray(), PassingRolls(listOf(landed)))
+    compose.setContent { RollScreen(presenter = presenter) }
+    typeFormula("2d6")
+    shake()
+
+    compose.runOnUiThread { presenter.pick(0) }
+
+    tray().assertContentDescriptionEquals("Dice tray, the dice have landed on 7, 1 die picked; shake to throw it")
   }
 
   @Test

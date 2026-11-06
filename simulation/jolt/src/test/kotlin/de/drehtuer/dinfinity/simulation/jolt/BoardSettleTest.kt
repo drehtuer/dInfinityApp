@@ -250,6 +250,39 @@ class BoardSettleTest {
   }
 
   /** A board of [dice] new d6, as the picker asks for it: let go one after another over the spot. */
+  @Test
+  fun `a board with nothing on it is over at once`() {
+    val world = FakeWorld(0) { _, _, _ -> FakeWorld.settled() }
+
+    val track = settleOn(world, request(0))
+
+    assertEquals(emptyList<Int>(), track.indices)
+    assertTrue("an empty board kept the world stepping", world.steps <= SettleRule.REST_STEPS)
+  }
+
+  @Test
+  fun `a quiet board still waits for the last die it has to drop`() {
+    // The dice already down settle almost at once, and the die still to come
+    // is parked and counts as still. Stopping there would lose that die's drop.
+    val late = SettleRule.REST_STEPS * THREE
+    val request =
+      request(TWO).let { board ->
+        board.copy(
+          bodies =
+            listOf(
+              board.bodies[0],
+              board.bodies[1].copy(dropStep = late),
+            ),
+        )
+      }
+    val world = FakeWorld(TWO) { _, _, _ -> FakeWorld.settled() }
+
+    settleOn(world, request)
+
+    assertEquals("the late die was never let go", listOf(1), world.respawns.map { it.second })
+    assertTrue("the drop ended before its last die", world.steps >= late)
+  }
+
   private fun dropping(dice: Int): BoardRequest =
     BoardDrops.request(
       number = 1,

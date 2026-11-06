@@ -140,6 +140,17 @@ class VectorsTest {
   }
 
   @Test
+  fun `a turn onto the exact opposite direction carries it there, whichever way it points`() {
+    // The one case with no axis of its own to turn about, and the axis it
+    // picks depends on the direction, so both ways of picking are tried.
+    listOf(Vector3(1.0, 0.0, 0.0), Vector3(0.0, 0.0, 1.0), Vector3(0.0, 1.0, 0.0)).forEach { from ->
+      val turned = Quaternion.taking(from, -from).rotate(from)
+
+      assertEquals(0.0, (turned + from).length, 1e-9, "$from")
+    }
+  }
+
+  @Test
   fun `halfway between no turn and a half turn is a quarter turn`() {
     val axis = Vector3(0.0, 0.0, 1.0)
     val half = Quaternion.about(axis, PI)

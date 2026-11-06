@@ -434,6 +434,31 @@ class SetDetailScreenTest {
   }
 
   @Test
+  fun `dice of different sizes are quoted as a range, and no one size is called the set's`() {
+    // "25 % over average" would be about one of them and wrong about the other.
+    write("mixed", toml("mixed", "Mixed", extra = D20) + "\nsize_mm = 20\n")
+
+    show("mixed")
+
+    at(SetDetailTestTags.valueOf(SetDetailTestTags.SIZE)).assertTextContains("100–125 %")
+    at(SetDetailTestTags.PHYSICAL).assertIsDisplayed()
+    compose.onNodeWithText("over average", substring = true).assertDoesNotExist()
+    compose.onNodeWithText("under average", substring = true).assertDoesNotExist()
+    compose.onNodeWithText("Average", substring = true).assertDoesNotExist()
+  }
+
+  @Test
+  fun `dice the table shows through are not called opaque`() {
+    write("clear", toml("clear", "Clear", extra = "\n[defaults]\ntranslucency = 20"))
+
+    show("clear")
+
+    at(SetDetailTestTags.PHYSICAL).assertIsDisplayed()
+    compose.onNodeWithText("Lets the table through", substring = true).assertExists()
+    compose.onNodeWithText("Opaque", substring = true).assertDoesNotExist()
+  }
+
+  @Test
   fun `the export button shares the package and says it has`() {
     // The gate opens on a licence; this is what is behind it. The file goes
     // to whoever shares it — the application — and the screen says where it

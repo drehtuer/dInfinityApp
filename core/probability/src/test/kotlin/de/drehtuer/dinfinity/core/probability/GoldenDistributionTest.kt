@@ -87,6 +87,35 @@ class GoldenDistributionTest {
     listOf("1dF", "2dF", "4dF + 2", "2dFkh1", "3dFdl1").forEach(::assertMatches)
   }
 
+  @Test
+  fun `percentiles under every modifier match a full enumeration`() {
+    // The pair is scored as one number and a chain of them explodes on the
+    // hundred; a graph that treated the halves as dice would be close and wrong.
+    listOf("1d%!", "1d%r50", "1d%min50", "1d%!min50", "1d%r1!", "2d%dl1", "1d100r99").forEach(::assertMatches)
+  }
+
+  @Test
+  fun `a fudge die under every modifier matches a full enumeration`() {
+    // Floors and thresholds in the middle of a die that goes below nought.
+    // Its explosion has too many branches to walk, so it is in `OutcomeGraphTest`.
+    listOf("1dFr0", "2dFmin0", "1dFr1", "3dFmin0dl1").forEach(::assertMatches)
+  }
+
+  @Test
+  fun `modifiers together match a full enumeration in their fixed order`() {
+    listOf(
+      "1d4r1!",
+      "2d4r1!kh1",
+      "1d4r4!",
+      "1d6r1min3",
+      "2d4r2min3dh1",
+      "2d4!r1min2kl1",
+      // A floor above the die's top face, which lifts every throw past it.
+      "1d6min9",
+      "1d4!min6",
+    ).forEach(::assertMatches)
+  }
+
   private fun assertMatches(
     text: String,
     rounding: Rounding = Rounding.Default,

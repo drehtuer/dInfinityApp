@@ -11,7 +11,10 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import java.io.File
+import java.io.IOException
+import java.io.InputStream
 
 /**
  * Reading a file somebody chose
@@ -94,8 +97,33 @@ class CollectionFileReadingTest {
     assertTrue(result is CollectionFileReading.Result.Failed)
   }
 
+  @Test
+  fun `a provider with no file to give is a failure that says so`() {
+    AnsweringProvider.installed()
+
+    val result = CollectionFileReading.read(context.contentResolver, AnsweringProvider.uriOf("nothing.json"))
+
+    assertEquals(CollectionFileReading.Result.Failed("nothing answered at that file"), result)
+  }
+
+  @Test
+  fun `a stream that breaks without a word still gives the player a reason`() {
+    // `IOException()` has no message, and the screen has a line to fill.
+    val breaking = Uri.parse("content://de.drehtuer.nobody/breaks.json")
+    shadowOf(context.contentResolver).registerInputStream(breaking, BreakingStream())
+
+    val result = CollectionFileReading.read(context.contentResolver, breaking)
+
+    assertEquals(CollectionFileReading.Result.Failed("it could not be read"), result)
+  }
+
   private fun uriOf(text: String): Uri {
     val file = File(directory, "chosen.json").apply { writeText(text) }
     return FileProvider.getUriForFile(context, "${context.packageName}.collections", file)
   }
+}
+
+/** A stream that fails on the first read, the way a dropped connection does. */
+internal class BreakingStream : InputStream() {
+  override fun read(): Int = throw IOException()
 }

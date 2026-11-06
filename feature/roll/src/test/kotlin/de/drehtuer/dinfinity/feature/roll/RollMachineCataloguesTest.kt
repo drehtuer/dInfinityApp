@@ -93,6 +93,21 @@ class RollMachineCataloguesTest {
     assertSame(before, machine.state)
   }
 
+  @Test
+  fun `the same sets under a new default change what a bare die means, and how the picker writes one`() {
+    // Nothing was installed or removed, so comparing the sets alone would call
+    // this no change, and the picker would go on writing a bare `1d6` that now
+    // means somebody else's die (`docs/dice-sets.md`, design `6a`).
+    val sets = twoSets().installed
+    val machine = machine(catalog = DiceCatalog.of(sets, BuiltinDiceSet.set.id))
+    assertEquals("1d6", machine.pickable.first { it.notation == "d6" }.notation(1))
+
+    machine.use(DiceCatalog.of(sets, BRASS))
+
+    assertEquals(BuiltinDiceSet.set.id, machine.pickingFrom)
+    assertEquals("builtin:1d6", machine.pickable.first { it.notation == "d6" }.notation(1))
+  }
+
   /** The bundled set and one more, which is when the chooser is worth drawing. */
   private fun twoSets(): DiceCatalog =
     DiceCatalog.of(listOf(BuiltinDiceSet.set, BuiltinDiceSet.set.copy(id = BRASS, name = "Brass")))

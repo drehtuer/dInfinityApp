@@ -184,6 +184,22 @@ class MinePhotoTablesTest {
   }
 
   @Test
+  fun `a store that will not take the picture says so and builds nothing`() {
+    root = temporary.newFolder("dicesets")
+    val sets =
+      MineSets(
+        drafts = DraftStore(temporary.newFolder("blocked-drafts")),
+        root = root,
+        painter = Drawings.headers(),
+        dice = { listOf(cube) },
+        photos = PhotoStore(temporary.newFile("not-a-folder")),
+      )
+
+    assertEquals(PhotoResult.NotWritten, sets.addPhoto("Oak", Drawings.webp(64, 48)))
+    assertFalse("a package was built around a picture that was not kept", File(root, "mine").exists())
+  }
+
+  @Test
   fun `removing a photo takes it out of the package too`() {
     val sets = mine()
     sets.addPhoto("Oak", Drawings.webp(64, 48))

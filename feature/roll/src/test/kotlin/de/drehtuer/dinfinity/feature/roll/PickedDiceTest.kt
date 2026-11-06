@@ -221,6 +221,21 @@ class PickedDiceTest {
     assertEquals(spec.among, again.among)
   }
 
+  @Test
+  fun `a finger's target shrinks with the dice under a total, and only under one`() {
+    // A target the size of a full die over dice the capacity rule shrank would
+    // pick up the neighbour (`RollPresenter.touch`).
+    val machine = machine()
+    machine.type("40d6")
+    val spec = requireNotNull(machine.throwDice())
+    assertEquals("nothing is on the table to aim at yet", 1.0, machine.dieScale, 0.0)
+
+    machine.settled(settled(List(40) { 0 }))
+
+    assertTrue("forty dice were not shrunk at all", spec.dieScale < 1.0)
+    assertEquals(spec.dieScale, machine.dieScale, 0.0)
+  }
+
   private fun machineDie(id: String) = BuiltinDiceSet.set.dice.first { it.id == id }
 
   /** The face of the built-in [id] that shows its lowest value, which nothing explodes on. */

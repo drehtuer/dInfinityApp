@@ -214,5 +214,42 @@ class InstallSourceTest {
     assertNull(source("https://example.org/dice/brass.zip").commitUrl)
   }
 
+  @Test
+  fun `a host that only looks like a forge is not treated as one`() {
+    // Recognising a forge is what turns a URL into an API call on that forge's
+    // own host, so the name has to be the host and not merely appear in the URL.
+    assertNull(InstallSource.of("https://github.com.example.org/ada/brass-and-bone"))
+    assertNull(InstallSource.of("https://example.org/github.com/ada/brass-and-bone"))
+    assertNull(InstallSource.of("https://github.com@example.org/ada/brass-and-bone"))
+    assertNull(InstallSource.of("https://codeberg.org.example.org/ada/brass-and-bone"))
+  }
+
+  @Test
+  fun `an archive behind a borrowed forge name is fetched from where it really is`() {
+    val borrowed = source("https://github.com@example.org/dice/brass.zip")
+
+    assertEquals(InstallSource.Kind.Archive, borrowed.kind)
+    assertEquals("https://github.com@example.org/dice/brass.zip", borrowed.archiveUrl)
+  }
+
+  @Test
+  fun `an https link with no host in it is refused`() {
+    assertNull(InstallSource.of("https:///dice/brass.zip"))
+    assertNull(InstallSource.of("https:brass.zip"))
+  }
+
+  @Test
+  fun `scheme and host are recognised in any case, as a browser would`() {
+    assertEquals(InstallSource.Kind.GitHub, source("HTTPS://GitHub.COM/ada/brass-and-bone").kind)
+  }
+
+  @Test
+  fun `a forge link pasted with white space around it is still that forge`() {
+    val pasted = source("  https://github.com/ada/brass-and-bone\n")
+
+    assertEquals(InstallSource.Kind.GitHub, pasted.kind)
+    assertEquals("https://api.github.com/repos/ada/brass-and-bone/tarball/HEAD", pasted.archiveUrl)
+  }
+
   private fun source(url: String): InstallSource = requireNotNull(InstallSource.of(url)) { "$url was not recognised" }
 }

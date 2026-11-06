@@ -3,6 +3,7 @@ package de.drehtuer.dinfinity.dicesets.install
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -315,6 +316,168 @@ class SafeExtractorTest {
     assertEquals(RejectionReason.NotInTheArchive, result.reason)
   }
 
+  @Test
+  fun `a gzip that is cut short is refused, and what it wrote deleted`() {
+    // What a dropped download looks like: the right signature and half a stream.
+    val whole = Archives.tarGz(workspace, mapOf("pkg/diceset.toml" to Archives.compressibleToml()))
+    val cut = File(workspace, "cut.tar.gz").also { it.writeBytes(whole.readBytes().copyOf(whole.length().toInt() / 2)) }
+
+    assertEquals(RejectionReason.Unreadable, refused(extractor.extract(cut, workspace)).reason)
+    assertNothingLeftBehind()
+  }
+
+  @Test
+  fun `a gzip signature with nothing sensible behind it is refused`() {
+    val fake = File(workspace, "fake.tar.gz").also { it.writeBytes(byteArrayOf(0x1F, 0x8B.toByte(), 0, 0, 0)) }
+
+    val result = refused(extractor.extract(fake, workspace))
+
+    assertEquals(RejectionReason.Unreadable, result.reason)
+    assertTrue("the refusal gave no reason", result.detail.isNotBlank())
+    assertNothingLeftBehind()
+  }
+
+  @Test
+  fun `damaged archives are refused or extracted and never throw`() {
+    // A stranger's bytes reach third-party parsers here. An exception that got
+    // out would crash the install instead of refusing it, so each byte of the
+    // headers gets damaged in turn, for both kinds of archive. The tar is
+    // gzipped afterwards so the damage gets past the gzip checksum and reaches
+    // the tar reader, which is where a hostile archive would aim.
+    val entries = mapOf("pkg/diceset.toml" to Archives.MINIMAL_TOML.encodeToByteArray())
+    val zip = Archives.zip(workspace, entries).readBytes()
+    val tar = Archives.tar(entries)
+    val damaged =
+      zip.indices.take(HEADER_BYTES).map { File(workspace, "damaged.zip").withBytes(zip.flipped(it)) } +
+        tar.indices.take(HEADER_BYTES).map { File(workspace, "damaged.tgz").withBytes(Archives.gzip(tar.flipped(it))) }
+
+    damaged.forEach { file ->
+      val out = File(workspace, "out").apply { mkdirs() }
+      // Damage may land where nothing reads it, so an extraction is allowed.
+      // What is not allowed is an exception, or a refusal leaving files behind.
+      when (val result = extractor.extract(file, out)) {
+        is ExtractionResult.Extracted -> assertTrue(result.root.isDirectory)
+        is ExtractionResult.Refused -> assertEquals(emptyList<String>(), out.list().orEmpty().toList())
+      }
+      out.deleteRecursively()
+    }
+  }
+
+  @Test
+  fun `an entry that wants a file as its folder is refused rather than crashing`() {
+    val hostile =
+      Archives.tarGz(
+        workspace,
+        mapOf(
+          "pkg/diceset.toml" to Archives.MINIMAL_TOML.encodeToByteArray(),
+          "pkg/diceset.toml/inner.toml" to "x".encodeToByteArray(),
+        ),
+      )
+
+    assertEquals(RejectionReason.Unreadable, refused(extractor.extract(hostile, workspace)).reason)
+    assertNothingLeftBehind()
+  }
+
+  @Test
+  fun `an entry named like a folder that is already there is refused rather than crashing`() {
+    val hostile =
+      Archives.zip(
+        workspace,
+        mapOf(
+          "pkg/textures/d6.png/inner.png" to "x".encodeToByteArray(),
+          "pkg/textures/d6.png" to "y".encodeToByteArray(),
+          "pkg/diceset.toml" to Archives.MINIMAL_TOML.encodeToByteArray(),
+        ),
+      )
+
+    assertEquals(RejectionReason.Unreadable, refused(extractor.extract(hostile, workspace)).reason)
+    assertNothingLeftBehind()
+  }
+
+  @Test
+  fun `the size limit counts every file together, not each on its own`() {
+    // Many small files add up to a bomb just as one big one does.
+    val small = SafeExtractor(ArchiveLimits(maxExtractedBytes = SMALL_LIMIT))
+    val archive =
+      Archives.tarGz(
+        workspace,
+        mapOf(
+          "pkg/diceset.toml" to Archives.MINIMAL_TOML.encodeToByteArray(),
+          "pkg/a.txt" to ByteArray(SMALL_LIMIT.toInt() / 2),
+          "pkg/b.txt" to ByteArray(SMALL_LIMIT.toInt() / 2),
+        ),
+      )
+
+    assertEquals(RejectionReason.TooLarge, refused(small.extract(archive, workspace)).reason)
+    assertNothingLeftBehind()
+  }
+
+  @Test
+  fun `an archive of exactly the size limit is not refused for its size`() {
+    val toml = Archives.MINIMAL_TOML.encodeToByteArray()
+    val exact = SafeExtractor(ArchiveLimits(maxExtractedBytes = toml.size + SMALL_LIMIT))
+    val archive =
+      Archives.tarGz(
+        workspace,
+        mapOf("pkg/diceset.toml" to toml, "pkg/a.txt" to ByteArray(SMALL_LIMIT.toInt())),
+      )
+
+    assertEquals(toml.size + SMALL_LIMIT, extracted(exact.extract(archive, workspace)).bytes)
+  }
+
+  @Test
+  fun `a zip bomb is refused like a tarball bomb`() {
+    val small = SafeExtractor(ArchiveLimits(maxExtractedBytes = SMALL_LIMIT))
+    val bomb = Archives.zip(workspace, mapOf("pkg/big.txt" to ByteArray(SMALL_LIMIT.toInt() + 1)))
+
+    assertEquals(RejectionReason.TooLarge, refused(small.extract(bomb, workspace)).reason)
+    assertNothingLeftBehind()
+  }
+
+  @Test
+  fun `a folder entry is passed over, in a tarball and in a zip`() {
+    // Every forge's tarball and most zips list their folders as entries, each
+    // with a trailing slash. Those must not trip the path check, which refuses
+    // an empty segment, or no real archive would ever install.
+    val entries =
+      mapOf(
+        "pkg/" to ByteArray(0),
+        "pkg/textures/" to ByteArray(0),
+        "pkg/diceset.toml" to Archives.MINIMAL_TOML.encodeToByteArray(),
+      )
+
+    listOf(Archives.tarGz(workspace, entries), Archives.zip(workspace, entries)).forEach { archive ->
+      val result = extracted(extractor.extract(archive, workspace))
+      assertEquals(1, result.files)
+      assertEquals(2, result.skipped)
+    }
+  }
+
+  @Test
+  fun `a folder entry that climbs out of the package makes no folder`() {
+    val outside = File(workspace, "outside")
+    val hostile =
+      Archives.tarGz(
+        workspace,
+        mapOf(
+          "../outside/" to ByteArray(0),
+          "pkg/diceset.toml" to Archives.MINIMAL_TOML.encodeToByteArray(),
+        ),
+      )
+
+    extractor.extract(hostile, workspace)
+
+    assertFalse("a folder was made outside the package", outside.exists())
+  }
+
+  @Test
+  fun `an archive of nothing but folders has no package in it`() {
+    val archive = Archives.tarGz(workspace, mapOf("pkg/" to ByteArray(0)))
+
+    assertEquals(RejectionReason.NotInTheArchive, refused(extractor.extract(archive, workspace)).reason)
+    assertNothingLeftBehind()
+  }
+
   /** The result, insisting it was an extraction. */
   private fun extracted(result: ExtractionResult): ExtractionResult.Extracted {
     assertTrue("expected an extraction, got $result", result is ExtractionResult.Extracted)
@@ -335,5 +498,13 @@ class SafeExtractorTest {
 
   private companion object {
     const val ONE_MIB = 1024L * 1024
+    const val SMALL_LIMIT = 4096L
+
+    /** Far enough to damage the first entry's header, and then some. */
+    const val HEADER_BYTES = 700
+
+    fun ByteArray.flipped(at: Int): ByteArray = copyOf().also { it[at] = (it[at].toInt() xor 0x55).toByte() }
+
+    fun File.withBytes(bytes: ByteArray): File = also { it.writeBytes(bytes) }
   }
 }

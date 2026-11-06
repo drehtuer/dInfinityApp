@@ -210,6 +210,23 @@ class BoardTrackTest {
   }
 
   @Test
+  fun `a die let go spinning on the spot counts as moving, however little it moved`() {
+    // A die with no speed along the floor and a spin on it is one that was let
+    // go. Holding it still would freeze a fall; standing it would leave it
+    // turning in mid-air.
+    val spinning = Placement(START, Quaternion.Identity, Vector3.Zero, Vector3.Up)
+    val nudge = BoardTrack.STILL_DRIFT_MM / 2
+    val recorder = BoardTrack.Recorder(listOf(BoardBody(0, StandardDice.d6, 1.0, spinning)))
+    recorder.record(listOf(BoardPose(START.copy(z = START.z + nudge), Quaternion.Identity)))
+
+    val recorded = recorder.finish().finalPoses.single()
+    assertNotEquals(START, recorded.position)
+
+    val stood = BoardTrack.standing(boardOf(BoardBody(0, StandardDice.d6, 1.0, spinning))).finalPoses.single()
+    assertEquals(ClearSpace.radiusOf(StandardDice.d6, 1.0), stood.position.z, FLOAT_TOLERANCE)
+  }
+
+  @Test
   fun `a recording grows past its first allocation`() {
     val track = falling(steps = LONG)
 

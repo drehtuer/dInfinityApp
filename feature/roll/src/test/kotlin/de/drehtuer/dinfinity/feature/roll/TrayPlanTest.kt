@@ -195,6 +195,15 @@ class TrayPlanTest {
     assertEquals(listOf(0, 0, 0), PlanTint.entries.map(tally::getValue))
   }
 
+  @Test
+  fun `a spot is on the plan up to its edges, and off it past any one of them`() {
+    val inside = listOf(PlanSpot(0.5, 0.5), PlanSpot(0.0, 0.0), PlanSpot(1.0, 1.0))
+    val past = listOf(PlanSpot(-0.01, 0.5), PlanSpot(1.01, 0.5), PlanSpot(0.5, -0.01), PlanSpot(0.5, 1.01))
+
+    inside.forEach { assertTrue("$it should be on the plan", it.onThePlan) }
+    past.forEach { assertFalse("$it should be off the plan", it.onThePlan) }
+  }
+
   private fun die(
     position: Vector3 = Vector3(0.0, 0.0, 8.0),
     still: Int = 0,

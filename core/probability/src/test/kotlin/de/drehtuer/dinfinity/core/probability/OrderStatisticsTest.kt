@@ -46,6 +46,19 @@ class OrderStatisticsTest {
   }
 
   @Test
+  fun `a die with a gap between its faces never gains the numbers it does not have`() {
+    // A set is free to number a die 1, 1, 5. The values between are in the
+    // range and have no chance, and ranking has to step over them.
+    val gappy = Pmf.uniformOver(listOf(1, 1, 5))
+
+    val best = OrderStatistics.keepHighest(gappy, count = 2, keep = 1)
+
+    assertEquals(4.0 / 9, best.probabilityOf(1), 1e-14)
+    assertEquals(5.0 / 9, best.probabilityOf(5), 1e-14)
+    (2..4).forEach { assertEquals(0.0, best.probabilityOf(it), "P(max = $it)") }
+  }
+
+  @Test
   fun `a die with negative faces ranks the same way round`() {
     val best = OrderStatistics.keepHighest(fudge, count = 2, keep = 1)
     assertEquals(-1..1, best.support)

@@ -6,6 +6,8 @@ import androidx.test.core.app.ApplicationProvider
 import de.drehtuer.dinfinity.core.model.DiceSet
 import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.DieShape
+import de.drehtuer.dinfinity.core.model.TableLook
+import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.data.InstalledSetRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 import de.drehtuer.dinfinity.designer.BitmapAtlas
@@ -234,14 +236,47 @@ class DrawnSetsTest {
       assertEquals(SaveResult.Refused, outcome)
     }
 
-  private fun drawn(library: SetLibrary) =
-    DrawnSets(
-      library = library,
-      store = drafts,
-      catalogue = { library.catalogue },
-      io = Dispatchers.Unconfined,
-      personal = personal ?: error("build the library first"),
-    )
+  @Test
+  fun `a set that holds only tables came out of the save as a set`() =
+    runBlocking {
+      // Photo tables live in the personal package, so a package with no dice in
+      // it is still a package and not the blank phone below.
+      val onlyTables =
+        BuiltinDiceSet.set.copy(
+          id = DiceSet.PERSONAL_ID,
+          dice = emptyList(),
+          tables = listOf(TableLook(id = "oak", name = "Oak")),
+        )
+      val library = library()
+
+      val outcome = drawn(library, built = onlyTables).save(DiceSet.PERSONAL_ID, drawing())
+
+      assertTrue("$outcome", outcome is SaveResult.Saved)
+    }
+
+  @Test
+  fun `a set built with nothing in it and nothing drawn is blank, not saved`() =
+    runBlocking {
+      val nothingIn = BuiltinDiceSet.set.copy(id = DiceSet.PERSONAL_ID, dice = emptyList(), tables = emptyList())
+      val library = library()
+
+      val outcome = drawn(library, built = nothingIn).save(DiceSet.PERSONAL_ID, Draft(die = d6))
+
+      assertEquals(SaveResult.Blank, outcome)
+    }
+
+  private fun drawn(
+    library: SetLibrary,
+    built: DiceSet? = null,
+  ) = DrawnSets(
+    library = library,
+    store = drafts,
+    catalogue = {
+      built?.let { DiceCatalog.of(listOf(BuiltinDiceSet.set, it)) } ?: library.catalogue
+    },
+    io = Dispatchers.Unconfined,
+    personal = personal ?: error("build the library first"),
+  )
 
   /** The personal sets the last [library] was built on, which [drawn] has to share. */
   private var personal: PersonalSets? = null

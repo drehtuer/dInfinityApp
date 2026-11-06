@@ -7,18 +7,28 @@ import androidx.activity.result.ActivityResultRegistry
 import androidx.activity.result.ActivityResultRegistryOwner
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.core.app.ActivityOptionsCompat
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
+import de.drehtuer.dinfinity.core.model.TablePin
 import de.drehtuer.dinfinity.feature.saved.ImportTestTags
 import de.drehtuer.dinfinity.feature.sets.SetsTestTags
+import de.drehtuer.dinfinity.feature.tables.PhotoOutcome
+import de.drehtuer.dinfinity.feature.tables.PickedPhoto
+import de.drehtuer.dinfinity.feature.tables.TablePhotos
+import de.drehtuer.dinfinity.feature.tables.TablesPresenter
+import de.drehtuer.dinfinity.feature.tables.TablesTestTags
 import de.drehtuer.dinfinity.navigation.Destination
 import de.drehtuer.dinfinity.theme.DInfinityTheme
 import org.junit.After
@@ -137,6 +147,60 @@ class ChosenFilesTest {
     }
   }
 
+  @Test
+  fun `a dismissed archive picker is not a failure and says nothing`() {
+    open(Destination.DiceSets, answer = null)
+
+    compose.onNodeWithTag(SetsTestTags.INSTALL).performClick()
+
+    assertEquals(0, compose.onAllNodesWithTag(SetsTestTags.OUTCOME).fetchSemanticsNodes().size)
+  }
+
+  @Test
+  fun `a photo picked for a table goes by its file's name, and only pictures are offered`() {
+    open(Destination.Tables, answer = file("oak_table.jpg", "not looked at until it is used"), screens = withPhotos())
+    useAPhoto()
+
+    compose.onNodeWithTag(TablesTestTags.PHOTO_CHOOSE).performClick()
+
+    compose.onNodeWithTag(TablesTestTags.PHOTO_FILE).assertTextEquals("oak_table.jpg")
+    assertEquals(listOf("image/*"), (asked.single() as Array<*>).toList())
+  }
+
+  @Test
+  fun `a dismissed photo picker leaves the sheet with no photo in it`() {
+    open(Destination.Tables, answer = null, screens = withPhotos())
+    useAPhoto()
+    val before = compose.onNodeWithTag(TablesTestTags.PHOTO_FILE).fetchSemanticsNode().config
+
+    compose.onNodeWithTag(TablesTestTags.PHOTO_CHOOSE).performClick()
+
+    assertEquals(
+      before[SemanticsProperties.Text],
+      compose.onNodeWithTag(TablesTestTags.PHOTO_FILE).fetchSemanticsNode().config[SemanticsProperties.Text],
+    )
+  }
+
+  /** The row is the last of a lazy list, so it is not there until the list has come to it. */
+  private fun useAPhoto() {
+    compose.onNodeWithTag(TablesTestTags.LIST).performScrollToNode(hasTestTag(TablesTestTags.USE_PHOTO))
+    compose.onNodeWithTag(TablesTestTags.USE_PHOTO).performClick()
+  }
+
+  /** The app's presenters, with a photo library behind the tables screen that nothing here reaches. */
+  private fun withPhotos(): Presenters =
+    app.presenters().copy(
+      tables = {
+        TablesPresenter(
+          sets = { app.library.catalogue.installed },
+          chosen = null,
+          onChosen = {},
+          scope = app.scope,
+          photos = NO_PHOTOS,
+        )
+      },
+    )
+
   private fun file(
     name: String,
     text: String,
@@ -146,6 +210,7 @@ class ChosenFilesTest {
   private fun open(
     destination: Destination,
     answer: Uri?,
+    screens: Presenters = app.presenters(),
   ) {
     val registry =
       object : ActivityResultRegistry() {
@@ -166,7 +231,7 @@ class ChosenFilesTest {
     compose.setContent {
       navigation = rememberNavController()
       CompositionLocalProvider(LocalActivityResultRegistryOwner provides owner) {
-        DInfinityTheme { DInfinityApp(navController = navigation, screens = app.presenters()) }
+        DInfinityTheme { DInfinityApp(navController = navigation, screens = screens) }
       }
     }
     compose.runOnIdle { navigation.navigate(destination.route) }
@@ -177,6 +242,17 @@ class ChosenFilesTest {
     compose.runOnIdle { navigation.currentBackStackEntry?.destination?.route }?.let(Destination::ofRoute)
 
   private companion object {
+    /** Enough for the screen to offer a photo. These tests stop at the picker. */
+    val NO_PHOTOS =
+      object : TablePhotos {
+        override suspend fun add(
+          photo: PickedPhoto,
+          name: String,
+        ): PhotoOutcome = PhotoOutcome.Refused(emptyList())
+
+        override suspend fun remove(pin: TablePin) = Unit
+      }
+
     /** A collection with one group and one roll in it. */
     val THORIN =
       """

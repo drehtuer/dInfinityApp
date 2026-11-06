@@ -50,6 +50,20 @@ class FormulaFieldTest {
   val compose = createComposeRule()
 
   @Test
+  fun `a field asked to take the focus has it as soon as it appears`() {
+    compose.setContent { FormulaField(text = "", onChange = {}, takeFocus = true) }
+
+    compose.onNodeWithTag(FormulaTestTags.FIELD).assertIsFocused()
+  }
+
+  @Test
+  fun `a field nobody asked leaves the focus alone`() {
+    compose.setContent { FormulaField(text = "", onChange = {}) }
+
+    compose.onNodeWithTag(FormulaTestTags.FIELD).assertIsNotFocused()
+  }
+
+  @Test
   fun `what is typed is handed straight out`() {
     val typed = mutableListOf<String>()
     compose.setContent { FormulaField(text = "", onChange = typed::add) }

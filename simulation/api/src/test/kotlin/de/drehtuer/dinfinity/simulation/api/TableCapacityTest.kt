@@ -99,6 +99,22 @@ class TableCapacityTest {
   }
 
   @Test
+  fun `on a table too small for them dice are refused by the scale floor, and the number quoted really fits`() {
+    // Below the engine's cap: it is the floor area that says no here, and "up
+    // to n do" is a promise the next throw will take literally.
+    val small = TableGeometry(SMALL_TABLE_WIDTH_MM)
+    val dice = List(TableCapacity.MAX_DICE) { StandardDice.d6 }
+
+    val verdict = TableCapacity.check(dice, small, diceCount = TableCapacity.MAX_DICE)
+
+    assertTrue(verdict is CapacityVerdict.Refused, "$verdict")
+    val quoted = verdict.largestThatFits
+    assertTrue(quoted in 1 until TableCapacity.MAX_DICE, "quoted $quoted")
+    assertTrue(TableCapacity.check(dice, small, diceCount = quoted) is CapacityVerdict.Fits)
+    assertTrue(TableCapacity.check(dice, small, diceCount = quoted + 1) is CapacityVerdict.Refused)
+  }
+
+  @Test
   fun `five hundred d6 are refused`() {
     val verdict = TableCapacity.check(List(100) { StandardDice.d6 }, table, diceCount = 500)
     assertTrue(verdict is CapacityVerdict.Refused, "$verdict")
@@ -216,6 +232,7 @@ class TableCapacityTest {
      * player ever meets.
      */
     const val EXPECTED_FLOOR_BITES_ABOVE = 241
+    const val SMALL_TABLE_WIDTH_MM = 20.0
   }
 
   private fun planOf(

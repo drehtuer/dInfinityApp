@@ -68,6 +68,18 @@ class ImageHeaderTest {
   }
 
   @Test
+  fun `a lossless WebP without its signature byte is not a picture`() {
+    val unsigned = webpLossless(32, 16).also { it[UNSIGNED_AT] = 0x2E }
+
+    assertNull(ImageHeader.sizeOf(unsigned))
+  }
+
+  @Test
+  fun `a long file that is neither kind of picture is not a picture`() {
+    assertNull(ImageHeader.sizeOf(ByteArray(KIB)))
+  }
+
+  @Test
   fun `a WebP cut off before its dimensions is not a picture`() {
     assertNull(ImageHeader.sizeOf(webpLossy(16, 16).copyOf(20)))
     assertNull(ImageHeader.sizeOf(webpExtended(16, 16).copyOf(20)))
@@ -100,4 +112,10 @@ class ImageHeaderTest {
   private fun little24(value: Int) = little16(value) + byteArrayOf((value ushr 16).toByte())
 
   private fun little32(value: Int) = little24(value) + byteArrayOf((value ushr 24).toByte())
+
+  private companion object {
+    /** After `RIFF`, the size, `WEBP`, `VP8L` and the chunk's size. */
+    const val UNSIGNED_AT = 20
+    const val KIB = 1024
+  }
 }
