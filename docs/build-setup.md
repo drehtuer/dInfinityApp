@@ -1152,7 +1152,7 @@ coverage to the floors in `gradle.properties`:
 
 ```properties
 dinfinity.coverage.minFunction=85.0
-dinfinity.coverage.minBranch=62.0
+dinfinity.coverage.minBranch=80.0
 ```
 
 A floor rather than a comparison against `main`, because the floor works

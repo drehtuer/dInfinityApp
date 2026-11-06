@@ -551,16 +551,13 @@ Pixel 10a.
 
 ## Coverage
 
-Branch coverage is **~87.2 %** against a floor of 62. It rose from 75.8 % because
+Branch coverage is **~87.2 %** against a floor of 80. It rose from 75.8 % because
 JaCoCo 0.8.16 filters the Compose compiler's generated branches, not because more
 was tested (`docs/build-setup.md`, "Coverage"). What is still missed is mostly real:
 screens' decisions (`DesignerScreen`, `RollScreen`, `DInfinityApp`, `SavedScreen`,
 `StatsScreen`) and presenters' (`RollMachine`, `SetsPresenter`, `SetDetailPresenter`).
 What helps: extract decisions from draw lambdas, and test shared components on
 their own. Figures go in every PR description.
-
-- [ ] Should the floor track the drift? A question for a person — moving a
-      floor to make a check pass is what `.claude/CLAUDE.md` forbids
 
 Found by the test pass of 2026-10-05, each left as it was so no test locks a
 wrong answer in:
