@@ -664,3 +664,7 @@ None blocks code (design decision log of 2026-09-17).
       image exists (decision 39)
 - [ ] The devcontainer asks for `/dev/kvm` unconditionally — is that the right
       default (`docs/build-setup.md`)?
+- [ ] Check each new Jolt release's notes for changes to friction, contact
+      resolution or CPU stepping, and only then repeat the comparison that kept
+      5.3.0 over 5.6.0 (decision 112; `docs/physics-and-rendering.md`, "Which
+      Jolt, and when to look again")

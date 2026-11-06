@@ -1789,6 +1789,63 @@ is actually thrown again, so the reasons add up to the re-throws; a pass that
 gave up throws its dice again as still moving. The harness prints the
 breakdown above its scorecard (`docs/build-setup.md`, "The physics harness").
 
+## Which Jolt, and when to look again
+
+**Jolt 5.6.0 was tried on 2026-10-31 and offered dice no advantage, so 5.3.0
+stays** (`docs/architecture.md`, decision 112). It was not faster, it re-threw
+more dice, and those dice tumbled less after landing. All of it was measured on
+the Pixel 10a, with Jolt's new GPU compute switched off, because a roll has to be
+decided the same way on every device.
+
+**The issue is more dice left cocked.** Nearly all of the extra re-throws were
+dice that came to rest cocked, and re-tuning the dice did not close the gap. Each
+setting below is 2,000 × `20d20`, or 40,000 dice:
+
+| friction / restitution | dice re-thrown, 5.3 | dice re-thrown, 5.6 |
+| --- | --- | --- |
+| 0.4 / 0.55 | 0.96 % | 1.14 % |
+| **0.4 / 0.6 (the best on both)** | **0.76 %** | **0.99 %** |
+| 0.5 / 0.55 (what ships) | 1.02 % | 1.35 % |
+| 0.5 / 0.6 | 0.82 % | 1.11 % |
+| 0.6 / 0.55 | 1.10 % | 1.35 % |
+| 0.6 / 0.6 | 0.90 % | 1.12 %, and one roll gave up |
+| 0.7 / 0.55 | 1.18 % | 1.46 % |
+| 0.7 / 0.6 | 0.92 % | 1.26 % |
+
+Best against best, 5.3 re-throws about a quarter fewer dice, and the gap is about
+four times its standard error. Both are at their best on the lowest friction
+tried, so neither was followed below 0.4.
+
+The likely cause, **which was not proved**, is that 5.6 applies friction at the
+average contact point, so a coefficient does not grip a die on its edge as it did
+on 5.3. Weaker grip on an edge would leave dice cocked, which is what was
+measured. It also moves every roll, so a move means new golden cases.
+
+The rest of the comparison, 5.6 against 5.3:
+
+| measure | 5.6 | 5.3 |
+| --- | --- | --- |
+| step p99, `20d20` | 0.19 ms | 0.20 ms |
+| step p99, `100d6` | 1.11 ms | 1.02 ms |
+| dice re-thrown, `20d4`, at the shipped settings | 4.34 % | 3.96 % |
+| dice re-thrown, `100d6`, at the shipped settings | 1.67 % | 1.35 % |
+| turns after landing, `20d20`, at friction 0.4 and restitution 0.6 | 2.73 | 2.97 |
+
+Median settle time was the same on both. Both passed `FairnessTest` at 100,000
+throws a shape, and the differences between their figures look like the spread
+between any two runs. The d18 stays outside chi-squared on either: 330 on 5.6
+against 267 on 5.3, with its worst face 0.574 % off against 0.609 %.
+
+**Look again when a release says it changes friction or how contacts are
+resolved, or when one makes convex-hull stepping faster on the CPU.** A release
+that only adds GPU compute changes nothing for dice. Compare best against best,
+because settings tuned on one engine flatter that engine: run the grid above on
+both with `tools/harness.sh -n 2000 --friction <n> --restitution <n>`, on `20d20`
+with `20d4` and `100d6` beside it, and include friction below 0.4. Move only if
+the new release re-throws fewer dice at its best setting, without giving up the
+turns after landing or the step time, and with `FairnessTest` passing.
+`docs/build-setup.md`, "Moving to a new Jolt", has what the move itself takes.
+
 ## The dice waiting to be thrown
 
 Tapping a saved roll, or a die in the picker, puts dice **on** the table rather
