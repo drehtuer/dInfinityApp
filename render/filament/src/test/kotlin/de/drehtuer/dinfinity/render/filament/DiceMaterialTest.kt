@@ -458,9 +458,9 @@ class DiceMaterialTest {
 
   @Test
   fun `the glow mask has a level for every blur, and no more than halving makes`() {
-    assertEquals(Glow.HALO_WEIGHTS.size + 1, GlowPass.levelsFor(540, 1212))
-    assertEquals(1, GlowPass.levelsFor(1, 1))
-    assertEquals(3, GlowPass.levelsFor(4, 2))
+    assertEquals(Glow.HALO_WEIGHTS.size + 1, Glow.maskLevels(540, 1212))
+    assertEquals(1, Glow.maskLevels(1, 1))
+    assertEquals(3, Glow.maskLevels(4, 2))
   }
 
   @Test

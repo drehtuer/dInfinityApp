@@ -64,7 +64,7 @@ internal class GlowPass(
       .Builder()
       .width(maskWidth)
       .height(maskHeight)
-      .levels(levelsFor(maskWidth, maskHeight))
+      .levels(Glow.maskLevels(maskWidth, maskHeight))
       .format(Texture.InternalFormat.RGBA16F)
       .usage(Texture.Usage.COLOR_ATTACHMENT or Texture.Usage.SAMPLEABLE or Texture.Usage.GEN_MIPMAPPABLE)
       .build(engine)
@@ -223,23 +223,4 @@ internal class GlowPass(
     val sampler: TextureSampler,
     val glyphSampler: TextureSampler,
   )
-
-  companion object {
-    /**
-     * How many levels the mask needs: the full size and one more for each
-     * blur [Glow.HALO_WEIGHTS] reads, and never more than halving can make.
-     */
-    fun levelsFor(
-      width: Int,
-      height: Int,
-    ): Int {
-      var halvings = 0
-      var side = maxOf(width, height)
-      while (side > 1) {
-        side /= 2
-        halvings++
-      }
-      return minOf(Glow.HALO_WEIGHTS.size + 1, halvings + 1)
-    }
-  }
 }

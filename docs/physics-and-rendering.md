@@ -2647,9 +2647,11 @@ impact sounds rather than a crash in the middle of a roll.
   every thumbnail was upside down; which way up a frame is turned out to be a
   question only a device can answer, and the device suite now asks it with
   geometry alone (`PrintedNumbersDeviceTest`).
-- `FilamentStage` and `TrayDriver` are the two files excluded from the coverage
-  figure — a GPU context and a thread. Neither is excluded from static
-  analysis (`.claude/CLAUDE.md`).
+- `FilamentEngine`, `FilamentStage`, `TrayDriver`, `RollThread`, `GlowPass` and
+  `MaterialDeclarations` are the files of this module excluded from the coverage
+  figure — a GPU context, the thread it lives on, and native handles with no
+  arithmetic of their own. None is excluded from static analysis
+  (`.claude/CLAUDE.md`); `sonar-project.properties` says why each one is there.
 - The engine is created, the material compiled and the scene built in that one
   file.
   Everything it is *told* (where the camera stands, what shape a die is, how
