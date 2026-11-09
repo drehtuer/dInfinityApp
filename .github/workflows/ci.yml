@@ -79,7 +79,7 @@ jobs:
       # exactly when it is worth having.
       - name: Annotate test results
         if: ${{ !cancelled() }}
-        uses: mikepenz/action-junit-report@6ef3fdcfcd5f0b5d14df3e659ef19b8c6820f93d # v6.6.1
+        uses: mikepenz/action-junit-report@a16be3a69023e9bd7e748ede768b3282ea7b30ce # v6.7.1
         with:
           report_paths: "**/build/test-results/*/TEST-*.xml"
           check_name: "Test results"
@@ -100,7 +100,7 @@ jobs:
       # showing up on sonarcloud.io.
       - name: SonarQube scan
         if: ${{ !cancelled() && env.SONAR_TOKEN != '' }}
-        uses: SonarSource/sonarqube-scan-action@4d1dc0c91ee400dcf8a6dddf2f705ac36542e304 # v8.4.0
+        uses: SonarSource/sonarqube-scan-action@e805d875275f728fac1885b413934be6d7c63f65 # v8.4.1
         with:
           args: >
             -Dsonar.projectVersion=${{ steps.version.outputs.value }}
